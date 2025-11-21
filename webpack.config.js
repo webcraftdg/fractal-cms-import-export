@@ -1,0 +1,206 @@
+/**
+ * webpack.config.js
+ *
+ * @author David Ghyse <dghyse@webcraftdg.fr>
+ * @copyright 2018-2021 Redcat
+ * @license https://www.redcat.io/license license
+ * @version XXX
+ */
+
+const argv = require('yargs').argv;
+const webpack = require('webpack');
+const path = require('path');
+const fs = require('fs');
+const AssetsWebpackPlugin = require('assets-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const CompressionWebpackPlugin = require('compression-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const DuplicatePackageCheckerPlugin = require('duplicate-package-checker-webpack-plugin');
+
+const prodFlag = (process.argv.indexOf('-p') !== -1) || (process.argv.indexOf('production') !== -1);
+
+var confPath = './webpack-yii.json';
+if(argv.env && argv.env.config) {
+  confPath = path.join(__dirname, argv.env.config, 'webpack-yii.json');
+}
+if(!fs.existsSync(confPath)) {
+  throw 'Error: file "' + confPath + '" not found.';
+}
+var version = '1.0.0';
+
+var config = require(confPath);
+if (argv.env && argv.env.config) {
+  config.sourceDir = path.relative(__dirname, argv.env.config);
+}
+
+var webpackConfig = {
+  entry: config.entry,
+  mode: prodFlag ? 'production' : 'development',
+  performance: {
+    hints: prodFlag ? false : 'warning',
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000
+  },
+  context: path.resolve(__dirname, config.sourceDir, config.subDirectories.sources),
+  output: {
+    path: path.resolve(__dirname, config.sourceDir, config.subDirectories.dist),
+    filename: prodFlag ?  config.assets.scripts + '/[name].[chunkhash:8].js' : config.assets.scripts + '/[name].js',
+    chunkFilename: prodFlag ?  config.assets.scripts + '/[name].[chunkhash:8].js' : config.assets.scripts + '/[name].js'
+  },
+  plugins: [
+    new webpack.DefinePlugin({
+      PRODUCTION: JSON.stringify(prodFlag),
+      VERSION: JSON.stringify(prodFlag ? version : version + '-dev'),
+    }),
+    new DuplicatePackageCheckerPlugin(),
+    new MiniCssExtractPlugin({
+      filename: prodFlag ? config.assets.styles + '/[name].[chunkhash:8].css' : config.assets.styles + '/[name].css',
+      chunkFilename: prodFlag ? config.assets.styles + '/[name].[chunkhash:8].css' : config.assets.styles + '/[name].css'
+    }),
+    new CompressionWebpackPlugin({
+      filename: "[path][base].gz[query]",
+      algorithm: "gzip",
+      test: /\.(js|css|map)$/,
+      threshold: 10,
+      minRatio: 1
+    }),
+    new CleanWebpackPlugin({
+      verbose: true,
+      dry: !prodFlag
+    }),
+    new AssetsWebpackPlugin({
+      prettyPrint: true,
+      filename: config.catalog,
+      path:config.sourceDir,
+      processOutput: function (assets) {
+        let finalAssets = {};
+        for (let a in assets) {
+          if (a.length > 0) {
+            for(let b in assets[a]) {
+              assets[a][b] = assets[a][b].replace('auto/', '');
+            }
+            finalAssets[a] = assets[a];
+          }
+        }
+        return JSON.stringify(finalAssets, null, this.prettyPrint ? 2 : null);
+      }
+    })
+  ],
+  externals: config.externals,
+  module: {
+    rules: [
+      {
+        enforce: 'pre',
+        test: /\.js$/,
+        loader: 'source-map-loader',
+        exclude: []
+      },
+      {
+        enforce: 'pre',
+        test: /\.tsx?$/,
+        use: 'source-map-loader'
+      },
+      {
+        test: /\.tsx$/,
+        loader: 'ts-loader',
+        exclude: /node_modules/
+      },
+      {
+        test: /\.ts$/i,
+        use: [
+          'ts-loader',
+          '@aurelia/webpack-loader'
+        ],
+        exclude: /node_modules/
+      },
+      {
+        test: /\.(ttf|eot|svg|woff|woff2)((\?|#)[a-z0-9]+)?$/,
+        loader: 'file-loader',
+        options: {
+          // esModule: false,
+          name: '[path][name].[ext]'
+        }
+      },
+      {
+        test: /\.(jpe?g|png|gif)$/,
+        loader: 'file-loader',
+        options: {
+          name: '[path][name].[ext]'
+        }
+      },
+      {
+        test: /\.s[ac]ss$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: (resourcePath, context) => {
+                return path.relative(path.dirname(resourcePath), context) + '/';
+              }
+            }
+          },
+          {
+            loader: 'css-loader',
+            options: {
+              importLoaders: 2,
+              esModule: false,
+              modules: false
+            }
+          },
+          {
+            loader: 'postcss-loader',
+          },
+          'sass-loader'
+        ]
+      },
+      {
+        test: /\.css$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              publicPath: (resourcePath, context) => {
+                return path.relative(path.dirname(resourcePath), context) + '/';
+              }
+            }
+          },
+          { loader: 'css-loader', options: {
+              importLoaders: 2,
+              esModule: false,
+            } },
+          {
+            loader: 'postcss-loader',
+          },
+        ]
+      },
+      {
+        test: /\.html$/i,
+        use: {
+          loader: '@aurelia/webpack-loader',
+          options: {}
+        },
+        exclude: /node_modules/
+      }
+    ]
+  },
+  optimization: {
+    minimize: prodFlag,
+    runtimeChunk: false,
+    splitChunks: false
+  },
+  resolve: {
+    alias: {},
+    extensions: ['.ts', '.js'],
+    modules: [
+      "node_modules",
+      path.resolve(__dirname, config.sourceDir, config.subDirectories.sources),
+      path.resolve(__dirname, config.sourceDir, config.subDirectories.sources, "app")
+    ]
+  },
+  target: 'web'
+};
+
+if (!prodFlag) {
+  webpackConfig.devtool = 'source-map';
+}
+module.exports = webpackConfig;
