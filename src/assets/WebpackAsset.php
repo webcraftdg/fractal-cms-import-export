@@ -52,7 +52,7 @@ class WebpackAsset extends AssetBundle
     /**
      * @inheritdoc
      */
-    public $webpackPath = '@importExport/assets/webpack';
+    public $webpackPath = '@fractalCms/importExport/assets/webpack';
 
     /**
      * @inheritdoc

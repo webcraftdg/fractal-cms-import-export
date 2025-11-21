@@ -19,13 +19,12 @@ use fractalCms\importExport\components\Constant;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
+use yii\helpers\Url;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
 {
 
 
-    public $layoutPath = '@fractalCms/core/views/layouts';
-    public $layout = 'main';
     public $version = 'v1.0.0';
     public string $name = 'importExport';
     public string $commandNameSpace = 'fractalCmsImportExport:';
@@ -60,15 +59,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             if (isset($app->controllerMap['migrate']) === true) {
                 //Add migrations namespace
                 if (isset($app->controllerMap['migrate']['migrationNamespaces']) === true) {
-                    $app->controllerMap['migrate']['migrationNamespaces'][] = 'fractalCms\migrations';
+                    $app->controllerMap['migrate']['migrationNamespaces'][] = 'fractalCms\importExport\migrations';
                 } else {
-                    $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\migrations'];
-                }
-                //Add rbac
-                if (isset($app->controllerMap['migrate']['migrationPath']) === true) {
-                    $app->controllerMap['migrate']['migrationPath'][] = '@yii/rbac/migrations';
-                } else {
-                    $app->controllerMap['migrate']['migrationPath'] = ['@yii/rbac/migrations'];
+                    $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\importExport\migrations'];
                 }
             }
         }catch (Exception $e) {
@@ -124,8 +117,8 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $importExport['optionsClass'] = $optionsClass;
                 }
                 $importExport['children'][] = [
-                    'title' => 'Configuration article',
-                    'url' => Url::to(['/'.$this->contextId.'/config-type/index']),
+                    'title' => 'Configuration import',
+                    'url' => Url::to(['/'.$this->contextId.'/import-config/index']),
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
@@ -151,10 +144,10 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         $coreId = CoreModule::getInstance()->id;
         $contextId = $this->contextId;
         return [
-            $coreId.'/configuration-des-imports-export/liste' => $contextId.'/config-import-export/index',
-            $coreId.'/configuration-des-imports-export/creer' => $contextId.'/config-import-export/create',
-            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/config-import-export/update',
-            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/config-import-export/delete',
+            $coreId.'/configuration-des-imports-export/liste' => $contextId.'/import-config/index',
+            $coreId.'/configuration-des-imports-export/creer' => $contextId.'/import-config/create',
+            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
+            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',
         ];
     }
 
