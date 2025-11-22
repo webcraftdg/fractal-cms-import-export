@@ -20,7 +20,9 @@ use yii\db\Expression;
  * @property int $id
  * @property int|null $importConfigId
  * @property int|null $userId
+ * @property string|null $type
  * @property string|null $filePath
+ * @property string|null $sql
  * @property int|null $totalRows
  * @property int|null $successRows
  * @property int|null $errorRows
@@ -45,6 +47,11 @@ class importJob extends \yii\db\ActiveRecord
     const STATUS_SUCCESS = 'success';
     const STATUS_FAILED = 'failed';
 
+    /**
+     * ENUM field values
+     */
+    const TYPE_IMPORT = 'import';
+    const TYPE_EXPORT = 'export';
 
     /**
      * {@inheritdoc}
@@ -73,11 +80,11 @@ class importJob extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status'
+            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status'
+            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
         ];
         return $scenarios;
     }
@@ -95,6 +102,8 @@ class importJob extends \yii\db\ActiveRecord
             [['status', 'jsonConfig'], 'string'],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['filePath'], 'string', 'max' => 255],
+            [['type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            ['type', 'in', 'range' => array_keys(self::optsType()), 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             ['status', 'in', 'range' => array_keys(self::optsStatus()), 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['importConfigId'],
                 'exist',
@@ -218,5 +227,51 @@ class importJob extends \yii\db\ActiveRecord
     public function setStatusToFailed()
     {
         $this->status = self::STATUS_FAILED;
+    }
+
+    /**
+     * column type ENUM value labels
+     * @return string[]
+     */
+    public static function optsType()
+    {
+        return [
+            self::TYPE_IMPORT => 'import',
+            self::TYPE_EXPORT => 'export',
+        ];
+    }
+
+    /**
+     * @return string
+     */
+    public function displayType()
+    {
+        return self::optsType()[$this->type];
+    }
+
+    /**
+     * @return bool
+     */
+    public function isTypeImport()
+    {
+        return $this->type === self::TYPE_IMPORT;
+    }
+
+    public function setTypeToImport()
+    {
+        $this->type = self::TYPE_IMPORT;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isTypeExport()
+    {
+        return $this->type === self::TYPE_EXPORT;
+    }
+
+    public function setTypeToExport()
+    {
+        $this->type = self::TYPE_EXPORT;
     }
 }

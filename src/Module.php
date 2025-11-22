@@ -27,6 +27,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
     public $version = 'v1.0.0';
     public string $name = 'importExport';
+    public string $filePathImport = '@webroot/imports';
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -37,6 +38,10 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
             if ($app instanceof ConsoleApplication) {
                 $this->configConsoleApp($app);
+            }
+            $filePath = Yii::getAlias($this->filePathImport);
+            if(file_exists($filePath) === false) {
+                mkdir($filePath);
             }
         } catch (Exception $e){
             Yii::error($e->getMessage(), __METHOD__);

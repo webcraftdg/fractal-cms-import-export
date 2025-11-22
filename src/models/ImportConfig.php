@@ -10,17 +10,23 @@
  */
 namespace fractalCms\importExport\models;
 
+use fractalCms\importExport\Module;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
+use Exception;
+use Yii;
+use yii\helpers\Json;
+use yii\web\UploadedFile;
 
 /**
  * This is the model class for table "importConfigs".
  *
  * @property int $id
  * @property string|null $name
- * @property int|null $active
  * @property int|null $version
- * @property string $type
+ * @property int|null $active
+ * @property int|null $truncateTable
+ * @property string $table
  * @property resource|null $jsonConfig
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
@@ -32,12 +38,11 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
+    const SCENARIO_IMPORT_FILE = 'importFile';
 
-    /**
-     * ENUM field values
-     */
-    const TYPE_IMPORT = 'import';
-    const TYPE_EXPORT = 'export';
+
+
+    public $importFile;
 
     /**
      * {@inheritdoc}
@@ -65,11 +70,15 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'type', 'active'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'type', 'active'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
+        ];
+
+        $scenarios[self::SCENARIO_IMPORT_FILE] = [
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
         ];
         return $scenarios;
     }
@@ -79,17 +88,50 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
+            [['name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'table'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
-            [['active'], 'default', 'value' => 0],
-            [['active', 'version'], 'integer'],
-            [['type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['active', 'truncateTable'], 'default', 'value' => 0],
+            [['active', 'version', 'truncateTable'], 'integer'],
+            [['importFile'],
+                'required',
+                'message' => 'Veuillez télécharger un fichier',
+                'on' => [self::SCENARIO_IMPORT_FILE],
+            ],
+            [['importFile'], 'file',
+                'skipOnEmpty' => false,
+                'extensions' => ['json'],
+                'checkExtensionByMimeType' => false,
+                'maxFiles' => 1,
+                'message' => 'Le fichier doit être au format JSON',
+                'on' => [self::SCENARIO_IMPORT_FILE],
+            ],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['type', 'jsonConfig'], 'string'],
+            [['type', 'jsonConfig', 'table'], 'string'],
+            [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'string', 'max' => 150],
-            ['type', 'in', 'range' => array_keys(self::optsType()), 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['name'], 'unique', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
         ];
+    }
+
+    /**
+     * @param $attribute
+     * @param $arams
+     *
+     * @return bool
+     */
+    public function validateTable($attribute, $params) : bool
+    {
+        try {
+            $table = $this->table;
+            $dbTables = Yii::$app->db->schema->tableNames;
+            $success = in_array($table, $dbTables);
+            if( $success === false) {
+                $this->addError('table', 'La table : "'.$table.'" doit être présente dans votre base de données');
+            }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+        }
     }
 
     /**
@@ -103,11 +145,71 @@ class ImportConfig extends \yii\db\ActiveRecord
             'active' => 'Active',
             'version' => 'Version',
             'type' => 'Type',
+            'importFile' => 'Import fichier',
             'jsonConfig' => 'Json Config',
             'dateCreate' => 'Date Create',
             'dateUpdate' => 'Date Update',
         ];
     }
+
+    /**
+     * Manage import file
+     * @return bool|mixed
+     * @throws Exception
+     */
+    public function manageImportFile()
+    {
+        try {
+            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
+            $valid = true;
+            if ($this->importFile instanceof UploadedFile) {
+                $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
+                $this->importFile->saveAs($finalPathFile);
+                $contentJson = file_get_contents($finalPathFile);
+                $valid = json_validate($contentJson);
+                if ($valid === false) {
+                    $this->addError('importFile', 'Le fichier n\'est un JSON Valide');
+                } else {
+                    $jsonData = Json::decode($contentJson);
+                    $columns = ($jsonData['columns']) ?? [];
+                    unset($jsonData['columns']);
+                    $this->attributes = $jsonData;
+                    $this->truncateTable = (int)$this->truncateTable;
+                    $this->version = $this->checkVersion($this->name, $this->version);
+                    if ($this->validate() === true) {
+                        $this->save();
+                        $this->refresh();
+                    } else {
+                        $valid = false;
+                    }
+                }
+                unlink($finalPathFile);
+            }
+            return $valid;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    protected function checkVersion($name, $version)
+    {
+        try {
+            $importConfig = ImportConfig::find()
+                ->where(['name' => $name, 'version' => $version])
+                ->one();
+            if ($importConfig !== null) {
+                $newVersion = $version + 1;
+                return $this->checkVersion($name, $newVersion);
+            }
+            return $version;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
 
     /**
      * Gets query for [[ImportJobs]].
@@ -117,52 +219,5 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function getImportJobs()
     {
         return $this->hasMany(ImportJob::class, ['importConfigId' => 'id']);
-    }
-
-
-    /**
-     * column type ENUM value labels
-     * @return string[]
-     */
-    public static function optsType()
-    {
-        return [
-            self::TYPE_IMPORT => 'import',
-            self::TYPE_EXPORT => 'export',
-        ];
-    }
-
-    /**
-     * @return string
-     */
-    public function displayType()
-    {
-        return self::optsType()[$this->type];
-    }
-
-    /**
-     * @return bool
-     */
-    public function isTypeImport()
-    {
-        return $this->type === self::TYPE_IMPORT;
-    }
-
-    public function setTypeToImport()
-    {
-        $this->type = self::TYPE_IMPORT;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isTypeExport()
-    {
-        return $this->type === self::TYPE_EXPORT;
-    }
-
-    public function setTypeToExport()
-    {
-        $this->type = self::TYPE_EXPORT;
     }
 }

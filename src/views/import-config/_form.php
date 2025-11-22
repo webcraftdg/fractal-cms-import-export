@@ -37,15 +37,22 @@ use fractalCms\core\helpers\Html;
             <div class="col-sm-6">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'type', ['label' => 'Model', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'type', ImportConfig::optsType(), [
-                        'prompt' => 'Sélectionner un type', 'class' => 'form-control',
-                        'disabled' => ($model->isNewRecord === false),
-                    ]);
+                    echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
+                    echo Html::activeTextInput($model, 'version', ['placeholder' => 'Nom', 'class' => 'form-control']);
                     ?>
                 </div>
             </div>
+        </div>
+        <div class="row">
 
+            <div class="col-sm-6">
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'table', ['label' => 'Table cible', 'class' => 'form-label']);
+                    echo Html::activeTextInput($model, 'table', ['placeholder' => 'Nom', 'class' => 'form-control']);
+                    ?>
+                </div>
+            </div>
         </div>
         <div class="row  justify-content-center mt-3">
             <div  class="col-sm-6 text-center form-group">

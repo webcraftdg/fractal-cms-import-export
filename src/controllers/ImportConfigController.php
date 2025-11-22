@@ -19,6 +19,7 @@ use yii\filters\AccessControl;
 use Exception;
 use Yii;
 use yii\web\NotFoundHttpException;
+use yii\web\UploadedFile;
 
 class ImportConfigController extends BaseController
 {
@@ -71,10 +72,53 @@ class ImportConfigController extends BaseController
     public function actionIndex()
     {
         try {
+            $response = null;
+            $request = Yii::$app->request;
             $modelQuery = ImportConfig::find();
-            return $this->render('index', [
-                'modelQuery' => $modelQuery
-            ]);
+            $model = Yii::createObject(ImportConfig::class);
+            $model->scenario = ImportConfig::SCENARIO_IMPORT_FILE;
+            if ($request->isPost === true) {
+                $body = $request->getBodyParams();
+                $model->load($body);
+                $model->importFile = UploadedFile::getInstance($model, 'importFile');
+                if ($model->validate() === true && $model->importFile instanceof UploadedFile) {
+                    $vadid = $model->manageImportFile();
+                    if ($vadid === true) {
+                        $response = $this->redirect(['import-config/update', 'id' => $model->id]);
+                    }
+                }
+            }
+            if ($response === null) {
+                $response = $this->render('index', [
+                    'modelQuery' => $modelQuery,
+                    'model' => $model
+                ]);
+            }
+            return $response;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    public function actionImportFile()
+    {
+        try {
+            $request = Yii::$app->request;
+            $response = null;
+            $model = Yii::createObject(ImportConfig::class);
+            $model->scenario = ImportConfig::SCENARIO_CREATE;
+            if ($request->isPost === true) {
+                $body = $request->getBodyParams();
+                $model->load($body);
+
+            }
+            if ($response === null) {
+                $response = $this->render('import-file', [
+                    'model' => $model
+                ]);
+            }
+            return $response;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

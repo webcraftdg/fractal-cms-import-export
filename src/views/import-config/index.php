@@ -8,40 +8,74 @@
  * @package webapp\views\dafault
  *
  * @var $this yii\web\View
+ * @var ImportConfig $model
  * @var \yii\db\ActiveQuery $modelQuery
  */
 
 use fractalCms\importExport\components\Constant;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\models\ImportConfig;
-use yii\helpers\Html;
+use fractalCms\importExport\assets\StaticAsset;
+use fractalCms\core\helpers\Html;
 use yii\helpers\Url;
+$baseUrl = StaticAsset::register($this)->baseUrl;
 ?>
 <div class="row mt-3 align-items-center">
     <div class="col-sm-6">
         <h2>Liste des configurations d'imports/exports</h2>
     </div>
 </div>
+<?php
+    echo Html::beginForm('', 'post', ['enctype' => 'multipart/form-data']);
+?>
 <div class="row mt-3">
-    <div class="col" >
-        <?php
-        if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE) === true):
+    <div class="col-sm-12">
+        <div class="row ">
+            <div class="col-sm-6 flex items-center gap-1">
+                <?php
+                echo Html::activeFileInput($model, 'importFile',
+                    [
+                        'placeholder' => 'Import',
+                        'accept' => '.json',
+                        'class' => 'rounded-l-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500']);
+                echo Html::beginTag('button', ['type' => 'submit', 'class' => 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-lg border border-blue-600 flex items-center']);
+                echo Html::img($baseUrl.'/img/upload.svg', ['width' => 24, 'height' => 24, 'alt' => 'télécharger']);
+                echo Html::endTag('button');
+                if ($model->hasErrors('importFile') === true) {
+                    echo Html::tag('p', $model->getFirstError('importFile'), ['class' => 'text-red-600 text-sm m-0']);
+                } elseif ($model->hasErrors('name') === true) {
+                    echo Html::tag('p', $model->getFirstError('name'), ['class' => 'text-red-600 text-sm m-0']);
+                } elseif ($model->hasErrors('table') === true) {
+                    echo Html::tag('p', $model->getFirstError('table'), ['class' => 'text-red-600 text-sm m-0']);
+                }
+                ?>
 
-            echo Html::beginTag('a', ['href' => Url::to(['import-config/create']), 'class' => 'btn btn-outline-success']);
-            ?>
-            <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 12H15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M12 9L12 15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#198754" stroke-width="2"/>
-            </svg>
-            <span>Ajouter</span>
-            <?php
-            echo Html::endTag('a');
-        endif;
+            </div>
+            <div class="col-sm-6" >
+                <?php
+                if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE) === true):
 
-        ?>
+                    echo Html::beginTag('a', ['href' => Url::to(['import-config/create']), 'class' => 'btn btn-outline-success']);
+                    ?>
+                    <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 12H15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 9L12 15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#198754" stroke-width="2"/>
+                    </svg>
+                    <span>Ajouter manuellement</span>
+                    <?php
+                    echo Html::endTag('a');
+                endif;
+
+                ?>
+            </div>
+        </div>
     </div>
+
 </div>
+<?php
+echo Html::endForm();
+?>
 <div class="row m-3">
     <?php
     /** @var ImportConfig $model */
@@ -58,6 +92,8 @@ use yii\helpers\Url;
 
         echo Html::beginTag('div', ['class' => implode(' ', $classes), 'fractal-cms-core-list-line' => $model->id]);
         echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'col']);
+        echo Html::tag('div', $model->version, ['class' => 'col']);
+        echo Html::tag('div', ucfirst($model->table), ['class' => 'col']);
         echo Html::beginTag('div', ['class' => 'col-sm-3']);
         echo Html::beginTag('div', ['class' => 'row align-items-center']);
         if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_UPDATE) === true)  {
