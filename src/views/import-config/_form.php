@@ -9,6 +9,7 @@
  *
  * @var $this yii\web\View
  * @var ImportConfig $model
+ * @var array $tables
  */
 
 use fractalCms\importExport\models\ImportConfig;
@@ -38,22 +39,41 @@ use fractalCms\core\helpers\Html;
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
-                    echo Html::activeTextInput($model, 'version', ['placeholder' => 'Nom', 'class' => 'form-control']);
+                    echo Html::activeTextInput($model, 'version', ['placeholder' => 'Version', 'class' => 'form-control']);
                     ?>
                 </div>
             </div>
         </div>
         <div class="row">
-
             <div class="col-sm-6">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'table', ['label' => 'Table cible', 'class' => 'form-label']);
-                    echo Html::activeTextInput($model, 'table', ['placeholder' => 'Nom', 'class' => 'form-control']);
+                    echo Html::activeDropDownList($model, 'table', $tables, [
+                        'prompt' => 'Sélectionner une table', 'class' => 'form-control',
+                    ]);
                     ?>
                 </div>
             </div>
         </div>
+        <?php if ($model->isNewRecord === false): ?>
+        <div class="row mt-3">
+            <div class="card">
+                <div class="card-header">
+                    Gestion des columns
+                </div>
+                <div class="card-body">
+                    <?php
+                    echo Html::tag('fractal-cms-import-columns', '' ,
+                        [
+                            'id.bind' => $model->id,
+                        ]
+                    );
+                    ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="row  justify-content-center mt-3">
             <div  class="col-sm-6 text-center form-group">
                 <button type="submit" class="btn btn-primary">Enregister</button>

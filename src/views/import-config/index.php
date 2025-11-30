@@ -30,8 +30,8 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
 ?>
 <div class="row mt-3">
     <div class="col-sm-12">
-        <div class="row ">
-            <div class="col-sm-6 flex items-center gap-1">
+        <div class="row justify-content-between">
+            <div class="col flex items-center gap-1 align-self-start">
                 <?php
                 echo Html::activeFileInput($model, 'importFile',
                     [
@@ -51,7 +51,7 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
                 ?>
 
             </div>
-            <div class="col-sm-6" >
+            <div class="col align-self-end" >
                 <?php
                 if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE) === true):
 

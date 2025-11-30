@@ -9,6 +9,7 @@
  *
  * @var $this yii\web\View
  * @var ImportConfig $model
+ * @var array $tables
  */
 
 use fractalCms\importExport\models\ImportConfig;
@@ -22,6 +23,7 @@ use fractalCms\importExport\models\ImportConfig;
     <?php
     echo $this->render('_form', [
         'model' => $model,
+        'tables' => $tables
     ]);
     ?>
 </div>
