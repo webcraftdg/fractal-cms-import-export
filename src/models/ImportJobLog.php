@@ -1,8 +1,15 @@
 <?php
-
+/**
+ * ImportJobLog.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\models
+ */
 namespace fractalCms\importExport\models;
 
-use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 
@@ -19,7 +26,7 @@ use yii\db\Expression;
  *
  * @property ImportJob $importJog
  */
-class importJobLog extends \yii\db\ActiveRecord
+class ImportJobLog extends \yii\db\ActiveRecord
 {
 
     const SCENARIO_CREATE = 'create';

@@ -39,11 +39,13 @@ class ImportConfig extends \yii\db\ActiveRecord
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
     const SCENARIO_IMPORT_FILE = 'importFile';
+    const SCENARIO_MANAGE_COLUMN = 'manageColumn';
 
 
 
     public $importFile;
 
+    public $tmpColumns = [];
     /**
      * {@inheritdoc}
      */
@@ -70,15 +72,19 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
         ];
 
         $scenarios[self::SCENARIO_IMPORT_FILE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
+        ];
+
+        $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
         ];
         return $scenarios;
     }
@@ -114,9 +120,10 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @param $attribute
-     * @param $arams
+     * Validate attributes
      *
+     * @param $attribute
+     * @param $params
      * @return bool
      */
     public function validateTable($attribute, $params) : bool
@@ -133,6 +140,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             Yii::error($e->getMessage(), __METHOD__);
         }
     }
+
 
     /**
      * {@inheritdoc}
@@ -176,6 +184,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                     $this->attributes = $jsonData;
                     $this->truncateTable = (int)$this->truncateTable;
                     $this->version = $this->checkVersion($this->name, $this->version);
+                    $this->jsonConfig = Json::encode($columns);
                     if ($this->validate() === true) {
                         $this->save();
                         $this->refresh();
@@ -192,6 +201,14 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
+    /**
+     * Check available version
+     *
+     * @param $name
+     * @param $version
+     * @return mixed
+     * @throws Exception
+     */
     protected function checkVersion($name, $version)
     {
         try {
@@ -209,7 +226,27 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
+    public function afterFind()
+    {
+        parent::afterFind();
+        if (empty($this->jsonConfig) === false && is_string($this->jsonConfig) === true) {
+           $this->tmpColumns = Json::decode($this->jsonConfig);
+        }
+    }
 
+    /**
+     * @inheritDoc
+     */
+    public function fields()
+    {
+        $data =  parent::fields();
+        if (empty($this->jsonConfig) === false && is_string($this->jsonConfig) === true) {
+            $data['tmpColumns'] = function () {
+                return Json::decode($this->jsonConfig);
+            };
+        }
+        return $data;
+    }
 
     /**
      * Gets query for [[ImportJobs]].

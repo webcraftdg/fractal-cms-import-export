@@ -1,6 +1,6 @@
 <?php
 /**
- * importJob.php
+ * ImportJob.php
  *
  * PHP Version 8.2+
  *
@@ -34,7 +34,7 @@ use yii\db\Expression;
  * @property ImportConfig $importConfig
  * @property ImportJobLog[] $importJobLogs
  */
-class importJob extends \yii\db\ActiveRecord
+class ImportJob extends \yii\db\ActiveRecord
 {
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
