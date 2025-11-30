@@ -153,6 +153,10 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             $coreId.'/configuration-des-imports-export/creer' => $contextId.'/import-config/create',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',
+            $coreId.'/api/import-config/<id:([^/]+)>' => $contextId.'/api/import-config/get',
+            $coreId.'/api/import-config/<id:([^/]+)>/columns' => $contextId.'/api/import-config/post-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/table-columns' => $contextId.'/api/import-config/get-table-columns',
+            $coreId.'/api/db/tables' => $contextId.'/api/db/get-tables',
         ];
     }
 

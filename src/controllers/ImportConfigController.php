@@ -1,6 +1,6 @@
 <?php
 /**
- * ConfigImportExportController.php
+ * ImportConfigController.php
  *
  * PHP Version 8.2+
  *
@@ -20,6 +20,7 @@ use Exception;
 use Yii;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use yii\helpers\Json;
 
 class ImportConfigController extends BaseController
 {
@@ -82,8 +83,8 @@ class ImportConfigController extends BaseController
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if ($model->validate() === true && $model->importFile instanceof UploadedFile) {
-                    $vadid = $model->manageImportFile();
-                    if ($vadid === true) {
+                    $valid = $model->manageImportFile();
+                    if ($valid === true) {
                         $response = $this->redirect(['import-config/update', 'id' => $model->id]);
                     }
                 }
@@ -139,6 +140,7 @@ class ImportConfigController extends BaseController
             $response = null;
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
+            $tables = Constant::getDbTable();
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
@@ -150,7 +152,8 @@ class ImportConfigController extends BaseController
             }
             if ($response === null) {
                 $response = $this->render('manage', [
-                    'model' => $model
+                    'model' => $model,
+                    'tables' => $tables
                 ]);
             }
             return $response;
@@ -178,11 +181,13 @@ class ImportConfigController extends BaseController
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
+            $tables = Constant::getDbTable();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
                 if ($model->validate() === true) {
+                    $model->jsonConfig = Json::encode($model->tmpColumns);
                     $model->save();
                     $model->refresh();
                     $response = $this->redirect(['import-config/index']);
@@ -190,7 +195,8 @@ class ImportConfigController extends BaseController
             }
             if ($response === null) {
                 $response = $this->render('manage', [
-                    'model' => $model
+                    'model' => $model,
+                    'tables' => $tables
                 ]);
             }
             return $response;
