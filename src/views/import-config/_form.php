@@ -55,6 +55,18 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
+            <div class="col-sm-6">
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'sql', ['label' => 'Requête SQL', 'class' => 'form-label']);
+                    echo Html::activeTextarea($model, 'sql', [
+                        'class' => 'form-control',
+                        'cols' => 10,
+                        'rows' => 5,
+                    ]);
+                    ?>
+                </div>
+            </div>
         </div>
         <?php if ($model->isNewRecord === false): ?>
         <div class="row mt-3">

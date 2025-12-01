@@ -18,6 +18,7 @@ use fractalCms\core\controllers\api\BaseController;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\models\ImportJobLog;
+use yii\db\ColumnSchema;
 use yii\filters\AccessControl;
 use Exception;
 use Yii;
@@ -131,11 +132,13 @@ class ImportConfigController extends BaseController
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
             $values = [];
-            foreach ($db->getSchema()->getTableSchema($importConfig->table)->columns as $column) {
-                $values[] = [
-                    'name' => ucfirst($column->name),
-                    'value' => $column->name
-                ];
+            if (empty($importConfig->table) === false) {
+                $values = array_map(function(ColumnSchema $columnSchema) {
+                    return [
+                        'name' => ucfirst($columnSchema->name),
+                        'value' => $columnSchema->name
+                    ];
+                }, $db->getSchema()->getTableSchema($importConfig->table)->columns);
             }
             return $values;
         } catch (Exception $e)  {

@@ -93,7 +93,11 @@ echo Html::endForm();
         echo Html::beginTag('div', ['class' => implode(' ', $classes), 'fractal-cms-core-list-line' => $model->id]);
         echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'col']);
         echo Html::tag('div', $model->version, ['class' => 'col']);
-        echo Html::tag('div', ucfirst($model->table), ['class' => 'col']);
+        if (empty($model->table) === false) {
+            echo Html::tag('div', ucfirst($model->table), ['class' => 'col']);
+        } else {
+            echo Html::tag('div', 'requête SQL', ['class' => 'col']);
+        }
         echo Html::beginTag('div', ['class' => 'col-sm-3']);
         echo Html::beginTag('div', ['class' => 'row align-items-center']);
         if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_UPDATE) === true)  {

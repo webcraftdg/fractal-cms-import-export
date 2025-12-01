@@ -27,6 +27,7 @@ use yii\web\UploadedFile;
  * @property int|null $active
  * @property int|null $truncateTable
  * @property string $table
+ * @property resource|null $sql
  * @property resource|null $jsonConfig
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
@@ -72,19 +73,19 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql'
         ];
 
         $scenarios[self::SCENARIO_IMPORT_FILE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql'
         ];
 
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns'
+            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql'
         ];
         return $scenarios;
     }
@@ -94,7 +95,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'table'], 'default', 'value' => null],
+            [['name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'table', 'sql'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['active', 'truncateTable'], 'default', 'value' => 0],
             [['active', 'version', 'truncateTable'], 'integer'],
@@ -112,7 +113,14 @@ class ImportConfig extends \yii\db\ActiveRecord
                 'on' => [self::SCENARIO_IMPORT_FILE],
             ],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['type', 'jsonConfig', 'table'], 'string'],
+            [['type', 'jsonConfig', 'table', 'sql'], 'string'],
+            [['table'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return empty($this->sql) === true;
+            }],
+            [['sql'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return empty($this->table) === true;
+            }],
+            [['sql'], 'validateSql','message' => 'Le SQL doit être conforme (uniquement verb "SELECT")', 'on' => [self::SCENARIO_IMPORT_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'string', 'max' => 150],
             [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
@@ -135,6 +143,71 @@ class ImportConfig extends \yii\db\ActiveRecord
             if( $success === false) {
                 $this->addError('table', 'La table : "'.$table.'" doit être présente dans votre base de données');
             }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+        }
+    }
+
+    /**
+     * Validate SQL
+     *
+     * @param $attribute
+     * @param $params
+     * @return bool
+     */
+    public function validateSql($attribute, $params) : bool
+    {
+        try {
+            $db = Yii::$app->db;
+            $success = true;
+            $sql = $this->sql;
+            $dbTables = $db->schema->tableNames;
+            $tablesAvailables = implode('|', $dbTables);
+            $message = '';
+            // 1. SELECT obligatoire
+            if (preg_match('/^\s*SELECT\s+/i', $sql) === false) {
+                $message .= 'Seules les requêtes SELECT sont autorisées. ';
+            }
+
+            // 2. Blocage des commandes interdites
+            if (preg_match('/\b(INSERT|UPDATE|DELETE|DROP|TRUNCATE|ALTER|CREATE|REPLACE|LOAD|GRANT|REVOKE)\b/i', $sql) === 1) {
+                $message .= ' Commande SQL dangereuse détectée.';
+            }
+            //SEcurise les tables
+            if (!preg_match('/\bFROM\s+'.$tablesAvailables.'\b/i', $sql)) {
+                $message .= ' La requête doit cibler les tables existantes.';
+            }
+            // 3. Blocage des INTO / commentaires / injections
+            $danger = [
+                '/\bINTO\b/i',
+                '/(--|#|\/\*)/',
+                '/;.*\S/',
+            ];
+
+            foreach ($danger as $rule) {
+                if (preg_match($rule, $sql) === 1) {
+                    $message .= ' Contenu SQL interdit.';
+                    break;
+                }
+            }
+            //TEST SQL
+            try {
+                $stmtName = 'validate_stmt_' . uniqid();
+                // PREPARE
+                $db->createCommand('PREPARE '.$stmtName.' FROM :escapedSql', [':escapedSql' => $sql])->execute();
+                // DEALLOCATE
+                $db->createCommand('DEALLOCATE PREPARE '.$stmtName)->execute();
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $message .= ' Requête SQL invalide : '. $e->getMessage();
+            }
+
+            if(empty($message) === false) {
+                $success = false;
+                $this->addError('sql', $message);
+            }
+
             return $success;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);

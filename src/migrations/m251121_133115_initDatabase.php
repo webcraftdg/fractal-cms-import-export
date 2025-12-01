@@ -29,6 +29,7 @@ class m251121_133115_initDatabase extends Migration
                 'active'=> $this->boolean()->defaultValue(false),
                 'truncateTable' => $this->boolean()->defaultValue(false),
                 'table'=> $this->string()->null()->defaultValue(null),
+                'sql' => $this->binary(),
                 'jsonConfig' => $this->binary(),
                 'dateCreate'=> $this->datetime()->null()->defaultValue(null),
                 'dateUpdate'=> $this->datetime()->null()->defaultValue(null),
