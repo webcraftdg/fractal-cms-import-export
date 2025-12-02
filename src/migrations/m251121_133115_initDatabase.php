@@ -27,6 +27,7 @@ class m251121_133115_initDatabase extends Migration
                 'name'=> $this->string(150)->null()->defaultValue(null),
                 'version' => $this->integer(),
                 'active'=> $this->boolean()->defaultValue(false),
+                'exportFormat'=> $this->string(10)->null()->defaultValue(null),
                 'truncateTable' => $this->boolean()->defaultValue(false),
                 'table'=> $this->string()->null()->defaultValue(null),
                 'sql' => $this->binary(),

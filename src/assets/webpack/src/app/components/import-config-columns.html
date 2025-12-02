@@ -45,8 +45,8 @@
                             required
                     >
                         <option value="">Sélectionner une colonne source</option>
-                        <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.value">
-                            ${tableColumn.name}
+                        <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.source">
+                            ${tableColumn.target}
                         </option>
                     </select>
                     <p class="error-message" repeat.for="error of column.sourceErrors" id.bind="'column.sourceErrors'+column.id">${error.result.message}</p>
@@ -83,10 +83,28 @@
                         required
                     >
                         <option value="">Sélectionner un type de donnée</option>
-                        <option value="string">Texte</option>
-                        <option value="float">Float</option>
-                        <option value="integer">Integer</option>
+                        <option value="pk">pk</option>
+                        <option value="upk">upk</option>
+                        <option value="bigpk">bigpk</option>
+                        <option value="ubigpk">ubigpk</option>
+                        <option value="char">char</option>
+                        <option value="string">string</option>
+                        <option value="text">text</option>
+                        <option value="tinyint">tinyint</option>
+                        <option value="smallint">smallint</option>
+                        <option value="integer">integer</option>
+                        <option value="bigint">bigint</option>
+                        <option value="float">float</option>
+                        <option value="double">double</option>
+                        <option value="decimal">decimal</option>
+                        <option value="datetime">datetime</option>
+                        <option value="timestamp">timestamp</option>
+                        <option value="time">time</option>
                         <option value="date">date</option>
+                        <option value="binary">binary</option>
+                        <option value="boolean">boolean</option>
+                        <option value="money">money</option>
+                        <option value="json">json</option>
                     </select>
                     <p class="error-message" repeat.for="error of column.typeErrors" id.bind="'column.typeErrors'+column.id">${error.result.message}</p>
 

@@ -1,7 +1,7 @@
 import { HttpClientConfiguration, IHttpClient } from '@aurelia/fetch-client';
 import {ILogger, resolve} from 'aurelia';
 import {ConfigService} from "./config-service";
-import {IDbColumn, IImportConfig, IImportConfigColumn} from "../interfaces/import-config";
+import {IImportConfig, IImportConfigColumn} from "../interfaces/import-config";
 import {Column} from "../models/column";
 
 export class ApiServices {
@@ -63,7 +63,7 @@ export class ApiServices {
      *
      * @param url
      */
-    public getTableColumns(url:string): Promise<IDbColumn[]>
+    public getTableColumns(url:string): Promise<IImportConfigColumn[]>
     {
         return this.httpClient.fetch(url, {
             method: 'GET',
@@ -73,7 +73,7 @@ export class ApiServices {
         })
             .then((response:Response) => {
                 return response.json();
-            }).then((result:IDbColumn[])=> {
+            }).then((result:IImportConfigColumn[])=> {
                 return result;
             });
     }

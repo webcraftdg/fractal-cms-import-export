@@ -18,7 +18,7 @@ use fractalCms\core\controllers\api\BaseController;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\models\ImportJobLog;
-use yii\db\ColumnSchema;
+use fractalCms\importExport\services\DbView;
 use yii\filters\AccessControl;
 use Exception;
 use Yii;
@@ -29,6 +29,18 @@ use yii\web\Response;
 
 class ImportConfigController extends BaseController
 {
+
+    private DbView $dbView;
+
+    /**
+     * @inheritDoc
+     */
+    public function __construct($id, $module, DbView $dbView, $config = [])
+    {
+        parent::__construct($id, $module, $config);
+        $this->dbView = $dbView;
+    }
+
     /**
      * @inheritDoc
      */
@@ -123,24 +135,20 @@ class ImportConfigController extends BaseController
         }
     }
 
+    /**
+     * @param $id
+     * @return array
+     * @throws NotFoundHttpException
+     * @throws \yii\base\NotSupportedException
+     */
     public function actionGetTableColumns($id) : array
     {
         try {
-            $db = Yii::$app->db;
             $importConfig = ImportConfig::findOne($id);
             if ($importConfig === null) {
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
-            $values = [];
-            if (empty($importConfig->table) === false) {
-                $values = array_map(function(ColumnSchema $columnSchema) {
-                    return [
-                        'name' => ucfirst($columnSchema->name),
-                        'value' => $columnSchema->name
-                    ];
-                }, $db->getSchema()->getTableSchema($importConfig->table)->columns);
-            }
-            return $values;
+            return $importConfig->getContextColumns($this->dbView);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

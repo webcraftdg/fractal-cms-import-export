@@ -1,7 +1,7 @@
 import {bindable, customElement, IEventAggregator, ILogger, INode, IPlatform, newInstanceForScope,resolve} from 'aurelia';
 import {ApiServices} from "../services/api-services";
 import {EApi} from "../enums/api";
-import {IDbColumn, IImportConfig, IImportConfigColumn} from "../interfaces/import-config";
+import {IImportConfig, IImportConfigColumn} from "../interfaces/import-config";
 import {ConfigService} from "../services/config-service";
 import {Column} from "../models/column";
 import {IValidationController} from "@aurelia/validation-html";
@@ -15,7 +15,7 @@ export class ImportConfigColumns
     @bindable public id:string;
     private model:IImportConfig;
     public columns:Column[];
-    public tableColumns:IDbColumn[];
+    public tableColumns:IImportConfigColumn[];
 
     constructor(
         private readonly logger: ILogger = resolve(ILogger),
@@ -31,7 +31,7 @@ export class ImportConfigColumns
         this.logger.trace('constructor');
         this.model = {} as IImportConfig;
         this.columns = [] as Column[];
-        this.tableColumns = [] as IDbColumn[];
+        this.tableColumns = [] as IImportConfigColumn[];
     }
 
     public binding() {

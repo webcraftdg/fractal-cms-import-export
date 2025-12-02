@@ -10,9 +10,11 @@
  */
 namespace fractalCms\importExport\services;
 
+use fractalCms\importExport\models\JsonColumnModel;
 use yii\base\Component;
 use Exception;
 use Yii;
+use yii\db\ColumnSchema;
 
 class DbView extends Component implements \fractalCms\importExport\interfaces\DbView
 {
@@ -20,13 +22,19 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
     /**
      * @param string $name
      * @param string $sql
-     * @return bool
+     * @return int
      * @throws Exception
      */
-    public function create(string $name, string $sql): bool
+    public function create(string $name, string $sql): int
     {
         try {
-            return true;
+            $db = Yii::$app->db;
+            if ($this->exists($name) === true) {
+                $this->drop($name);
+            }
+            $sql = trim($sql, ';');
+            $command = 'CREATE VIEW '.$name.' AS '.$sql;
+            return $db->createCommand($command)->execute();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -36,13 +44,13 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
     /**
      * @param string $name
      * @param string $sql
-     * @return bool
+     * @return int
      * @throws Exception
      */
-    public function replace(string $name, string $sql): bool
+    public function replace(string $name, string $sql): int
     {
         try {
-            return true;
+            return $this->create($name, $sql);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -51,13 +59,14 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
 
     /**
      * @param string $name
-     * @return bool
+     * @return int
      * @throws Exception
      */
-    public function drop(string $name): bool
+    public function drop(string $name): int
     {
         try {
-            return true;
+            $db = Yii::$app->db;
+            return $db->createCommand('DROP VIEW '.$name)->execute();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -72,7 +81,8 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
     public function exists(string $name): bool
     {
         try {
-            return true;
+            $dbTables = Yii::$app->db->schema->tableNames;
+            return in_array($name, $dbTables);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -87,7 +97,20 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
     public function getColumns(string $name): array
     {
         try {
-            return [];
+            $columns = [];
+            $dbTables = Yii::$app->db->schema->tableNames;
+            $hasTable = in_array($name, $dbTables);
+            if ($this->exists($name) === true && $hasTable === true) {
+                $columns = array_map(function(ColumnSchema $columnSchema) {
+                    $newColumn = new JsonColumnModel(['scenario' => JsonColumnModel::SCENARIO_CREATE]);
+                    $newColumn->id = uniqid();
+                    $newColumn->source = $columnSchema->name;
+                    $newColumn->target = ucfirst($columnSchema->name);
+                    $newColumn->type = $columnSchema->type;
+                    return $newColumn;
+                }, Yii::$app->db->getSchema()->getTableSchema($name)->columns);
+            }
+            return $columns;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

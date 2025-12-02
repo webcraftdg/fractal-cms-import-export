@@ -27,19 +27,32 @@ use fractalCms\core\helpers\Html;
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-6">
+            <div class="col-sm-4">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'name', ['label' => 'Nom', 'class' => 'form-label']);
                     echo Html::activeTextInput($model, 'name', ['placeholder' => 'Nom', 'class' => 'form-control']);
+                    if ($model->hasErrors('name') === true) {
+                        echo Html::tag('div', $model->errors['name'][0], ['class' => 'text-danger']);
+                    }
                     ?>
                 </div>
             </div>
-            <div class="col-sm-6">
+            <div class="col-sm-4">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
                     echo Html::activeTextInput($model, 'version', ['placeholder' => 'Version', 'class' => 'form-control']);
+                    ?>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'exportFormat', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'exportFormat', ImportConfig::optsFormats(), [
+                        'prompt' => 'Sélectionner un format', 'class' => 'form-control',
+                    ]);
                     ?>
                 </div>
             </div>
@@ -64,6 +77,9 @@ use fractalCms\core\helpers\Html;
                         'cols' => 10,
                         'rows' => 5,
                     ]);
+                    if ($model->hasErrors('sql') === true) {
+                        echo Html::tag('div', $model->errors['sql'][0], ['class' => 'text-danger']);
+                    }
                     ?>
                 </div>
             </div>

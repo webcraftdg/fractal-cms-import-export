@@ -15,6 +15,8 @@ namespace fractalCms\importExport\controllers;
 use fractalCms\importExport\components\Constant;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Export;
 use yii\filters\AccessControl;
 use Exception;
 use Yii;
@@ -24,6 +26,18 @@ use yii\helpers\Json;
 
 class ImportConfigController extends BaseController
 {
+
+    protected DbView $dbView;
+
+    /**
+     * @inheritDoc
+     */
+   public function __construct($id, $module, DbView $dbView, $config = [])
+   {
+       parent::__construct($id, $module, $config);
+       $this->dbView = $dbView;
+   }
+
     /**
      * @inheritDoc
      */
@@ -102,30 +116,6 @@ class ImportConfigController extends BaseController
         }
     }
 
-    public function actionImportFile()
-    {
-        try {
-            $request = Yii::$app->request;
-            $response = null;
-            $model = Yii::createObject(ImportConfig::class);
-            $model->scenario = ImportConfig::SCENARIO_CREATE;
-            if ($request->isPost === true) {
-                $body = $request->getBodyParams();
-                $model->load($body);
-
-            }
-            if ($response === null) {
-                $response = $this->render('import-file', [
-                    'model' => $model
-                ]);
-            }
-            return $response;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
     /**
      * Create import config
      *
@@ -145,9 +135,21 @@ class ImportConfigController extends BaseController
                 $body = $request->getBodyParams();
                 $model->load($body);
                 if ($model->validate() === true) {
-                    $model->save();
-                    $model->refresh();
-                    $response = $this->redirect(['import-config/index']);
+                    $buildViewOk = false;
+                    try {
+                        $model->buildDbView($this->dbView);
+                        $buildViewOk = true;
+                    } catch (Exception $e) {
+                        Yii::error($e->getMessage(), __METHOD__);
+                        $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
+                    }
+                    if ($buildViewOk === true) {
+                        $model->buildJson($this->dbView);
+                        $model->save();
+                        $model->refresh();
+                        $response = $this->redirect(['import-config/update', 'id' => $model->id]);
+                    }
+
                 }
             }
             if ($response === null) {
@@ -185,9 +187,13 @@ class ImportConfigController extends BaseController
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
+                if(empty($body[$model->formName()]['tmpColumns']) === true) {
+                    $body[$model->formName()]['tmpColumns'] = [];
+                }
                 $model->load($body);
                 if ($model->validate() === true) {
-                    $model->jsonConfig = Json::encode($model->tmpColumns);
+                    $tmpColumns =  (empty($model->tmpColumns) === false) ? Json::encode($model->tmpColumns) : null;
+                    $model->jsonConfig = $tmpColumns;
                     $model->save();
                     $model->refresh();
                     $response = $this->redirect(['import-config/index']);
@@ -200,6 +206,42 @@ class ImportConfigController extends BaseController
                 ]);
             }
             return $response;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * Export
+     *
+     * @param $id
+     * @return void
+     * @throws NotFoundHttpException
+     * @throws \yii\db\Exception
+     * @throws \yii\web\RangeNotSatisfiableHttpException
+     */
+    public function actionExport($id)
+    {
+        try {
+            $model = ImportConfig::findOne($id);
+            if ($model === null) {
+                throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
+            }
+            $path = Export::run($model);
+            $filename = 'export_'.date('d_m-Y');
+            if (file_exists($path) === true) {
+                $data = file_get_contents($path);
+                if (in_array($model->exportFormat, [ImportConfig::FORMAT_EXCEL , ImportConfig::FORMAT_EXCEL_X ]) === true) {
+                    $filename = $filename.'.xlsx';
+                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+                } else {
+                    $filename = $filename.'.csv';
+                    Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=utf-8');
+                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'text/csv']);
+                }
+                unlink($path);
+            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

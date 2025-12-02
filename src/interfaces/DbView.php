@@ -16,22 +16,22 @@ interface DbView
     /**
      * @param string $name
      * @param string $sql
-     * @return bool
+     * @return int
      */
-    public function create(string $name, string $sql) : bool;
+    public function create(string $name, string $sql) : int;
 
     /**
      * @param string $name
      * @param string $sql
      * @return bool
      */
-    public function replace(string $name, string $sql) : bool;
+    public function replace(string $name, string $sql) : int;
 
     /**
      * @param string $name
      * @return bool
      */
-    public function drop(string $name) : bool;
+    public function drop(string $name) : int;
 
     /**
      * @param string $name

@@ -19,8 +19,3 @@ export interface IImportConfig {
     dateCreate:string;
     dateUpdate:string;
 }
-
-export interface IDbColumn {
-    name:string;
-    value:string;
-}
