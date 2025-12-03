@@ -11,9 +11,6 @@
 
 namespace fractalCms\importExport\components;
 
-use Yii;
-use Exception;
-
 class Constant
 {
 
@@ -22,23 +19,4 @@ class Constant
 
     const TRACE_DEBUG = 'debug';
 
-    /**
-     * Get db tables
-     *
-     * @return string[]
-     * @throws \yii\base\NotSupportedException
-     */
-    public static function getDbTable()
-    {
-        try {
-            $tables = [];
-            foreach (Yii::$app->db->getSchema()->tableNames as $table) {
-                $tables[$table] = ucfirst($table);
-            }
-            return $tables;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
 }

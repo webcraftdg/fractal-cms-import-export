@@ -17,6 +17,7 @@ use fractalCms\core\Module as CoreModule;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Parameter;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
@@ -29,6 +30,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     public $version = 'v1.0.0';
     public string $name = 'importExport';
     public string $filePathImport = '@webroot/imports';
+    public array $pathsNamespacesModels = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -39,6 +41,11 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
+            ]);
+            $app->setComponents([
+                'importDbParameters' => [
+                    'class' => Parameter::class
+                ]
             ]);
 
             if ($app instanceof ConsoleApplication) {

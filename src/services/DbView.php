@@ -19,6 +19,16 @@ use yii\db\ColumnSchema;
 class DbView extends Component implements \fractalCms\importExport\interfaces\DbView
 {
 
+    protected Parameter $parameter;
+    /**
+     * @inheritDoc
+     */
+    public function __construct(Parameter $parameter, $config = [])
+    {
+        parent::__construct($config);
+        $this->parameter = $parameter;
+    }
+
     /**
      * @param string $name
      * @param string $sql

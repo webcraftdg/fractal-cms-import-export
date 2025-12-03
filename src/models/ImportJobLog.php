@@ -31,6 +31,9 @@ class ImportJobLog extends \yii\db\ActiveRecord
 
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
+
+    const MESSAGE_ERROR = 'error';
+    const MESSAGE_SUCCESS = 'success';
     /**
      * {@inheritdoc}
      */

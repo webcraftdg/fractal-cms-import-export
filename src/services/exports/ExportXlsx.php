@@ -10,14 +10,14 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\interfaces\ImportExport;
+use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Yii;
 
-class ExportXlsx implements ImportExport
+class ExportXlsx implements Export
 {
     /**
      * Run export CSv

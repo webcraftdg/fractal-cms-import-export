@@ -10,12 +10,12 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\interfaces\ImportExport;
+use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use Yii;
 
-class ExportCsv implements ImportExport
+class ExportCsv implements Export
 {
 
     /**

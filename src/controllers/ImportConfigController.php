@@ -17,6 +17,7 @@ use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\DbView;
 use fractalCms\importExport\services\Export;
+use fractalCms\importExport\services\Parameter;
 use yii\filters\AccessControl;
 use Exception;
 use Yii;
@@ -28,6 +29,7 @@ class ImportConfigController extends BaseController
 {
 
     protected DbView $dbView;
+    protected Parameter $parameter;
 
     /**
      * @inheritDoc
@@ -36,6 +38,9 @@ class ImportConfigController extends BaseController
    {
        parent::__construct($id, $module, $config);
        $this->dbView = $dbView;
+       if (Yii::$app->has('importDbParameters') === true) {
+           $this->parameter = Yii::$app->importDbParameters;
+       }
    }
 
     /**
@@ -130,10 +135,11 @@ class ImportConfigController extends BaseController
             $response = null;
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
-            $tables = Constant::getDbTable();
+            $tables = $this->parameter->getTables();
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
+                $model->version = $model->checkVersion($model->name, $model->version);
                 if ($model->validate() === true) {
                     $buildViewOk = false;
                     try {
@@ -183,7 +189,7 @@ class ImportConfigController extends BaseController
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
-            $tables = Constant::getDbTable();
+            $tables = $this->parameter->getTables();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();

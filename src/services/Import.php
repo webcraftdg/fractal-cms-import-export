@@ -1,6 +1,6 @@
 <?php
 /**
- * Export.php
+ * Import.php
  *
  * PHP Version 8.2+
  *
@@ -11,35 +11,37 @@
 
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\interfaces\Export as ExportInterfaces;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\exports\ExportCsv;
-use fractalCms\importExport\services\exports\ExportXlsx;
+use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\services\imports\ImportXlsx;
 use Yii;
 use Exception;
+use yii\base\NotSupportedException;
 
-class Export implements ExportInterfaces
+class Import implements \fractalCms\importExport\interfaces\Import
 {
 
     /**
-     * Run export
+     * Run import
      *
      * @param ImportConfig $importConfig
-     * @return string
+     * @param string $filePath
+     * @return ImportJob
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig): string
+    public static function run(ImportConfig $importConfig, string $filePath): ImportJob
     {
         try {
             switch ($importConfig->exportFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
-                    $path = ExportXlsx::run($importConfig);
+                case ImportConfig::FORMAT_CSV:
+                    $importJob = ImportXlsx::run($importConfig, $filePath);
                     break;
                 default:
-                    $path = ExportCsv::run($importConfig);
+                    throw new NotSupportedException('Import de ce type de fichier non supporté');
             }
-            return $path;
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

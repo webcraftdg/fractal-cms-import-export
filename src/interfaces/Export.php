@@ -1,6 +1,6 @@
 <?php
 /**
- * ImportExport.php
+ * Export.php
  *
  * PHP Version 8.2+
  *
@@ -12,7 +12,7 @@ namespace fractalCms\importExport\interfaces;
 
 use fractalCms\importExport\models\ImportConfig;
 
-interface ImportExport
+interface Export
 {
 
     /**

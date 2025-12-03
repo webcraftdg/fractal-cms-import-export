@@ -12,6 +12,7 @@ namespace fractalCms\importExport\models;
 
 use fractalCms\importExport\Module;
 use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Parameter;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use Exception;
@@ -52,7 +53,15 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     public $tmpColumns = [];
 
-    private DbView $dbView;
+    protected Parameter $parameter;
+
+    public function init()
+    {
+        parent::init();
+        if (Yii::$app->has('importDbParameters') === true) {
+            $this->parameter = Yii::$app->importDbParameters;
+        }
+    }
 
     /**
      * {@inheritdoc}
@@ -162,8 +171,11 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $table = $this->table;
-            $dbTables = Yii::$app->db->schema->tableNames;
-            $success = in_array($table, $dbTables);
+            $dbTables = [];
+            if ($this->parameter instanceof Parameter) {
+                $dbTables = $this->parameter->getTables();
+            }
+            $success = in_array($table, array_keys($dbTables));
             if( $success === false) {
                 $this->addError('table', 'La table : "'.$table.'" doit être présente dans votre base de données');
             }
@@ -314,7 +326,10 @@ class ImportConfig extends \yii\db\ActiveRecord
         try {
             $sql = $this->sql;
             if(empty($sql) === true) {
-                $cols = array_map(fn($c) => $c['source'], $config['columns']);
+                $cols = array_map(function($config) {
+                    return $config['source'];
+                }, $this->tmpColumns);
+                $table = $this->getContextName();
                 $sql = "SELECT " . implode(',', $cols) . " FROM " . $table;
             }
             return Yii::$app->db->createCommand($sql)->queryAll();
@@ -401,20 +416,20 @@ class ImportConfig extends \yii\db\ActiveRecord
      *
      * @param $name
      * @param $version
-     * @return mixed
+     * @return int
      * @throws Exception
      */
-    protected function checkVersion($name, $version)
+    public function checkVersion($name, $version) : int
     {
         try {
             $importConfig = ImportConfig::find()
                 ->where(['name' => $name, 'version' => $version])
                 ->one();
             if ($importConfig !== null) {
-                $newVersion = $version + 1;
+                $newVersion = (int)$version + 1;
                 return $this->checkVersion($name, $newVersion);
             }
-            return $version;
+            return (int)$version;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -431,6 +446,10 @@ class ImportConfig extends \yii\db\ActiveRecord
             $name = $this->name.'_'.$this->version;
             if(empty($this->table) === false) {
                 $name = $this->table;
+                if ($this->parameter instanceof Parameter) {
+                    $dbTables = $this->parameter->getTables();
+                    $name = (isset($dbTables[$this->table]) === true) ? $dbTables[$this->table] : $this->table;
+                }
             }
             return $name;
         } catch (Exception $e)  {
