@@ -16,18 +16,21 @@ use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
+use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Parameter;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
+use yii\helpers\Url;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
 {
 
 
-    public $layoutPath = '@fractalCms/core/views/layouts';
-    public $layout = 'main';
     public $version = 'v1.0.0';
     public string $name = 'importExport';
+    public string $filePathImport = '@webroot/imports';
+    public array $pathsNamespacesModels = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -36,8 +39,21 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         try {
             Yii::setAlias('@fractalCms/importExport', __DIR__);
 
+            Yii::$container->setSingleton(DbView::class, [
+                'class' => DbView::class,
+            ]);
+            $app->setComponents([
+                'importDbParameters' => [
+                    'class' => Parameter::class
+                ]
+            ]);
+
             if ($app instanceof ConsoleApplication) {
                 $this->configConsoleApp($app);
+            }
+            $filePath = Yii::getAlias($this->filePathImport);
+            if(file_exists($filePath) === false) {
+                mkdir($filePath);
             }
         } catch (Exception $e){
             Yii::error($e->getMessage(), __METHOD__);
@@ -60,15 +76,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             if (isset($app->controllerMap['migrate']) === true) {
                 //Add migrations namespace
                 if (isset($app->controllerMap['migrate']['migrationNamespaces']) === true) {
-                    $app->controllerMap['migrate']['migrationNamespaces'][] = 'fractalCms\migrations';
+                    $app->controllerMap['migrate']['migrationNamespaces'][] = 'fractalCms\importExport\migrations';
                 } else {
-                    $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\migrations'];
-                }
-                //Add rbac
-                if (isset($app->controllerMap['migrate']['migrationPath']) === true) {
-                    $app->controllerMap['migrate']['migrationPath'][] = '@yii/rbac/migrations';
-                } else {
-                    $app->controllerMap['migrate']['migrationPath'] = ['@yii/rbac/migrations'];
+                    $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\importExport\migrations'];
                 }
             }
         }catch (Exception $e) {
@@ -124,8 +134,8 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $importExport['optionsClass'] = $optionsClass;
                 }
                 $importExport['children'][] = [
-                    'title' => 'Configuration article',
-                    'url' => Url::to(['/'.$this->contextId.'/config-type/index']),
+                    'title' => 'Configuration import',
+                    'url' => Url::to(['/'.$this->contextId.'/import-config/index']),
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
@@ -151,10 +161,15 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         $coreId = CoreModule::getInstance()->id;
         $contextId = $this->contextId;
         return [
-            $coreId.'/configuration-des-imports-export/liste' => $contextId.'/config-import-export/index',
-            $coreId.'/configuration-des-imports-export/creer' => $contextId.'/config-import-export/create',
-            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/config-import-export/update',
-            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/config-import-export/delete',
+            $coreId.'/configuration-des-imports-export/liste' => $contextId.'/import-config/index',
+            $coreId.'/configuration-des-imports-export/creer' => $contextId.'/import-config/create',
+            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/exporter' => $contextId.'/import-config/export',
+            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
+            $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',
+            $coreId.'/api/import-config/<id:([^/]+)>' => $contextId.'/api/import-config/get',
+            $coreId.'/api/import-config/<id:([^/]+)>/columns' => $contextId.'/api/import-config/post-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/table-columns' => $contextId.'/api/import-config/get-table-columns',
+            $coreId.'/api/db/tables' => $contextId.'/api/db/get-tables',
         ];
     }
 

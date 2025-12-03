@@ -36,6 +36,7 @@
     "sass-loader": "^12.6.0",
     "source-map-loader": "^3.0.1",
     "style-loader": "^3.3.1",
+    "tailwindcss": "^3.4.1",
     "ts-loader": "^9.5.1",
     "typescript": "^5.7.3",
     "webpack": "^5.70.0",
@@ -50,9 +51,12 @@
   "dependencies": {
     "@aurelia/i18n": "^2.0.0-beta.22",
     "@aurelia/state": "^2.0.0-beta.22",
+    "@aurelia/validation": "^2.0.0-beta.22",
+    "@aurelia/validation-html": "^2.0.0-beta.22",
     "@aurelia/webpack-loader": "^2.0.0-beta.22",
     "@types/jsoneditor": "^9.9.6",
     "@types/sortablejs": "^1.15.8",
+    "@tailwindcss/forms": "^0.5.7",
     "aurelia": "^2.0.0-beta.25",
     "jsoneditor": "^10.4.0",
     "resumablejs": "^1.1.0"

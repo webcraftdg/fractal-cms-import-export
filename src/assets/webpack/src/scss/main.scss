@@ -1,0 +1,10 @@
+@tailwind utilities;
+@tailwind components;
+
+.error {
+  border: 1px solid red !important;
+}
+.error-message {
+  color: red !important;
+  font-size: 14px !important;
+}

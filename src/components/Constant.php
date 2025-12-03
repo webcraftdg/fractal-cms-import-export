@@ -18,4 +18,5 @@ class Constant
     const PERMISSION_MAIN_EXPORT = 'IMPORT:EXPORT:';
 
     const TRACE_DEBUG = 'debug';
+
 }

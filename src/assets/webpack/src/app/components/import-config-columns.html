@@ -1,0 +1,144 @@
+<template>
+<div class="row">
+    <div class="card mt-3" repeat.for="column of columns"  id.bind="column.id">
+        <div class="card-header  row align-items-center">
+            <div class="col-sm-8" innerHTML.bind="'Colonne-'+($index + 1)"></div>
+            <div class="col-sm-4">
+                <div class="row align-items-center">
+                    <div class="col  justify-content-end">
+                        <button type="button" class="btn btn-primary  p-0" click.trigger="move($event, $index, 'up')" title="Monter" value.bind="$index" disabled.bind="$index == 0">
+                            <svg width="24px"  viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 11L12 8M12 8L9 11M12 8V16M7.2 20H16.8C17.9201 20 18.4802 20 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.07989 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.07989 20 7.2 20Z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="col  justify-content-end">
+                        <button type="button" class="btn btn-primary  p-0" title="Descendre" click.trigger="move($event, $index, 'down')" value.bind="$index" disabled.bind="$index == (columns.length - 1)">
+                            <svg width="24px"  viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 13L12 16M12 16L15 13M12 16V8M7.2 20H16.8C17.9201 20 18.4802 20 18.908 19.782C19.2843 19.5903 19.5903 19.2843 19.782 18.908C20 18.4802 20 17.9201 20 16.8V7.2C20 6.0799 20 5.51984 19.782 5.09202C19.5903 4.71569 19.2843 4.40973 18.908 4.21799C18.4802 4 17.9201 4 16.8 4H7.2C6.0799 4 5.51984 4 5.09202 4.21799C4.71569 4.40973 4.40973 4.71569 4.21799 5.09202C4 5.51984 4 6.07989 4 7.2V16.8C4 17.9201 4 18.4802 4.21799 18.908C4.40973 19.2843 4.71569 19.5903 5.09202 19.782C5.51984 20 6.07989 20 7.2 20Z" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="col  justify-content-end ">
+                        <button type="button" class="btn btn-danger  p-0" title="Supprimer" click.trigger="delete($event, $index)" value.bind="$index">
+                            <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6M14 10V17M10 10V17" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.sourceErrors">
+                    <label class="form-label" for.bind="'source-'+column.id" id="labelSource">Colonne Source</label>
+                    <select
+                            class="form-control"
+                            id.bind="'source-'+column.id"
+                            value.bind="column.source & validate"
+                            name.bind="'ImportConfig[tmpColumns]['+$index+'][source]'"
+                            class.bind="column.sourceErrors.length ? 'error' : ''"
+                            aria-describedby="labelSource"
+                            aria-required="true"
+                            aria-invalid.bind="column.sourceErrors.length ? 'true' : 'false'"
+                            required
+                    >
+                        <option value="">Sélectionner une colonne source</option>
+                        <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.source">
+                            ${tableColumn.target}
+                        </option>
+                    </select>
+                    <p class="error-message" repeat.for="error of column.sourceErrors" id.bind="'column.sourceErrors'+column.id">${error.result.message}</p>
+
+                </div>
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.targetErrors">
+                    <label class="form-label" for.bind="'target-'+column.id" id="labelTarget">Colonne cible</label>
+                    <input
+                        class="form-control"
+                        id.bind="'target-'+column.id"
+                        type="text"
+                        name.bind="'ImportConfig[tmpColumns]['+$index+'][target]'"
+                        value.bind="column.target & validate"
+                        class.bind="column.targetErrors.length ? 'error' : ''"
+                        aria-describedby="labelTarget"
+                        aria-required="true"
+                        aria-invalid.bind="column.targetErrors.length ? 'true' : 'false'"
+                        required
+                    />
+                    <p class="error-message" repeat.for="error of column.targetErrors" id.bind="'column.targetErrors'+column.id">${error.result.message}</p>
+
+                </div>
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.typeErrors">
+                    <label class="form-label"  for.bind="'type-'+column.id" id="labelType">Type de données</label>
+                    <select
+                        class="form-control"
+                        id.bind="'type-'+column.id"
+                        value.bind="column.type & validate"
+                        name.bind="'ImportConfig[tmpColumns]['+$index+'][type]'"
+                        class.bind="column.typeErrors.length ? 'error' : ''"
+                        aria-describedby="labelType"
+                        aria-required="true"
+                        aria-invalid.bind="column.typeErrors.length ? 'true' : 'false'"
+                        required
+                    >
+                        <option value="">Sélectionner un type de donnée</option>
+                        <option value="pk">pk</option>
+                        <option value="upk">upk</option>
+                        <option value="bigpk">bigpk</option>
+                        <option value="ubigpk">ubigpk</option>
+                        <option value="char">char</option>
+                        <option value="string">string</option>
+                        <option value="text">text</option>
+                        <option value="tinyint">tinyint</option>
+                        <option value="smallint">smallint</option>
+                        <option value="integer">integer</option>
+                        <option value="bigint">bigint</option>
+                        <option value="float">float</option>
+                        <option value="double">double</option>
+                        <option value="decimal">decimal</option>
+                        <option value="datetime">datetime</option>
+                        <option value="timestamp">timestamp</option>
+                        <option value="time">time</option>
+                        <option value="date">date</option>
+                        <option value="binary">binary</option>
+                        <option value="boolean">boolean</option>
+                        <option value="money">money</option>
+                        <option value="json">json</option>
+                    </select>
+                    <p class="error-message" repeat.for="error of column.typeErrors" id.bind="'column.typeErrors'+column.id">${error.result.message}</p>
+
+                </div>
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.defaultErrors">
+                    <label class="form-label" for.bind="'default-'+column.id" id="labelDefault">Valeur par défaut</label>
+                    <input
+                        class="form-control"
+                        id.bind="'default-'+column.id"
+                        type="text"
+                        name.bind="'ImportConfig[tmpColumns]['+$index+'][default]'"
+                        value.bind="column.default & validate"
+                        class.bind="column.defaultErrors.length ? 'error' : ''"
+                        aria-describedby="labelDefault"
+                        aria-required="true"
+                        aria-invalid.bind="column.defaultErrors.length ? 'true' : 'false'"
+                    />
+                    <p class="error-message" repeat.for="error of column.defaultErrors" id.bind="'column.defaultErrors'+column.id">${error.result.message}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row mt-3 items-end">
+        <div class="col-sm-2">
+            <button type="button" class="btn btn-outline-success" title="Ajouter" click.trigger="add($event)">
+                <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 12H15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 9L12 15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#198754" stroke-width="2"/>
+                </svg>
+                <span>Ajouter</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+</template>

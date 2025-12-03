@@ -1,8 +1,11 @@
 //Aurelia imports
 import Aurelia, { ConsoleSink, LoggerConfiguration, LogLevel } from 'aurelia';
+import {ValidationHtmlConfiguration, ValidationTrigger} from "@aurelia/validation-html";
+
 // Plugins imports
 // app imports
 import {ImportExportApp} from "./app/app";
+import * as globalComponents from './app/components/index';
 
 declare const webpackBaseUrl: string;
 declare let __webpack_public_path__: string;
@@ -14,7 +17,11 @@ declare const PRODUCTION:boolean;
 
 
 const page = document.querySelector('body') as HTMLElement;
-const au = Aurelia;
+const au = Aurelia
+    .register(globalComponents) .register(ValidationHtmlConfiguration.customize((options) => {
+        // customization callback
+        options.DefaultTrigger = ValidationTrigger.blur;
+    }));
 
 if(PRODUCTION == false) {
     au.register(LoggerConfiguration.create({
