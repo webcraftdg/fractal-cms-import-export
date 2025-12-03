@@ -44,7 +44,9 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
             }
             $sql = trim($sql, ';');
             $command = 'CREATE VIEW '.$name.' AS '.$sql;
-            return $db->createCommand($command)->execute();
+            $rows =  $db->createCommand($command)->execute();
+            $db->getSchema()->refresh();
+            return $rows;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -108,7 +110,7 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
     {
         try {
             $columns = [];
-            $dbTables = Yii::$app->db->schema->tableNames;
+            $dbTables = Yii::$app->db->getSchema()->tableNames;
             $hasTable = in_array($name, $dbTables);
             if ($this->exists($name) === true && $hasTable === true) {
                 $columns = array_map(function(ColumnSchema $columnSchema) {
