@@ -51,11 +51,11 @@ class ImportConfigController extends BaseController
         $behaviors = parent::behaviors();
         $behaviors['access'] = [
             'class' => AccessControl::class,
-            'only' => ['index', 'create', 'update'],
+            'only' => ['index', 'create', 'update', 'test-import'],
             'rules' => [
                 [
                     'allow' => true,
-                    'actions' => ['create'],
+                    'actions' => ['index', 'test-import'],
                     'roles' => [Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_LIST],
                     'denyCallback' => function ($rule, $action) {
                         return $this->redirect(['default/index']);
@@ -63,7 +63,7 @@ class ImportConfigController extends BaseController
                 ],
                 [
                     'allow' => true,
-                    'actions' => ['index'],
+                    'actions' => ['create'],
                     'roles' => [Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE],
                     'denyCallback' => function ($rule, $action) {
                         return $this->redirect(['default/index']);
@@ -248,6 +248,43 @@ class ImportConfigController extends BaseController
                 }
                 unlink($path);
             }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @return string
+     * @throws \yii\base\InvalidConfigException
+     */
+    public function actionTestImport()
+    {
+        try {
+            $request = Yii::$app->request;
+            $modelQuery = ImportConfig::find();
+            $model = Yii::createObject(ImportConfig::class);
+            $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
+            $importJob = null;
+            if ($request->isPost === true) {
+                $body = $request->getBodyParams();
+                $model->load($body);
+                $model->importFile = UploadedFile::getInstance($model, 'importFile');
+                if($model->validate() === true) {
+                    $importJob = $model->manageImportExport();
+                }
+            }
+            $importConfigs = [];
+            /** @var  ImportConfig $importConfig */
+            foreach ($modelQuery->each() as $importConfig) {
+                $type = (empty($importConfig->table) === false) ? $importConfig->table : 'Requête SQL';
+                $importConfigs[$importConfig->id] = $importConfig->name.': version :'.$importConfig->version.' : '.$type;
+            }
+            return $this->render('test-import', [
+                'importConfigs' => $importConfigs,
+                'model' => $model,
+                'importJob' => $importJob,
+            ]);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

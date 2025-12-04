@@ -22,42 +22,8 @@ interface Import
     /**
      * @param ImportConfig $importConfig
      * @param string $filePath
+     * @param bool $isTest
      * @return ImportJob
      */
-    public static function run(ImportConfig $importConfig, string $filePath) : ImportJob;
-
-    /**
-     * @param ImportConfig $importConfig
-     * @param array $attributes
-     * @return ImportJobLog
-     */
-    public static function insert(ImportConfig $importConfig, array $attributes) : ImportJobLog;
-
-    /**
-     * @param string $filePath
-     * @return Spreadsheet
-     */
-    public static function prepareSpreadSheet(string $filePath): Spreadsheet;
-
-    /**
-     * @return int
-     */
-    public static function getStartRow() : int;
-
-    /**
-     * @param Worksheet $worksheet
-     * @return int
-     */
-    public static function getEndRow(Worksheet $worksheet) : int;
-
-    /**
-     * @return int
-     */
-    public static function getStartColumn() : int;
-
-    /**
-     * @param ImportConfig $importConfig
-     * @return int
-     */
-    public static function getEndColumn(ImportConfig $importConfig) : int;
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false) : ImportJob;
 }

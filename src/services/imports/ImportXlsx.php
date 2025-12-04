@@ -2,7 +2,7 @@
 
 namespace fractalCms\importExport\services\imports;
 
-use fractalCms\importExport\interfaces\Import;
+use fractalCms\importExport\interfaces\ImportFile;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use fractalCms\importExport\models\ImportJob;
@@ -14,21 +14,32 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
+use yii\db\Transaction;
 use yii\helpers\Json;
 
-class ImportXlsx implements Import
+class ImportXlsx implements ImportFile
 {
 
-    public static function run(ImportConfig $importConfig, string $filePath): ImportJob
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param string $filePath
+     * @param bool $isTest
+     * @return ImportJob
+     * @throws NotSupportedException
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
+     */
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false): ImportJob
     {
         try {
-            $importjob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
-            $importjob->importConfig = $importConfig->id;
-            $importjob->userId = Yii::$app->user->identity->getId();
-            $importjob->type = ImportJob::TYPE_IMPORT;
-            $importjob->filePath = $filePath;
-            $importjob->successRows = 0;
-            $importjob->errorRows = 0;
+            $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
+            $importJob->importConfigId = $importConfig->id;
+            $importJob->userId = Yii::$app->user->identity->getId();
+            $importJob->type = ImportJob::TYPE_IMPORT;
+            $importJob->filePath = $filePath;
+            $importJob->successRows = 0;
+            $importJob->errorRows = 0;
             $spreadsheet = static::prepareSpreadSheet($filePath);
             $mappingColumns = $importConfig->tmpColumns;
             if($spreadsheet instanceof Spreadsheet) {
@@ -37,9 +48,9 @@ class ImportXlsx implements Import
                 $endRow = static::getEndRow($sheet);
                 $starCol = static::getStartColumn();
                 $endColumn = static::getEndColumn($importConfig);
-                $importjob->totalRows = $endRow;
-                $importjob->save();
-                $importjob->refresh();
+                $importJob->totalRows = $endRow;
+                $importJob->save();
+                $importJob->refresh();
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
                     $indexJsonSource = 0;
                     $attributes = [];
@@ -53,17 +64,17 @@ class ImportXlsx implements Import
                     }
                     if (empty($attributes) === false) {
                         $importJobLog = static::insert($importConfig, $attributes);
-                        $importJobLog->importJogId = $importjob->id;
+                        $importJobLog->importJogId = $importJob->id;
                         if ($importJobLog->message !== ImportJobLog::MESSAGE_SUCCESS) {
-                            $importjob->errorRows += 1;
+                            $importJob->errorRows += 1;
                         } else {
-                            $importjob->successRows += 1;
+                            $importJob->successRows += 1;
                         }
                     }
                 }
             }
-            $importjob->save();
-            return $importjob;
+            $importJob->save();
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -75,16 +86,21 @@ class ImportXlsx implements Import
      *
      * @param ImportConfig $importConfig
      * @param array $attributes
+     * @param bool $isTest
      * @return ImportJobLog
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function insert(ImportConfig $importConfig, array $attributes): ImportJobLog
+    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false): ImportJobLog
     {
         try {
             $importJobLog = new ImportJobLog(['scenario' => ImportJobLog::SCENARIO_CREATE]);
             $importJobLog->data = Json::encode($attributes);
             $isSql = (empty($importConfig->sql) === false);
+            $transaction = null;
+            if ($isTest === true) {
+                $transaction = Yii::$app->db->beginTransaction();
+            }
             if ($isSql === false && empty($importConfig->table) === false) {
                 try {
                     if (class_exists($importConfig->table) === true)  {
@@ -104,8 +120,9 @@ class ImportXlsx implements Import
                 }
             } else {
                 try {
+                    $viewName = $importConfig->getContextName();
                     Yii::$app->db->createCommand()->insert(
-                        $importConfig->name,
+                        $viewName,
                         $attributes
                     )->execute();
                     $importJobLog->message = ImportJobLog::MESSAGE_SUCCESS;
@@ -113,7 +130,9 @@ class ImportXlsx implements Import
                     Yii::error($e->getMessage(), __METHOD__);
                     $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.$e->getMessage();
                 }
-
+            }
+            if ($transaction instanceof Transaction) {
+                $transaction->rollBack();
             }
             return $importJobLog;
         } catch (Exception $e)  {

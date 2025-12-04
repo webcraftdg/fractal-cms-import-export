@@ -16,6 +16,7 @@ use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
+use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\DbView;
 use fractalCms\importExport\services\Parameter;
 use Yii;
@@ -98,9 +99,18 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     }
 
 
+    /**
+     * [
+     *  'key' => 'value',
+     * ]
+     * @return array
+     */
     public function getInformations() : array
     {
-        return [];
+        $importCount = ImportConfig::find()->count();
+        return [
+            'nombre de configuration' => $importCount
+        ];
     }
 
     /**
@@ -115,6 +125,10 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         ];
     }
 
+    /**
+     * @return array
+     * @throws Exception
+     */
     public function getMenu() : array
     {
         try {
@@ -139,6 +153,15 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
+
+                $importExport['children'][] = [
+                    'title' => 'Test import/export',
+                    'url' => Url::to(['/'.$this->contextId.'/import-config/test-import']),
+                    'optionsClass' => $optionsClass,
+                    'children' => [],
+                ];
+
+
             }
             $data = [];
             if (empty($importExport['children']) === false) {
@@ -163,6 +186,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         return [
             $coreId.'/configuration-des-imports-export/liste' => $contextId.'/import-config/index',
             $coreId.'/configuration-des-imports-export/creer' => $contextId.'/import-config/create',
+            $coreId.'/configuration-des-imports-export/test-import-export' => $contextId.'/import-config/test-import',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/exporter' => $contextId.'/import-config/export',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',

@@ -71,7 +71,6 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
             </div>
         </div>
     </div>
-
 </div>
 <?php
 echo Html::endForm();

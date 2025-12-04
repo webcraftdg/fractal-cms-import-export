@@ -19,7 +19,7 @@ use Yii;
 use Exception;
 use yii\base\NotSupportedException;
 
-class Import implements ImportInterface
+class ImportExport implements ImportInterface
 {
 
     /**

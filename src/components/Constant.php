@@ -14,8 +14,8 @@ namespace fractalCms\importExport\components;
 class Constant
 {
 
-    const PERMISSION_MAIN_UPLOAD = 'UPLOAD:';
-    const PERMISSION_MAIN_EXPORT = 'IMPORT:EXPORT:';
+    const PERMISSION_MAIN_UPLOAD = 'FRACTAL_CMS:UPLOAD:';
+    const PERMISSION_MAIN_EXPORT = 'FRACTAL_CMS:IMPORT:EXPORT:';
 
     const TRACE_DEBUG = 'debug';
 

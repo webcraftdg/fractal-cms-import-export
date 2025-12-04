@@ -12,6 +12,8 @@ namespace fractalCms\importExport\models;
 
 use fractalCms\importExport\Module;
 use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Export;
+use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
@@ -44,12 +46,16 @@ class ImportConfig extends \yii\db\ActiveRecord
     const SCENARIO_UPDATE = 'update';
     const SCENARIO_IMPORT_FILE = 'importFile';
     const SCENARIO_MANAGE_COLUMN = 'manageColumn';
-
+    const SCENARIO_IMPORT_EXPORT = 'importExport';
     const FORMAT_EXCEL = 'xls';
     const FORMAT_EXCEL_X = 'xlsx';
     const FORMAT_CSV = 'csv';
 
+    const TYPE_IMPORT = 'import';
+    const TYPE_EXPORT = 'export';
+
     public $importFile;
+    public $type;
 
     public $tmpColumns = [];
 
@@ -103,6 +109,9 @@ class ImportConfig extends \yii\db\ActiveRecord
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
             'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
         ];
+        $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
+            'name', 'type', 'importFile'
+        ];
         return $scenarios;
     }
 
@@ -141,7 +150,19 @@ class ImportConfig extends \yii\db\ActiveRecord
                 'message' => 'Le fichier doit être au format JSON',
                 'on' => [self::SCENARIO_IMPORT_FILE],
             ],
+            [['importFile'], 'file',
+                'skipOnEmpty' => false,
+                'extensions' => ['xlsx', 'xls', 'csv'],
+                'checkExtensionByMimeType' => false,
+                'maxFiles' => 1,
+                'message' => 'Le fichier doit être au format Xlsx, Xls, CSV',
+                'on' => [self::SCENARIO_IMPORT_EXPORT],
+            ],
             [['version'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['name', 'type'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
+            [['importFile'] , 'required', 'message' => 'Le fichier est obligatoire en type IMPORT', 'on' => [self::SCENARIO_IMPORT_EXPORT, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->type === static::TYPE_IMPORT;
+            }],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['type', 'jsonConfig', 'table', 'sql'], 'string'],
@@ -370,6 +391,14 @@ class ImportConfig extends \yii\db\ActiveRecord
         ];
     }
 
+    public static function optsTypes()
+    {
+        return [
+            self::TYPE_IMPORT => 'Import',
+            self::TYPE_EXPORT => 'Export',
+        ];
+    }
+
     /**
      * Manage import file
      * @return bool|mixed
@@ -405,6 +434,35 @@ class ImportConfig extends \yii\db\ActiveRecord
                 unlink($finalPathFile);
             }
             return $valid;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @return ImportJob|null
+     * @throws \yii\db\Exception
+     */
+    public function manageImportExport() : ImportJob | null
+    {
+        try {
+            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
+            $importJob = null;
+            $targetModel = ImportConfig::findOne(['id' => $this->name]);
+            if($targetModel !== null) {
+                if ($this->importFile instanceof UploadedFile && $this->type === static::TYPE_IMPORT) {
+                    $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
+                    $this->importFile->saveAs($finalPathFile);
+                    $importJob = Import::run($targetModel, $finalPathFile, true);
+                    unlink($finalPathFile);
+                } elseif ($this->type === static::TYPE_EXPORT) {
+                    $importJob = Export::run($targetModel);
+                }
+            } else {
+                $this->addError('name', 'Config non trouvé');
+            }
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
