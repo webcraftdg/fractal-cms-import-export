@@ -1,5 +1,13 @@
 <?php
-
+/**
+ * ImportXlsx.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\services
+ */
 namespace fractalCms\importExport\services\imports;
 
 use fractalCms\importExport\interfaces\ImportFile;
@@ -38,6 +46,7 @@ class ImportXlsx implements ImportFile
             $importJob->userId = Yii::$app->user->identity->getId();
             $importJob->type = ImportJob::TYPE_IMPORT;
             $importJob->filePath = $filePath;
+            $importJob->status = ImportJob::STATUS_RUNNING;
             $importJob->successRows = 0;
             $importJob->errorRows = 0;
             $spreadsheet = static::prepareSpreadSheet($filePath);
@@ -51,6 +60,7 @@ class ImportXlsx implements ImportFile
                 $importJob->totalRows = $endRow;
                 $importJob->save();
                 $importJob->refresh();
+                $indexRow = 1;
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
                     $indexJsonSource = 0;
                     $attributes = [];
@@ -63,14 +73,22 @@ class ImportXlsx implements ImportFile
                         $indexJsonSource += 1;
                     }
                     if (empty($attributes) === false) {
-                        $importJobLog = static::insert($importConfig, $attributes);
-                        $importJobLog->importJogId = $importJob->id;
-                        if ($importJobLog->message !== ImportJobLog::MESSAGE_SUCCESS) {
+                        $importJobLog = static::insert($importConfig, $attributes, $isTest);
+                        $importJobLog['row'] = $indexRow;
+                        $importJobLog['importJogId'] = $importJob->id;
+                        if ($importJobLog['message'] !== ImportJob::STATUS_SUCCESS) {
                             $importJob->errorRows += 1;
                         } else {
                             $importJob->successRows += 1;
                         }
+                        $importJob->logs[] = $importJobLog;
                     }
+                    $indexRow += 1;
+                }
+                if ($importJob->errorRows > 0) {
+                    $importJob->status = ImportJob::STATUS_FAILED;
+                } else {
+                    $importJob->status = ImportJob::STATUS_SUCCESS;
                 }
             }
             $importJob->save();
@@ -87,15 +105,15 @@ class ImportXlsx implements ImportFile
      * @param ImportConfig $importConfig
      * @param array $attributes
      * @param bool $isTest
-     * @return ImportJobLog
+     * @return array
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false): ImportJobLog
+    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false): array
     {
         try {
-            $importJobLog = new ImportJobLog(['scenario' => ImportJobLog::SCENARIO_CREATE]);
-            $importJobLog->data = Json::encode($attributes);
+            $importJobLog = [];
+            $importJobLog['data'] = Json::encode($attributes);
             $isSql = (empty($importConfig->sql) === false);
             $transaction = null;
             if ($isTest === true) {
@@ -109,14 +127,14 @@ class ImportXlsx implements ImportFile
                         $model->attributes = $attributes;
                         if ($model->validate() === true) {
                             $model->save();
-                            $importJobLog->message = ImportJobLog::MESSAGE_SUCCESS;
+                            $importJobLog['message'] = ImportJob::STATUS_SUCCESS;
                         } else {
-                            $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.Json::encode($model->errors);
+                            $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Erreur de validation du Model : '.$importConfig->table;
                         }
                     }
                 } catch (Exception $e) {
                     Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.$e->getMessage();
+                    $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Exception, veuillez vérifier votre fichier';
                 }
             } else {
                 try {
@@ -125,10 +143,10 @@ class ImportXlsx implements ImportFile
                         $viewName,
                         $attributes
                     )->execute();
-                    $importJobLog->message = ImportJobLog::MESSAGE_SUCCESS;
+                    $importJobLog['message'] = ImportJob::STATUS_SUCCESS;
                 } catch (Exception $e) {
                     Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.$e->getMessage();
+                    $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Exception, veuillez vérifier votre requête SQL';
                 }
             }
             if ($transaction instanceof Transaction) {

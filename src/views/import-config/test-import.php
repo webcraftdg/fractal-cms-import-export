@@ -26,7 +26,7 @@ use fractalCms\importExport\models\ImportJob;
     echo $this->render('_formTest', [
         'model' => $model,
         'importConfigs' => $importConfigs,
-        'importJob' => $importJob
+        'importJob' => $importJob,
     ]);
     ?>
 </div>

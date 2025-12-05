@@ -17,7 +17,6 @@ use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\models\ImportJobLog;
 use fractalCms\importExport\services\DbView;
 use yii\filters\AccessControl;
 use Exception;
@@ -173,7 +172,6 @@ class ImportConfigController extends BaseController
             }
             /** @var ImportJob $importJob */
             foreach ($model->getImportJobs()->each() as $importJob) {
-                ImportJobLog::deleteAll(['importJobId' => $importJob->id]);
                 $importJob->delete();
             }
             $model->delete();

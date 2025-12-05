@@ -17,6 +17,7 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\core\helpers\Html;
 use fractalCms\importExport\assets\StaticAsset;
 use fractalCms\importExport\models\ImportJob;
+
 $baseUrl = StaticAsset::register($this)->baseUrl;
 
 ?>
@@ -27,7 +28,7 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
             <div class="col-sm-6">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'type', ['label' => 'Type du test', 'class' => 'form-label']);
+                    echo Html::activeLabel($model, 'type', ['label' => 'Type', 'class' => 'form-label']);
                     echo Html::activeDropDownList($model, 'type', ImportConfig::optsTypes(), [
                         'prompt' => 'Sélectionner un type', 'class' => 'form-control',
                     ]);
@@ -37,8 +38,8 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
             <div class="col-sm-6">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'name', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'name', $importConfigs, [
+                    echo Html::activeLabel($model, 'testModelId', ['label' => 'Configuration', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'testModelId', $importConfigs, [
                         'prompt' => 'Sélectionner une config', 'class' => 'form-control',
                     ]);
                     ?>
@@ -70,3 +71,8 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
         <?php  echo Html::endForm(); ?>
     </div>
 </div>
+<?php
+if (in_array($importJob->status, [ImportJob::STATUS_SUCCESS, ImportJob::STATUS_FAILED]) === true) {
+    echo $this->render('_importJobLog', ['importJob' => $importJob,]);
+}
+?>

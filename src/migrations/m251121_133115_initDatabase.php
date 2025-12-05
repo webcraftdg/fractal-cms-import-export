@@ -64,31 +64,10 @@ class m251121_133115_initDatabase extends Migration
         );
 
 
-        $this->createTable(
-            '{{%importJobLogs}}',
-            [
-                'id'=> $this->bigPrimaryKey(20),
-                'importJogId' => $this->bigInteger(),
-                'row' => $this->integer()->defaultValue(0),
-                'data' => $this->binary()->defaultValue(null),
-                'message' => $this->text()->defaultValue(null),
-                'dateCreate'=> $this->datetime()->null()->defaultValue(null),
-                'dateUpdate'=> $this->datetime()->null()->defaultValue(null),
-            ]
-        );
-
         $this->addForeignKey('importJobs_importConfigs_fk',
             '{{%importJobs}}',
             'importConfigId',
             '{{%importConfigs}}',
-            'id',
-            'NO ACTION',
-            'NO ACTION'
-        );
-        $this->addForeignKey('importJobLogs_importJobs_fk',
-            '{{%importJobLogs}}',
-            'importJogId',
-            '{{%importJobs}}',
             'id',
             'NO ACTION',
             'NO ACTION'
@@ -103,9 +82,7 @@ class m251121_133115_initDatabase extends Migration
     public function down()
     {
 
-        $this->dropForeignKey('importJobLogs_importJobs_fk','{{%importJobLogs}}');
         $this->dropForeignKey('importJobs_importConfigs_fk','{{%importJobs}}');
-        $this->dropTable('{{%importJobLogs}}');
         $this->dropTable('{{%importJobs}}');
         $this->dropIndex('importConfigs_name_version_idx','{{%importConfigs}}');
         $this->dropTable('{{%importConfigs}}');

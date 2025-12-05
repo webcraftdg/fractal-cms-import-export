@@ -16,6 +16,7 @@ use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
 use yii\behaviors\TimestampBehavior;
+use yii\db\DataReader;
 use yii\db\Expression;
 use Exception;
 use Yii;
@@ -56,6 +57,7 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     public $importFile;
     public $type;
+    public $testModelId;
 
     public $tmpColumns = [];
 
@@ -110,7 +112,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
         ];
         $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
-            'name', 'type', 'importFile'
+            'type', 'importFile', 'testModelId'
         ];
         return $scenarios;
     }
@@ -142,7 +144,15 @@ class ImportConfig extends \yii\db\ActiveRecord
                 'message' => 'Veuillez télécharger un fichier',
                 'on' => [self::SCENARIO_IMPORT_FILE],
             ],
-            [['importFile'], 'file',
+            [['importFile'] ,
+                'required',
+                'message' => 'Le fichier est obligatoire en type IMPORT',
+                'on' => [self::SCENARIO_IMPORT_EXPORT],
+                'when' => function () {
+                return $this->type === static::TYPE_IMPORT;
+            }],
+            [['importFile'],
+                'file',
                 'skipOnEmpty' => false,
                 'extensions' => ['json'],
                 'checkExtensionByMimeType' => false,
@@ -150,19 +160,20 @@ class ImportConfig extends \yii\db\ActiveRecord
                 'message' => 'Le fichier doit être au format JSON',
                 'on' => [self::SCENARIO_IMPORT_FILE],
             ],
-            [['importFile'], 'file',
+            [['importFile'],
+                'file',
                 'skipOnEmpty' => false,
                 'extensions' => ['xlsx', 'xls', 'csv'],
                 'checkExtensionByMimeType' => false,
                 'maxFiles' => 1,
                 'message' => 'Le fichier doit être au format Xlsx, Xls, CSV',
                 'on' => [self::SCENARIO_IMPORT_EXPORT],
+                'when' => function () {
+                    return $this->type === static::TYPE_IMPORT;
+                }
             ],
             [['version'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['name', 'type'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
-            [['importFile'] , 'required', 'message' => 'Le fichier est obligatoire en type IMPORT', 'on' => [self::SCENARIO_IMPORT_EXPORT, self::SCENARIO_UPDATE], 'when' => function () {
-                return $this->type === static::TYPE_IMPORT;
-            }],
+            [['type', 'testModelId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['type', 'jsonConfig', 'table', 'sql'], 'string'],
@@ -339,10 +350,10 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @return array
+     * @return DataReader
      * @throws \yii\db\Exception
      */
-    public function getQueryRows() :array
+    public function getImportExportQuery() : DataReader
     {
         try {
             $sql = $this->sql;
@@ -353,7 +364,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $table = $this->getContextName();
                 $sql = "SELECT " . implode(',', $cols) . " FROM " . $table;
             }
-            return Yii::$app->db->createCommand($sql)->queryAll();
+            return Yii::$app->db->createCommand($sql)->query();
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -449,7 +460,7 @@ class ImportConfig extends \yii\db\ActiveRecord
         try {
             $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
             $importJob = null;
-            $targetModel = ImportConfig::findOne(['id' => $this->name]);
+            $targetModel = ImportConfig::findOne(['id' => $this->testModelId]);
             if($targetModel !== null) {
                 if ($this->importFile instanceof UploadedFile && $this->type === static::TYPE_IMPORT) {
                     $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;

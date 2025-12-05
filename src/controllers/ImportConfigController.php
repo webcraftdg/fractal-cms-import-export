@@ -15,6 +15,7 @@ namespace fractalCms\importExport\controllers;
 use fractalCms\importExport\components\Constant;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\DbView;
 use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Parameter;
@@ -234,20 +235,14 @@ class ImportConfigController extends BaseController
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
-            $path = Export::run($model);
-            $filename = 'export_'.date('d_m-Y');
-            if (file_exists($path) === true) {
-                $data = file_get_contents($path);
-                if (in_array($model->exportFormat, [ImportConfig::FORMAT_EXCEL , ImportConfig::FORMAT_EXCEL_X ]) === true) {
-                    $filename = $filename.'.xlsx';
-                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
-                } else {
-                    $filename = $filename.'.csv';
-                    Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=utf-8');
-                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'text/csv']);
-                }
-                unlink($path);
+            /** @var ImportJob $importJob */
+            $importJob = Export::run($model);
+            try {
+                $this->download($importJob->filePath, $model->exportFormat);
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
             }
+
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -265,13 +260,17 @@ class ImportConfigController extends BaseController
             $modelQuery = ImportConfig::find();
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
-            $importJob = null;
+            $importJob = Yii::createObject(ImportJob::class);
+            $importJob->scenario = ImportJob::SCENARIO_CREATE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if($model->validate() === true) {
                     $importJob = $model->manageImportExport();
+                    if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false) {
+                        $this->download($importJob->filePath, $model->exportFormat);
+                    }
                 }
             }
             $importConfigs = [];
@@ -285,6 +284,34 @@ class ImportConfigController extends BaseController
                 'model' => $model,
                 'importJob' => $importJob,
             ]);
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param string $path
+     * @param $type
+     * @return void
+     * @throws \yii\web\RangeNotSatisfiableHttpException
+     */
+    protected function download(string $path, $type)
+    {
+        try {
+            $filename = 'export_'.date('d_m-Y');
+            if (file_exists($path) === true) {
+                $data = file_get_contents($path);
+                if (in_array($type, [ImportConfig::FORMAT_EXCEL , ImportConfig::FORMAT_EXCEL_X ]) === true) {
+                    $filename = $filename.'.xlsx';
+                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
+                } else {
+                    $filename = $filename.'.csv';
+                    Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=utf-8');
+                    Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'text/csv']);
+                }
+                unlink($path);
+            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

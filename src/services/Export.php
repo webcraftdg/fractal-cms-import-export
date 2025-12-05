@@ -13,6 +13,7 @@ namespace fractalCms\importExport\services;
 
 use fractalCms\importExport\interfaces\Export as ExportInterfaces;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\exports\ExportCsv;
 use fractalCms\importExport\services\exports\ExportXlsx;
 use Yii;
@@ -25,21 +26,43 @@ class Export implements ExportInterfaces
      * Run export
      *
      * @param ImportConfig $importConfig
-     * @return string
+     * @return ImportJob
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig): string
+    public static function run(ImportConfig $importConfig): ImportJob
     {
         try {
             switch ($importConfig->exportFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
-                    $path = ExportXlsx::run($importConfig);
+                    $importJob = ExportXlsx::run($importConfig);
                     break;
                 default:
-                    $path = ExportCsv::run($importConfig);
+                    $importJob = ExportCsv::run($importConfig);
             }
-            return $path;
+            return $importJob;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param int $rowsCount
+     * @return ImportJob
+     * @throws Exception
+     */
+    public static function prepareImportJob(ImportConfig $importConfig, int $rowsCount)
+    {
+        try {
+            $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
+            $importJob->importConfigId = $importConfig->id;
+            $importJob->userId = Yii::$app->user->identity->getId();
+            $importJob->type = ImportJob::TYPE_EXPORT;
+            $importJob->status = ImportJob::STATUS_RUNNING;
+            $importJob->totalRows = $rowsCount;
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

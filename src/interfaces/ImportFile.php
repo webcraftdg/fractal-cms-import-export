@@ -22,9 +22,9 @@ interface ImportFile extends Import
      * @param ImportConfig $importConfig
      * @param array $attributes
      * @param bool $isTest
-     * @return ImportJobLog
+     * @return array
      */
-    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false) : ImportJobLog;
+    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false) : array;
 
     /**
      * @param string $filePath

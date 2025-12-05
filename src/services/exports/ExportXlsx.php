@@ -13,6 +13,8 @@ namespace fractalCms\importExport\services\exports;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
+use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\services\Export as ExportService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Yii;
@@ -22,13 +24,15 @@ class ExportXlsx implements Export
     /**
      * Run export CSv
      * @param ImportConfig $importConfig
-     * @return string|null
+     * @return ImportJob
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig): string|null
+    public static function run(ImportConfig $importConfig): ImportJob
     {
         try {
-            $rows = $importConfig->getQueryRows();
+            $query = $importConfig->getImportExportQuery();
+            $importJob = ExportService::prepareImportJob($importConfig, $query->count());
+
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
@@ -44,7 +48,7 @@ class ExportXlsx implements Export
 
             // Data
             $rowIndex = 2;
-            foreach ($rows as $row) {
+            foreach ($query->read() as $row) {
                 $colIndex = 1;
                 foreach ($importConfig->tmpColumns as $col) {
                     $sheet->setCellValue(
@@ -54,13 +58,17 @@ class ExportXlsx implements Export
                     $colIndex++;
                 }
                 $rowIndex++;
+                $importJob->successRows += 1;
             }
 
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
 
             (new Xlsx($spreadsheet))->save($path);
-            return $path;
+            $importJob->filePath = $path;
+            $importJob->status = ImportJob::STATUS_SUCCESS;
+            $importJob->save();
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

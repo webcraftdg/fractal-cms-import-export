@@ -32,7 +32,6 @@ use yii\db\Expression;
  * @property string|null $dateUpdate
  *
  * @property ImportConfig $importConfig
- * @property ImportJobLog[] $importJobLogs
  */
 class ImportJob extends \yii\db\ActiveRecord
 {
@@ -52,6 +51,8 @@ class ImportJob extends \yii\db\ActiveRecord
      */
     const TYPE_IMPORT = 'import';
     const TYPE_EXPORT = 'export';
+
+    public $logs = [];
 
     /**
      * {@inheritdoc}
@@ -143,17 +144,6 @@ class ImportJob extends \yii\db\ActiveRecord
     {
         return $this->hasOne(ImportConfig::class, ['id' => 'importConfigId']);
     }
-
-    /**
-     * Gets query for [[ImportJobLogs]].
-     *
-     * @return \yii\db\ActiveQuery
-     */
-    public function getImportJobLogs()
-    {
-        return $this->hasMany(ImportJobLog::class, ['importJogId' => 'id']);
-    }
-
 
     /**
      * column status ENUM value labels
