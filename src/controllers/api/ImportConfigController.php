@@ -16,8 +16,12 @@ use fractalCms\importExport\components\Constant;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\DbView;
+use yii\data\ActiveDataProvider;
+use yii\data\ArrayDataProvider;
+use yii\data\Pagination;
 use yii\filters\AccessControl;
 use Exception;
 use Yii;
@@ -48,11 +52,11 @@ class ImportConfigController extends BaseController
         $behaviors = parent::behaviors();
         $behaviors['access'] = [
             'class' => AccessControl::class,
-            'only' => ['get', 'post-columns'],
+            'only' => ['get', 'post',  'get-columns', 'post-columns', 'get-table-columns', 'delete'],
             'rules' => [
                 [
                     'allow' => true,
-                    'actions' => ['get', 'post-columns'],
+                    'actions' => ['get', 'post',  'get-columns', 'post-columns', 'get-table-columns'],
                     'verbs' => ['get', 'post'],
                     'roles' => [
                         Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_LIST,
@@ -62,7 +66,7 @@ class ImportConfigController extends BaseController
                 ],
                 [
                     'allow' => true,
-                    'actions' => ['delete'],
+                    'actions' => ['delete', 'delete-column'],
                     'verbs' => ['delete'],
                     'roles' => [
                         Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_DELETE,
@@ -96,6 +100,75 @@ class ImportConfigController extends BaseController
         }
     }
 
+    /**
+     * @param $id
+     * @return array
+     * @throws NotFoundHttpException
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
+     */
+    public function actionPost($id) : array
+    {
+        try {
+            $request = Yii::$app->request;
+            $importConfig = ImportConfig::findOne($id);
+            if ($importConfig === null) {
+                throw new NotFoundHttpException('Import config not Found : '.$id);
+            }
+            if ($request->isPost === true) {
+                $body = $request->getBodyParams();
+                $importConfig->scenario = ImportConfig::SCENARIO_UPDATE;
+                if (is_array($body) === true && empty($body) === false) {
+                    $importConfig->tmpColumns = $body;
+                    if ($importConfig->validate() === true) {
+                        $importConfig->jsonConfig = Json::encode($importConfig->tmpColumns);
+                        $importConfig->save(false,
+                            [
+                                'jsonConfig',
+                                'dateUpdate'
+                            ]);
+                        $importConfig->refresh();
+                    }
+                }
+            }
+            return  $importConfig->toArray();
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
+    /**
+     * @param $id
+     * @return array
+     * @throws NotFoundHttpException
+     */
+    public function actionGetColumns($id) : array
+    {
+        try {
+            $paginationPerPage = Yii::$app->response->headers->get('X-pagination-per-page', 20);
+            $page = Yii::$app->request->getQueryParam('page', 0);
+            $importConfig = ImportConfig::findOne($id);
+            if ($importConfig === null) {
+                throw new NotFoundHttpException('Import config not Found : '.$id);
+            }
+            $query =  $importConfig->getImportColumns();
+            $dataProvider = new ActiveDataProvider([
+                'query' => $query,
+                'pagination' => [
+                    'pageSize' => $paginationPerPage
+                ],
+            ]);
+            $dataProvider->pagination->setPage($page);
+            $models = $dataProvider->getModels();
+            $this->addHeader($dataProvider->getPagination());
+            return $models;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
 
     /**
      * Post
@@ -107,32 +180,63 @@ class ImportConfigController extends BaseController
     {
         try {
             $request = Yii::$app->request;
+            $paginationPerPage = Yii::$app->response->headers->get('X-pagination-per-page', 20);
+            $page = Yii::$app->request->getQueryParam('page', 0);
             $importConfig = ImportConfig::findOne($id);
             if ($importConfig === null) {
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
-            $columns =  $importConfig->tmpColumns;
-            $body = $request->getBodyParams();
-            $importConfig->scenario = ImportConfig::SCENARIO_UPDATE;
-            if (is_array($body) === true && empty($body) === false) {
-                $importConfig->tmpColumns = $body;
-                if ($importConfig->validate() === true) {
-                    $importConfig->jsonConfig = Json::encode($importConfig->tmpColumns);
-                    $importConfig->save(false,
-                    [
-                        'jsonConfig',
-                        'dateUpdate'
-                    ]);
-                    $importConfig->refresh();
-                    $columns =  $importConfig->tmpColumns;
+            if ($request->isPost === true) {
+                $body = $request->getBodyParams();
+                if (is_array($body) === true && empty($body) === false) {
+                    $importConfig->manageColumns($body);
                 }
             }
-            return  $columns;
+            $query = $importConfig->getImportColumns();
+            $dataProvider = new ActiveDataProvider([
+                'query' => $query,
+                'pagination' => [
+                    'pageSize' => $paginationPerPage
+                ],
+            ]);
+            $dataProvider->pagination->setPage($page);
+            $this->addHeader($dataProvider->pagination);
+            return  $dataProvider->getModels();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
         }
     }
+
+    /**
+     * @param $id
+     * @param $columnId
+     * @return Response
+     * @throws NotFoundHttpException
+     */
+    public function actionDeleteColumn($id, $columnId) : Response
+    {
+        try {
+            $response = Yii::$app->getResponse();
+            $importConfig = ImportConfig::findOne($id);
+            if ($importConfig === null) {
+                throw new NotFoundHttpException('Import config not Found : '.$id);
+            }
+
+            /** @var ImportConfigColumn $model */
+            $model = ImportConfigColumn::findOne(['id' => $columnId]);
+            if ($model === null) {
+                throw new NotFoundHttpException('import column not found');
+            }
+            $model->delete();
+            $response->statusCode = 204;
+            return $response;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
 
     /**
      * @param $id
@@ -177,6 +281,24 @@ class ImportConfigController extends BaseController
             $model->delete();
             $response->statusCode = 204;
             return $response;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param Pagination $pagination
+     * @return void
+     * @throws Exception
+     */
+    protected function addHeader(Pagination $pagination) : void
+    {
+        try {
+            Yii::$app->response->headers->set('X-pagination-current-Page', $pagination->getPage());
+            Yii::$app->response->headers->set('X-pagination-total-page', $pagination->getPageCount());
+            Yii::$app->response->headers->set('X-pagination-per-pPage', $pagination->getPageSize());
+            Yii::$app->response->headers->set('X-pagination-total-entries', $pagination->totalCount);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

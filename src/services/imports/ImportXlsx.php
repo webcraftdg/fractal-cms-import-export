@@ -14,7 +14,6 @@ use fractalCms\importExport\interfaces\ImportFile;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\models\ImportJobLog;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;

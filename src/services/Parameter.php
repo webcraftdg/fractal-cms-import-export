@@ -1,5 +1,13 @@
 <?php
-
+/**
+ * Parameter.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\services
+ */
 namespace fractalCms\importExport\services;
 
 use fractalCms\importExport\interfaces\Parameter as ParameterInterface;

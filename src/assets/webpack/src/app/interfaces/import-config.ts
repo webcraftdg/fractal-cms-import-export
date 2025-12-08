@@ -1,11 +1,12 @@
 export interface IImportConfigColumn {
     id:string;
+    importConfigId:number;
     source:string;
     target:string;
     type:string;
-    nullable:boolean;
-    default?:any;
+    defaultValue?:any;
     transform?:any;
+    order:number;
 }
 export interface IImportConfig {
     id:number;
@@ -15,7 +16,13 @@ export interface IImportConfig {
     truncateTable:boolean;
     table:string;
     jsonConfig:string;
-    tmpColumns:IImportConfigColumn[];
     dateCreate:string;
     dateUpdate:string;
+    pagination:IPagination;
+}
+export interface IPagination {
+    page: number;
+    pageSize: number;
+    totalCount?: number;
+    pageCount?: number;
 }

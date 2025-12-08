@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\models\JsonColumnModel;
+use fractalCms\importExport\models\ColumnModel;
 use yii\base\Component;
 use Exception;
 use Yii;
@@ -114,8 +114,7 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
             $hasTable = in_array($name, $dbTables);
             if ($this->exists($name) === true && $hasTable === true) {
                 $columns = array_map(function(ColumnSchema $columnSchema) {
-                    $newColumn = new JsonColumnModel(['scenario' => JsonColumnModel::SCENARIO_CREATE]);
-                    $newColumn->id = uniqid();
+                    $newColumn = new ColumnModel(['scenario' => ColumnModel::SCENARIO_CREATE]);
                     $newColumn->source = $columnSchema->name;
                     $newColumn->target = ucfirst($columnSchema->name);
                     $newColumn->type = $columnSchema->type;

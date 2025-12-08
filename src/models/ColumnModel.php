@@ -1,6 +1,6 @@
 <?php
 /**
- * JsonColumnModel.php
+ * ColumnModel.php
  *
  * PHP Version 8.2+
  *
@@ -12,7 +12,7 @@ namespace fractalCms\importExport\models;
 
 use yii\base\Model;
 
-class JsonColumnModel extends Model
+class ColumnModel extends Model
 {
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
@@ -21,7 +21,6 @@ class JsonColumnModel extends Model
     public string $source;
     public string $target;
     public string $type;
-    public bool $nullable;
     public mixed $default;
     public mixed $transform;
 
@@ -29,11 +28,11 @@ class JsonColumnModel extends Model
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'id', 'source', 'target', 'type', 'nullable', 'default', 'transform'
+            'id', 'source', 'target', 'type', 'default', 'transform'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'id', 'source', 'target', 'type', 'nullable', 'default', 'transform'
+            'id', 'source', 'target', 'type', 'default', 'transform'
         ];
         return $scenarios;
     }
@@ -44,8 +43,8 @@ class JsonColumnModel extends Model
     public function rules()
     {
         return [
-            [[ 'id', 'source', 'target', 'type', 'nullable', 'default', 'transform'], 'default', 'value' => null],
-            [['id', 'source', 'target', 'type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [[ 'id', 'source', 'target', 'type', 'default', 'transform'], 'default', 'value' => null],
+            [['source', 'target', 'type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
         ];
     }
 }

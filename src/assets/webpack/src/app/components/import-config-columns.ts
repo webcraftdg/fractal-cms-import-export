@@ -1,7 +1,7 @@
 import {bindable, customElement, IEventAggregator, ILogger, INode, IPlatform, newInstanceForScope,resolve} from 'aurelia';
 import {ApiServices} from "../services/api-services";
 import {EApi} from "../enums/api";
-import {IImportConfig, IImportConfigColumn} from "../interfaces/import-config";
+import {IImportConfig, IImportConfigColumn, IPagination} from "../interfaces/import-config";
 import {ConfigService} from "../services/config-service";
 import {Column} from "../models/column";
 import {IValidationController} from "@aurelia/validation-html";
@@ -14,8 +14,10 @@ export class ImportConfigColumns
 {
     @bindable public id:string;
     private model:IImportConfig;
+    public tmpConfigColumns:IImportConfigColumn[];
     public columns:Column[];
     public tableColumns:IImportConfigColumn[];
+    public pagination:IPagination;
 
     constructor(
         private readonly logger: ILogger = resolve(ILogger),
@@ -31,7 +33,9 @@ export class ImportConfigColumns
         this.logger.trace('constructor');
         this.model = {} as IImportConfig;
         this.columns = [] as Column[];
+        this.tmpConfigColumns = [] as Column[];
         this.tableColumns = [] as IImportConfigColumn[];
+        this.pagination = {} as IPagination;
     }
 
     public binding() {
@@ -41,16 +45,21 @@ export class ImportConfigColumns
     public attached() {
         this.logger.trace('attached', this.id);
         const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET.replace('{id}', this.id);
-        const urlColums = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id);
+        const urlGetColmuns = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET_COLUMNS.replace('{id}', this.id);
+        const urlTableColums = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id);
 
         const getImportConfig = this.apiServices.get(url);
-        const getTableColumns = this.apiServices.getTableColumns(urlColums);
+        const getColumns = this.apiServices.getColumns(urlGetColmuns);
+        const getTableColumns = this.apiServices.getTableColumns(urlTableColums);
         Promise.all([
             getImportConfig,
+            getColumns,
             getTableColumns
         ]).then((result) => {
             this.model = result[0];
-            this.tableColumns = result[1];
+            this.tmpConfigColumns = result[1];
+            this.tableColumns = result[2];
+
             this.loadColumns();
         });
     }
@@ -61,17 +70,14 @@ export class ImportConfigColumns
      */
     private loadColumns()
     {
-        if (this.model) {
-            this.logger.trace('loadColumns', this.model.tmpColumns);
-            this.model.tmpColumns.forEach((value:IImportConfigColumn, index)=> {
-               let newColumn:IImportConfigColumn = Object.assign(value, {} as IImportConfigColumn);
-               if (!newColumn.id) {
-                   newColumn.id = this.platform.window.crypto.randomUUID();
-               }
-               const columnModel = new Column(this.logger, this.validationRules);
-               Object.assign(columnModel, newColumn);
-               this.validationController.addObject(columnModel);
-               this.columns.push(columnModel);
+        if (this.tmpConfigColumns) {
+            this.logger.trace('loadColumns', this.tmpConfigColumns);
+            this.tmpConfigColumns.forEach((value:IImportConfigColumn, index)=> {
+                let newColumn:IImportConfigColumn = Object.assign(value, {} as IImportConfigColumn);
+                const columnModel = new Column(this.logger, this.validationRules);
+                Object.assign(columnModel, newColumn);
+                this.validationController.addObject(columnModel);
+                this.columns.push(columnModel);
             });
         }
     }
@@ -88,15 +94,41 @@ export class ImportConfigColumns
         }, {delay:50});
     }
 
-    public delete(event:Event, value:number)
+    /**
+     * Delete
+     *
+     * @param event
+     * @param columnId
+     * @param index
+     */
+    public delete(event:Event, columnId:string, index:number)
     {
-        this.logger.trace('delete', value);
+        this.logger.trace('delete',  columnId);
         event.preventDefault();
-        const deleted  = this.columns.splice(value, 1);
+        if (columnId) {
+            let url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_DELETE_COLUMN.replace('{id}', this.id);
+            url = url.replace('{columnId}', columnId);
+            const deleteColumn = this.apiServices.delete(url);
+            Promise.all([
+                deleteColumn
+            ]).then((result) => {
+                this.logger.trace('delete : OK',  columnId);
+            });
+        }
+        this.remove(index);
+    }
+
+    /**
+     * remove form array
+     *
+     * @param index
+     * @private
+     */
+    private remove(index:number)
+    {
+        this.logger.trace('remove');
+        const deleted  = this.columns.splice(index, 1);
         this.validationController.removeObject(deleted[0]);
-        this.platform.taskQueue.queueTask(() => {
-            this.save();
-        }, {delay:50});
     }
 
     public add(event:Event)
@@ -104,7 +136,6 @@ export class ImportConfigColumns
         this.logger.trace('add');
         event.preventDefault();
         const newColumn = {} as IImportConfigColumn;
-        newColumn.id = this.platform.window.crypto.randomUUID();
         const newModel = new Column(this.logger, this.validationRules);
         Object.assign(newModel, newColumn);
         this.validationController.addObject(newModel);
@@ -120,7 +151,7 @@ export class ImportConfigColumns
         this.validationController.validate().then((validation) => {
             if (validation.valid) {
                 this.logger.trace('save: success');
-                const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_POST.replace('{id}', this.id);
+                const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_POST_COLUMNS.replace('{id}', this.id);
                 const data = this.columns.map((value:Column, index) => {
                     return value.toJson();
                 });

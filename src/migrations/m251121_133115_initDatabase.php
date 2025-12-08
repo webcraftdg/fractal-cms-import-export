@@ -24,16 +24,15 @@ class m251121_133115_initDatabase extends Migration
             '{{%importConfigs}}',
             [
                 'id'=> $this->bigPrimaryKey(20),
-                'name'=> $this->string(150)->null()->defaultValue(null),
+                'name'=> $this->string(150)->defaultValue(null),
                 'version' => $this->integer(),
                 'active'=> $this->boolean()->defaultValue(false),
-                'exportFormat'=> $this->string(10)->null()->defaultValue(null),
+                'exportFormat'=> $this->string(10)->defaultValue(null),
                 'truncateTable' => $this->boolean()->defaultValue(false),
-                'table'=> $this->string()->null()->defaultValue(null),
+                'table'=> $this->string()->defaultValue(null),
                 'sql' => $this->binary(),
-                'jsonConfig' => $this->binary(),
-                'dateCreate'=> $this->datetime()->null()->defaultValue(null),
-                'dateUpdate'=> $this->datetime()->null()->defaultValue(null),
+                'dateCreate'=> $this->datetime()->defaultValue(null),
+                'dateUpdate'=> $this->datetime()->defaultValue(null),
             ]
         );
 
@@ -42,6 +41,31 @@ class m251121_133115_initDatabase extends Migration
             '{{%importConfigs}}',
             ['name', 'version'],
             true
+        );
+
+        $this->createTable(
+            '{{%importConfigColumns}}',
+            [
+                'id'=> $this->bigPrimaryKey(20),
+                'importConfigId'=> $this->bigInteger(),
+                'source'=> $this->string()->defaultValue(null),
+                'target'=> $this->string()->defaultValue(null),
+                'type'=> $this->string(50)->defaultValue(null),
+                'defaultValue'=> $this->string()->defaultValue(null),
+                'transform'=> $this->string()->defaultValue(null),
+                'order' => $this->integer(),
+                'dateCreate'=> $this->datetime()->defaultValue(null),
+                'dateUpdate'=> $this->datetime()->defaultValue(null),
+            ]
+        );
+
+        $this->addForeignKey('importConfigColumns_importConfigs_fk',
+            '{{%importConfigColumns}}',
+            'importConfigId',
+            '{{%importConfigs}}',
+            'id',
+            'NO ACTION',
+            'NO ACTION'
         );
 
         $this->createTable(
@@ -58,8 +82,8 @@ class m251121_133115_initDatabase extends Migration
                 'errorRows' => $this->integer()->defaultValue(0),
                 'status' => 'ENUM(\'pending\', \'running\',\'success\',\'failed\') NOT NULL',
                 'jsonConfig' => $this->binary(),
-                'dateCreate'=> $this->datetime()->null()->defaultValue(null),
-                'dateUpdate'=> $this->datetime()->null()->defaultValue(null),
+                'dateCreate'=> $this->datetime()->defaultValue(null),
+                'dateUpdate'=> $this->datetime()->defaultValue(null),
             ]
         );
 
@@ -84,6 +108,8 @@ class m251121_133115_initDatabase extends Migration
 
         $this->dropForeignKey('importJobs_importConfigs_fk','{{%importJobs}}');
         $this->dropTable('{{%importJobs}}');
+        $this->dropForeignKey('importConfigColumns_importConfigs_fk', '{{%importConfigColumns}}');
+        $this->dropTable('{{%importConfigColumns}}');
         $this->dropIndex('importConfigs_name_version_idx','{{%importConfigs}}');
         $this->dropTable('{{%importConfigs}}');
         return true;

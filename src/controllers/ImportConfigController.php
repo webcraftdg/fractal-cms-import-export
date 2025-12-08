@@ -151,9 +151,9 @@ class ImportConfigController extends BaseController
                         $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
                     }
                     if ($buildViewOk === true) {
-                        $model->buildJson($this->dbView);
                         $model->save();
                         $model->refresh();
+                        $model->buildInitColumns($this->dbView);
                         $response = $this->redirect(['import-config/update', 'id' => $model->id]);
                     }
 
@@ -199,8 +199,8 @@ class ImportConfigController extends BaseController
                 }
                 $model->load($body);
                 if ($model->validate() === true) {
-                    $tmpColumns =  (empty($model->tmpColumns) === false) ? Json::encode($model->tmpColumns) : null;
-                    $model->jsonConfig = $tmpColumns;
+                    $tmpColumns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
+                    $model->manageColumns($tmpColumns);
                     $model->save();
                     $model->refresh();
                     $response = $this->redirect(['import-config/index']);

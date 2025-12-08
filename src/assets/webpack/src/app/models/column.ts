@@ -6,11 +6,13 @@ import {IImportConfigColumn} from "../interfaces/import-config";
 export class Column implements IImportConfigColumn
 {
     public id:string;
+    public importConfigId:number;
     public source:string;
     public target:string;
     public type:string;
     public nullable:boolean;
     public default?:any;
+    public order:number;
     public transform?:any;
 
     constructor(

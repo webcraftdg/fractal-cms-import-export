@@ -1,5 +1,13 @@
 <?php
-
+/**
+ * ImportXlsx.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\services
+ */
 namespace fractalCms\importExport\services;
 
 use Exception;
