@@ -11,6 +11,7 @@
 namespace fractalCms\importExport\services\exports;
 
 use fractalCms\importExport\interfaces\Export;
+use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\services\Export as ExportService;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
@@ -36,8 +37,11 @@ class ExportCsv implements Export
             $filename = 'export_' . date('Ymd_His') . '.csv';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
-
-            $headers = array_column($importConfig->tmpColumns, 'target');
+            $headers = [];
+            /** @var ImportConfigColumn $column */
+            foreach ($importConfig->getImportColumns()->each() as $column) {
+                $headers[] = $column->target;
+            }
             fputcsv($f, $headers, ';');
             while ($row = $query->read()) {
                 $line = $row;

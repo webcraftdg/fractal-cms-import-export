@@ -454,8 +454,8 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function manageColumns(array $columns)
     {
         try {
-
-            foreach ($columns as $index => $column) {
+            $index = 0;
+            foreach ($columns as $column) {
                 $importColumn = null;
                 if (isset($column['id']) === true) {
                     $importColumn = ImportConfigColumn::findOne($column['id']);
@@ -467,14 +467,19 @@ class ImportConfig extends \yii\db\ActiveRecord
                 } else {
                     $importColumn->scenario = ImportConfigColumn::SCENARIO_UPDATE;
                 }
-                $importColumn->order = $index ++;
                 $importColumn->attributes = $column;
+                if (empty($importColumn->order) === true) {
+                    $importColumn->order = ($index + 0.5);
+                } else {
+                    $index = $importColumn->order;
+                }
                 if ($importColumn->validate() === true) {
                     $importColumn->save();
                 } else {
                     Yii::debug(Json::encode($importColumn->errors), __FUNCTION__);
                 }
             }
+            $this->reorderColumns();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -543,7 +548,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function getContextName() :string
     {
         try {
-            $name = $this->name.'_'.$this->version;
+            $name = strtolower($this->name.'_v'.$this->version);
             if(empty($this->table) === false) {
                 $name = $this->table;
                 if ($this->parameter instanceof Parameter) {
@@ -584,6 +589,45 @@ class ImportConfig extends \yii\db\ActiveRecord
      */
     public function getImportColumns()
     {
-        return $this->hasMany(ImportConfigColumn::class, ['importConfigId' => 'id']);
+        return $this->hasMany(ImportConfigColumn::class, ['importConfigId' => 'id'])
+            ->orderBy([ImportConfigColumn::tableName().'.[[order]]' => SORT_ASC]);
+    }
+
+    /**
+     * Gets query for [[ImportColumns]] with search.
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getImportColumnsWithSearch(string $search = null)
+    {
+        $query = $this->getImportColumns();
+        if (empty($search) === false) {
+            $query->andWhere(['like', ImportConfigColumn::tableName().'.[[source]]', $search]);
+        }
+        return $query;
+    }
+
+    /**
+     * Reorder columns
+     *
+     * @return void
+     * @throws \yii\db\Exception
+     */
+    public function reorderColumns() : void
+    {
+        try {
+            $query = $this->getImportColumns();
+            /**
+             * @var int $index
+             * @var ImportConfigColumn $column
+             */
+            foreach ($query->each() as $index => $column) {
+                $column->order = $index;
+                $column->save(false, ['order']);
+            }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
     }
 }

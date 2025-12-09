@@ -10,7 +10,6 @@ export class Column implements IImportConfigColumn
     public source:string;
     public target:string;
     public type:string;
-    public nullable:boolean;
     public default?:any;
     public order:number;
     public transform?:any;
@@ -35,7 +34,7 @@ export class Column implements IImportConfigColumn
             'source': this.source,
             'target': this.target,
             'type': this.type,
-            'nullable:': this.nullable,
+            'order': this.order,
             'default': this.default,
             'transform': this.transform
         };

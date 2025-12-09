@@ -12,6 +12,7 @@
 
 namespace fractalCms\importExport\controllers\api;
 
+use fractalCms\core\models\Parameter;
 use fractalCms\importExport\components\Constant;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
@@ -141,23 +142,62 @@ class ImportConfigController extends BaseController
 
     /**
      * @param $id
+     * @return Response
+     * @throws NotFoundHttpException
+     * @throws \Throwable
+     * @throws \yii\db\StaleObjectException
+     */
+    public function actionDelete($id) : Response
+    {
+        try {
+            $response = Yii::$app->getResponse();
+            /** @var ImportConfig $model */
+            $model = ImportConfig::findOne(['id' => $id]);
+            if ($model === null) {
+                throw new NotFoundHttpException('import config not found');
+            }
+            /** @var ImportJob $importJob */
+            foreach ($model->getImportJobs()->each() as $importJob) {
+                $importJob->delete();
+            }
+            /** @var ImportConfigColumn $importColumn */
+            foreach ($model->getImportColumns()->each() as $importColumn) {
+                $importColumn->delete();
+            }
+            if (empty($model->sql) === false && empty($model->table) === true) {
+                $name = $model->getContextName();
+                $this->dbView->drop($name);
+            }
+            $model->delete();
+            $response->statusCode = 204;
+            return $response;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
+    /**
+     * @param $id
      * @return array
      * @throws NotFoundHttpException
      */
     public function actionGetColumns($id) : array
     {
         try {
-            $paginationPerPage = Yii::$app->response->headers->get('X-pagination-per-page', 20);
+            $paginationPerPage = Parameter::getParameter('PAGINATION', 'PER_PAGE');
             $page = Yii::$app->request->getQueryParam('page', 0);
+            $search = Yii::$app->request->getQueryParam('search', 0);
             $importConfig = ImportConfig::findOne($id);
             if ($importConfig === null) {
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
-            $query =  $importConfig->getImportColumns();
+            $query =  $importConfig->getImportColumnsWithSearch($search);
             $dataProvider = new ActiveDataProvider([
                 'query' => $query,
                 'pagination' => [
-                    'pageSize' => $paginationPerPage
+                    'pageSize' => ($paginationPerPage) ?? 15
                 ],
             ]);
             $dataProvider->pagination->setPage($page);
@@ -180,8 +220,9 @@ class ImportConfigController extends BaseController
     {
         try {
             $request = Yii::$app->request;
-            $paginationPerPage = Yii::$app->response->headers->get('X-pagination-per-page', 20);
+            $paginationPerPage = Parameter::getParameter('PAGINATION', 'PER_PAGE');
             $page = Yii::$app->request->getQueryParam('page', 0);
+            $search = Yii::$app->request->getQueryParam('search', null);
             $importConfig = ImportConfig::findOne($id);
             if ($importConfig === null) {
                 throw new NotFoundHttpException('Import config not Found : '.$id);
@@ -192,11 +233,11 @@ class ImportConfigController extends BaseController
                     $importConfig->manageColumns($body);
                 }
             }
-            $query = $importConfig->getImportColumns();
+            $query = $importConfig->getImportColumnsWithSearch($search);
             $dataProvider = new ActiveDataProvider([
                 'query' => $query,
                 'pagination' => [
-                    'pageSize' => $paginationPerPage
+                    'pageSize' => ($paginationPerPage) ?? 15
                 ],
             ]);
             $dataProvider->pagination->setPage($page);
@@ -259,35 +300,6 @@ class ImportConfigController extends BaseController
     }
 
     /**
-     * @param $id
-     * @return Response
-     * @throws NotFoundHttpException
-     * @throws \Throwable
-     * @throws \yii\db\StaleObjectException
-     */
-    public function actionDelete($id) : Response
-    {
-        try {
-            $response = Yii::$app->getResponse();
-            /** @var ImportConfig $model */
-            $model = ImportConfig::findOne(['id' => $id]);
-            if ($model === null) {
-                throw new NotFoundHttpException('import config not found');
-            }
-            /** @var ImportJob $importJob */
-            foreach ($model->getImportJobs()->each() as $importJob) {
-                $importJob->delete();
-            }
-            $model->delete();
-            $response->statusCode = 204;
-            return $response;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
      * @param Pagination $pagination
      * @return void
      * @throws Exception
@@ -297,7 +309,7 @@ class ImportConfigController extends BaseController
         try {
             Yii::$app->response->headers->set('X-pagination-current-Page', $pagination->getPage());
             Yii::$app->response->headers->set('X-pagination-total-page', $pagination->getPageCount());
-            Yii::$app->response->headers->set('X-pagination-per-pPage', $pagination->getPageSize());
+            Yii::$app->response->headers->set('X-pagination-per-page', $pagination->getPageSize());
             Yii::$app->response->headers->set('X-pagination-total-entries', $pagination->totalCount);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

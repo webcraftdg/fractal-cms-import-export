@@ -262,6 +262,7 @@ class ImportConfigController extends BaseController
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
             $importJob = Yii::createObject(ImportJob::class);
             $importJob->scenario = ImportJob::SCENARIO_CREATE;
+            $readyToDownload = false;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
@@ -269,7 +270,7 @@ class ImportConfigController extends BaseController
                 if($model->validate() === true) {
                     $importJob = $model->manageImportExport();
                     if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false) {
-                        $this->download($importJob->filePath, $model->exportFormat);
+                        $readyToDownload = true;
                     }
                 }
             }
@@ -279,11 +280,15 @@ class ImportConfigController extends BaseController
                 $type = (empty($importConfig->table) === false) ? $importConfig->table : 'Requête SQL';
                 $importConfigs[$importConfig->id] = $importConfig->name.': version :'.$importConfig->version.' : '.$type;
             }
-            return $this->render('test-import', [
-                'importConfigs' => $importConfigs,
-                'model' => $model,
-                'importJob' => $importJob,
-            ]);
+            if ($readyToDownload === true) {
+                $this->download($importJob->filePath, $model->exportFormat);
+            } else {
+                return $this->render('test-import', [
+                    'importConfigs' => $importConfigs,
+                    'model' => $model,
+                    'importJob' => $importJob,
+                ]);
+            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -310,7 +315,7 @@ class ImportConfigController extends BaseController
                     Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=utf-8');
                     Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'text/csv']);
                 }
-                unlink($path);
+                //unlink($path);
             }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

@@ -53,7 +53,7 @@ class m251121_133115_initDatabase extends Migration
                 'type'=> $this->string(50)->defaultValue(null),
                 'defaultValue'=> $this->string()->defaultValue(null),
                 'transform'=> $this->string()->defaultValue(null),
-                'order' => $this->integer(),
+                'order' => $this->float(),
                 'dateCreate'=> $this->datetime()->defaultValue(null),
                 'dateUpdate'=> $this->datetime()->defaultValue(null),
             ]

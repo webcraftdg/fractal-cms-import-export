@@ -1,8 +1,57 @@
 <template>
 <div class="row">
+    <div class="row mt-3">
+        <div class="col-sm-12">
+            <label
+                    class="form-label"
+                    for="search-input"
+                    id="search-label">Rechercher une colonne par nom</label>
+            <div class="col  flex justify-content-between">
+                <input
+                        class="form-control"
+                        id="search-input"
+                        type="text"
+                        value.bind="searchText"
+                        aria-describedby="search-label"
+                />
+                <button type="button" click.trigger="search($event)" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-lg border border-blue-600 flex items-center">
+                    <svg fill="#ffff" height="24px" width="24px" version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 512 512" xml:space="preserve" stroke="#ffff">
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+<g id="SVGRepo_iconCarrier"> <g> <g> <path d="M281.1,0c-127.318,0-230.9,103.582-230.9,230.9c0,45.12,13.019,87.25,35.483,122.853l-70.654,70.654 c-20.039,20.039-20.039,52.527,0,72.564c20.039,20.039,52.527,20.039,72.564,0l70.654-70.654 c35.605,22.464,77.735,35.483,122.853,35.483c127.318,0,230.9-103.582,230.9-230.9S408.42,0,281.1,0z M281.1,410.489 c-99.025,0-179.589-80.564-179.589-179.589S182.074,51.311,281.1,51.311S460.689,131.875,460.689,230.9 S380.127,410.489,281.1,410.489z"/> </g> </g> </g>
+</svg>
+                </button>
+            </div>
+
+        </div>
+    </div>
+    <div class="row mt-3" if.bind="pagination.pageCount > 0">
+        <div class="col-sm-12">
+            <p>${'Page : '+(pagination.page + 1)+' / '+pagination.pageCount}</p>
+        </div>
+        <nav class="col-sm-12" aria-label="Pagination">
+            <ul class="pagination">
+                <li class="page-item">
+                    <button type="button" class="bg-success page-link" click.trigger="changePage($event, pagination.page - 1)" disabled.bind="pagination.page <= 0">
+                        <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M11.7071 4.29289C12.0976 4.68342 12.0976 5.31658 11.7071 5.70711L6.41421 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H6.41421L11.7071 18.2929C12.0976 18.6834 12.0976 19.3166 11.7071 19.7071C11.3166 20.0976 10.6834 20.0976 10.2929 19.7071L3.29289 12.7071C3.10536 12.5196 3 12.2652 3 12C3 11.7348 3.10536 11.4804 3.29289 11.2929L10.2929 4.29289C10.6834 3.90237 11.3166 3.90237 11.7071 4.29289Z" fill="#ffffff"/>
+                        </svg>
+                    </button>
+                </li>
+                <li class="page-item"><p class="page-link">${pagination.page + 1}</p></li>
+                <li class="page-item">
+                    <button type="button" class="bg-success  page-link"  click.trigger="changePage($event, pagination.page + 1)"  disabled.bind="pagination.page >= (pagination.pageCount-1)">
+                        <svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.2929 4.29289C12.6834 3.90237 13.3166 3.90237 13.7071 4.29289L20.7071 11.2929C21.0976 11.6834 21.0976 12.3166 20.7071 12.7071L13.7071 19.7071C13.3166 20.0976 12.6834 20.0976 12.2929 19.7071C11.9024 19.3166 11.9024 18.6834 12.2929 18.2929L17.5858 13H4C3.44772 13 3 12.5523 3 12C3 11.4477 3.44772 11 4 11H17.5858L12.2929 5.70711C11.9024 5.31658 11.9024 4.68342 12.2929 4.29289Z" fill="#ffffff"/>
+                        </svg>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </div>
     <div class="card mt-3" repeat.for="column of columns"  id.bind="column.id">
         <div class="card-header  row align-items-center">
-            <div class="col-sm-8" innerHTML.bind="'Colonne-'+($index + 1)"></div>
+            <div class="col-sm-8" innerHTML.bind="'Colonne-'+((column.order) ? column.order + 1 : 'en attente')"></div>
             <div class="col-sm-4">
                 <div class="row align-items-center">
                     <div class="col  justify-content-end">
@@ -36,6 +85,12 @@
                         value.bind="column.id"
                         type="hidden"
                         name.bind="'ImportConfig[tmpColumns]['+$index+'][id]'"
+                />
+                <input
+                        id.bind="'hidden-order-'+column.id"
+                        value.bind="column.order"
+                        type="hidden"
+                        name.bind="'ImportConfig[tmpColumns]['+$index+'][order]'"
                 />
                 <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.sourceErrors">
                     <label class="form-label" for.bind="'source-'+column.id" id="labelSource">Colonne Source</label>

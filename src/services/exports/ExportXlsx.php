@@ -13,6 +13,7 @@ namespace fractalCms\importExport\services\exports;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
+use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export as ExportService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -39,21 +40,22 @@ class ExportXlsx implements Export
             // Headers
             $colIndex = 1;
             $row = 1;
-            foreach ($importConfig->tmpColumns as $col) {
-                $target = ($col['target']) ?? '';
-                $sheet->getColumnDimensionByColumn($colIndex)->setWidth(strlen($target));
-                $sheet->setCellValue([$colIndex, $row], $target);
+            /** @var ImportConfigColumn $col */
+            foreach ($importConfig->getImportColumns()->each() as $column) {
+                $sheet->getColumnDimensionByColumn($colIndex)->setWidth(strlen($column->target));
+                $sheet->setCellValue([$colIndex, $row], $column->target);
                 $colIndex++;
             }
 
             // Data
             $rowIndex = 2;
-            foreach ($query->read() as $row) {
+            while ($row = $query->read()) {
                 $colIndex = 1;
-                foreach ($importConfig->tmpColumns as $col) {
+                /** @var ImportConfigColumn $column */
+                foreach ($importConfig->getImportColumns()->each()  as $column) {
                     $sheet->setCellValue(
                         [$colIndex, $rowIndex],
-                        $row[$col['source']] ?? ''
+                        $row[$column->source] ?? ''
                     );
                     $colIndex++;
                 }

@@ -24,7 +24,7 @@ use yii\db\Expression;
  * @property string|null $type
  * @property string|null $defaultValue
  * @property string|null $transform
- * @property int|null $order
+ * @property float|null $order
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
  *
@@ -80,7 +80,8 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     {
         return [
             [['importConfigId', 'source', 'target', 'type', 'defaultValue', 'transform', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
-            [['importConfigId', 'order'], 'integer'],
+            [['importConfigId'], 'integer'],
+            [['order'], 'number'],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['source', 'target', 'defaultValue', 'transform'], 'string', 'max' => 255],
             [['type'], 'string', 'max' => 50],

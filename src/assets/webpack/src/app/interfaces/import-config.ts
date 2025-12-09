@@ -26,3 +26,10 @@ export interface IPagination {
     totalCount?: number;
     pageCount?: number;
 }
+export interface IHttpResponse {
+    status:any;
+    statusText:any;
+    headers:any;
+    data:any;
+    extras:any;
+}

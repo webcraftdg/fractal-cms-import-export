@@ -6,7 +6,6 @@ import {ConfigService} from "../services/config-service";
 import {Column} from "../models/column";
 import {IValidationController} from "@aurelia/validation-html";
 import {IValidationRules} from "@aurelia/validation";
-import {data} from "autoprefixer";
 
 @customElement('fractal-cms-import-columns')
 
@@ -18,6 +17,7 @@ export class ImportConfigColumns
     public columns:Column[];
     public tableColumns:IImportConfigColumn[];
     public pagination:IPagination;
+    public searchText:any;
 
     constructor(
         private readonly logger: ILogger = resolve(ILogger),
@@ -45,41 +45,49 @@ export class ImportConfigColumns
     public attached() {
         this.logger.trace('attached', this.id);
         const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET.replace('{id}', this.id);
-        const urlGetColmuns = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET_COLUMNS.replace('{id}', this.id);
         const urlTableColums = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id);
 
         const getImportConfig = this.apiServices.get(url);
-        const getColumns = this.apiServices.getColumns(urlGetColmuns);
         const getTableColumns = this.apiServices.getTableColumns(urlTableColums);
         Promise.all([
             getImportConfig,
-            getColumns,
             getTableColumns
         ]).then((result) => {
             this.model = result[0];
-            this.tmpConfigColumns = result[1];
-            this.tableColumns = result[2];
-
-            this.loadColumns();
+            this.tableColumns = result[1];
+            const urlGetColmuns = this.prepareGetUrl(this.id);
+            this.getColumns(urlGetColmuns);
         });
     }
 
-    /**
-     * load column
-     * @private
-     */
-    private loadColumns()
+
+    public search(event:Event)
     {
-        if (this.tmpConfigColumns) {
-            this.logger.trace('loadColumns', this.tmpConfigColumns);
-            this.tmpConfigColumns.forEach((value:IImportConfigColumn, index)=> {
-                let newColumn:IImportConfigColumn = Object.assign(value, {} as IImportConfigColumn);
-                const columnModel = new Column(this.logger, this.validationRules);
-                Object.assign(columnModel, newColumn);
-                this.validationController.addObject(columnModel);
-                this.columns.push(columnModel);
-            });
-        }
+        this.logger.trace('search', this.searchText);
+        event.preventDefault();
+        let urlGetColmuns = this.prepareGetUrl(this.id, null, this.searchText);
+        this.getColumns(urlGetColmuns);
+    }
+
+
+    public changePage(event:Event, page:number)
+    {
+        this.logger.trace('changePage', page);
+        this.pagination.page = page;
+        event.preventDefault();
+        let urlGetColmuns = this.prepareGetUrl(this.id, page, this.searchText);
+        this.getColumns(urlGetColmuns);
+    }
+
+    private getColumns(url:string) {
+        const getColumns = this.apiServices.getColumns(url);
+        Promise.all([
+            getColumns
+        ]).then((result) => {
+            this.tmpConfigColumns = result[0][0];
+            this.pagination = result[0][1];
+            this.loadColumns();
+        });
     }
 
     public move(event:Event, index:number, direction:string)
@@ -87,6 +95,11 @@ export class ImportConfigColumns
         this.logger.trace('move', index, direction);
         event.preventDefault();
         const toIndex = (direction == 'up') ? index - 1 : index + 1;
+        if (this.columns[index] && this.columns[toIndex]) {
+            const sourceOrder = this.columns[index].order;
+            this.columns[index].order = this.columns[toIndex].order;
+            this.columns[toIndex].order = sourceOrder;
+        }
         const item = this.columns.splice(index, 1);
         this.columns.splice(toIndex, 0, item[0]);
         this.platform.taskQueue.queueTask(() => {
@@ -131,6 +144,11 @@ export class ImportConfigColumns
         this.validationController.removeObject(deleted[0]);
     }
 
+    /**
+     * Add new column
+     *
+     * @param event
+     */
     public add(event:Event)
     {
         this.logger.trace('add');
@@ -145,6 +163,11 @@ export class ImportConfigColumns
         }, {delay:50});
     }
 
+    /**
+     * Save
+     *
+     * @private
+     */
     private save()
     {
         this.logger.trace('save');
@@ -166,6 +189,51 @@ export class ImportConfigColumns
         }).catch((error) => {
             this.logger.trace('save:error', error);
         });
+    }
+
+    /**
+     * load column
+     * @private
+     */
+    private loadColumns()
+    {
+        if (this.tmpConfigColumns) {
+            this.columns = [] as Column[];
+            this.logger.trace('loadColumns', this.tmpConfigColumns);
+            this.tmpConfigColumns.forEach((value:IImportConfigColumn, index)=> {
+                let newColumn:IImportConfigColumn = Object.assign(value, {} as IImportConfigColumn);
+                const columnModel = new Column(this.logger, this.validationRules);
+                Object.assign(columnModel, newColumn);
+                this.validationController.addObject(columnModel);
+                this.columns.push(columnModel);
+            });
+        }
+    }
+
+    /**
+     * prepare url
+     *
+     * @param id
+     * @param page
+     * @param search
+     * @private
+     */
+    private prepareGetUrl(id:string, page:number = null, search:string = null)
+    {
+        this.logger.trace('prepareGetUrl');
+        let url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET_COLUMNS.replace('{id}', id);
+        let params:any = {};
+        if (page) {
+            params['page'] = page;
+        }
+        if (search) {
+            params['search'] = search;
+        }
+        const paramsString:string = new URLSearchParams(params).toString();
+        if (paramsString) {
+            url += '?'+paramsString;
+        }
+        return url;
     }
 
 }

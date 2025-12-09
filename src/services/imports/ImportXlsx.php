@@ -49,7 +49,7 @@ class ImportXlsx implements ImportFile
             $importJob->successRows = 0;
             $importJob->errorRows = 0;
             $spreadsheet = static::prepareSpreadSheet($filePath);
-            $mappingColumns = $importConfig->tmpColumns;
+            $mappingColumns = $importConfig->getImportColumns()->all();
             if($spreadsheet instanceof Spreadsheet) {
                 $sheet = $spreadsheet->getActiveSheet();
                 $startRow = static::getStartRow();
