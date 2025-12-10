@@ -8,12 +8,13 @@
  * @version XXX
  * @package fractalCms\importExport\services
  */
-namespace fractalCms\importExport\services;
+namespace fractalCms\importExport\db;
 
-use fractalCms\importExport\models\ColumnModel;
-use yii\base\Component;
 use Exception;
+use fractalCms\importExport\models\ColumnModel;
+use fractalCms\importExport\services\Parameter;
 use Yii;
+use yii\base\Component;
 use yii\db\ColumnSchema;
 
 class DbView extends Component implements \fractalCms\importExport\interfaces\DbView

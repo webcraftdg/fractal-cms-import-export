@@ -12,20 +12,21 @@
 
 namespace fractalCms\importExport\controllers\api;
 
-use fractalCms\core\models\Parameter;
-use fractalCms\importExport\components\Constant;
+use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
+use fractalCms\core\models\Parameter;
+use fractalCms\importExport\components\Constant;
+use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\interfaces\Transform;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Transform as TransformService;
+use Yii;
 use yii\data\ActiveDataProvider;
-use yii\data\ArrayDataProvider;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
-use Exception;
-use Yii;
 use yii\helpers\Json;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -35,14 +36,16 @@ class ImportConfigController extends BaseController
 {
 
     private DbView $dbView;
+    private TransformService $transformService;
 
     /**
      * @inheritDoc
      */
-    public function __construct($id, $module, DbView $dbView, $config = [])
+    public function __construct($id, $module, DbView $dbView, TransformService $transformService, $config = [])
     {
         parent::__construct($id, $module, $config);
         $this->dbView = $dbView;
+        $this->transformService = $transformService;
     }
 
     /**
@@ -211,10 +214,11 @@ class ImportConfigController extends BaseController
     }
 
     /**
-     * Post
-     *
+     * @param $id
      * @return array
-     * @throws \Throwable
+     * @throws NotFoundHttpException
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
      */
     public function actionPostColumns($id) : array
     {
@@ -243,6 +247,29 @@ class ImportConfigController extends BaseController
             $dataProvider->pagination->setPage($page);
             $this->addHeader($dataProvider->pagination);
             return  $dataProvider->getModels();
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @return array
+     * @throws Exception
+     */
+    public function actionGetTransformServices() : array
+    {
+        try {
+            $transformers = [];
+            /** @var Transform $transformer */
+            foreach ($this->transformService->getTransformers() as $transformer) {
+                $transformers[] = [
+                    'name' => $transformer->getName(),
+                    'description' => $transformer->getDescription(),
+                    'options' => $transformer->getOptionsSchema()
+                ];
+            }
+            return $transformers;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

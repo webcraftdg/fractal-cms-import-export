@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\services\exports;
 
+use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
@@ -19,6 +20,7 @@ use fractalCms\importExport\services\Export as ExportService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Yii;
+use yii\db\Query;
 
 class ExportXlsx implements Export
 {
@@ -31,9 +33,9 @@ class ExportXlsx implements Export
     public static function run(ImportConfig $importConfig): ImportJob
     {
         try {
-            $query = $importConfig->getImportExportQuery();
-            $importJob = ExportService::prepareImportJob($importConfig, $query->count());
-
+            $query = ExportService::getExportQuery($importConfig, 1000);
+            $totalCount = 0;
+            $successRows = 0;
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
@@ -49,26 +51,52 @@ class ExportXlsx implements Export
 
             // Data
             $rowIndex = 2;
-            while ($row = $query->read()) {
-                $colIndex = 1;
-                /** @var ImportConfigColumn $column */
-                foreach ($importConfig->getImportColumns()->each()  as $column) {
-                    $sheet->setCellValue(
-                        [$colIndex, $rowIndex],
-                        $row[$column->source] ?? ''
-                    );
-                    $colIndex++;
+            try {
+                if ($query instanceof Query) {
+                    $totalCount = $query->count();
+                    foreach ($query->each() as $row) {
+                        $colIndex = 1;
+                        /** @var ImportConfigColumn $column */
+                        foreach ($importConfig->getImportColumns()->each()  as $column) {
+                            $sheet->setCellValue(
+                                [$colIndex, $rowIndex],
+                                $row[$column->source] ?? ''
+                            );
+                            $colIndex++;
+                        }
+                        $rowIndex++;
+                        $successRows += 1;
+                    }
+                } elseif ($query instanceof SqlIterator) {
+                    $totalCount = $query->getCount();
+                    foreach ($query->getIterator() as $rows) {
+                        foreach ($rows as $row) {
+                            $colIndex = 1;
+                            /** @var ImportConfigColumn $column */
+                            foreach ($importConfig->getImportColumns()->each()  as $column) {
+                                $sheet->setCellValue(
+                                    [$colIndex, $rowIndex],
+                                    $row[$column->source] ?? ''
+                                );
+                                $colIndex++;
+                            }
+                        }
+                        $rowIndex++;
+                        $successRows += 1;
+                    }
                 }
-                $rowIndex++;
-                $importJob->successRows += 1;
+                $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
+                $status = ImportJob::STATUS_SUCCESS;
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $status = ImportJob::STATUS_FAILED;
             }
-
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
-
             (new Xlsx($spreadsheet))->save($path);
             $importJob->filePath = $path;
-            $importJob->status = ImportJob::STATUS_SUCCESS;
+            $importJob->status = $status;
+            $importJob->successRows = $successRows;
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {

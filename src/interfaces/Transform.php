@@ -14,8 +14,24 @@ interface Transform
 {
 
     /**
-     * @param mixed $data
+     * @return string
+     */
+    public function getName(): string;
+
+    /**
+     * @return string
+     */
+    public function getDescription(): string;
+
+    /**
+     * @return array
+     */
+    public function getOptionsSchema(): array;
+
+    /**
+     * @param mixed $value
+     * @param array $options
      * @return mixed
      */
-    public static function apply(mixed $data) : mixed;
+    public function transform(mixed $value, array $options = []): mixed;
 }

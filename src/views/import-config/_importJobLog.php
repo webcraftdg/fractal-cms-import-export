@@ -40,7 +40,7 @@ use fractalCms\core\helpers\Html;
                 ]);
         }
     } elseif ($importJob->status === ImportJob::STATUS_SUCCESS) {
-        echo Html::tag('div', 'Import réalisé avec succès', ['class' => 'col-sm-12 text-success']);
+        echo Html::tag('div', 'Import/export réalisé avec succès', ['class' => 'col-sm-12 text-success']);
     }
 
 ?>

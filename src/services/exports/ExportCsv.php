@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\services\exports;
 
+use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\services\Export as ExportService;
@@ -17,6 +18,7 @@ use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use fractalCms\importExport\models\ImportJob;
 use Yii;
+use yii\db\Query;
 
 class ExportCsv implements Export
 {
@@ -31,9 +33,9 @@ class ExportCsv implements Export
     {
         try {
 
-            $query = $importConfig->getImportExportQuery();
-            $importJob = ExportService::prepareImportJob($importConfig, $query->count());
-
+            $query = ExportService::getExportQuery($importConfig, 1000);
+            $totalCount = 0;
+            $successRows = 0;
             $filename = 'export_' . date('Ymd_His') . '.csv';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
@@ -43,22 +45,35 @@ class ExportCsv implements Export
                 $headers[] = $column->target;
             }
             fputcsv($f, $headers, ';');
-            while ($row = $query->read()) {
-                $line = $row;
-                fputcsv($f, $line, ';');
-                $importJob->successRows += 1;
-            }
-            /*
-            foreach ($query->read() as $row) {
-                $line = [];
-                foreach ($importConfig->tmpColumns as $column) {
-                    $line[] = $row[$column['source']] ?? '';
+            try {
+                if ($query instanceof Query) {
+                    $totalCount = $query->count();
+                    foreach ($query->each() as $row) {
+                        $line = $row;
+                        fputcsv($f, $line, ';');
+                        $successRows += 1;
+                    }
+                } elseif ($query instanceof SqlIterator) {
+                    $totalCount = $query->getCount();
+                    foreach ($query->getIterator() as $rows) {
+                        foreach ($rows as $row) {
+                            $line = $row;
+                            fputcsv($f, $line, ';');
+                            $successRows += 1;
+                        }
+                        $successRows += 1;
+                    }
                 }
-            }*/
-
+                $status = ImportJob::STATUS_SUCCESS;
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $status = ImportJob::STATUS_FAILED;
+            }
+            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
+            $importJob->successRows = $successRows;
+            $importJob->status = $status;
             fclose($f);
             $importJob->filePath = $path;
-            $importJob->status = ImportJob::STATUS_SUCCESS;
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {

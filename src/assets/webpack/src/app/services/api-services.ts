@@ -1,7 +1,13 @@
 import { HttpClientConfiguration, IHttpClient } from '@aurelia/fetch-client';
 import {ILogger, resolve} from 'aurelia';
 import {ConfigService} from "./config-service";
-import {IHttpResponse, IImportConfig, IImportConfigColumn, IPagination} from "../interfaces/import-config";
+import {
+    IHttpResponse,
+    IImportConfig,
+    IImportConfigColumn,
+    IPagination,
+    ITransformer
+} from "../interfaces/import-config";
 import {IHttpService} from "./http-service";
 
 export class ApiServices {
@@ -55,6 +61,17 @@ export class ApiServices {
     {
         return this.httpService.getJson(url, null, null).then((result) => {
             return [result.data as IImportConfigColumn[], result.extras?.pagination];
+        });
+    }
+
+    /**
+     *
+     * @param url
+     */
+    public getTransformer(url:string): Promise<ITransformer[]>
+    {
+        return this.httpService.getJson(url, null, null).then((result) => {
+            return result.data as ITransformer[];
         });
     }
 

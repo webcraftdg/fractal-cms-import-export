@@ -1,7 +1,7 @@
 import {bindable, customElement, IEventAggregator, ILogger, INode, IPlatform, newInstanceForScope,resolve} from 'aurelia';
 import {ApiServices} from "../services/api-services";
 import {EApi} from "../enums/api";
-import {IImportConfig, IImportConfigColumn, IPagination} from "../interfaces/import-config";
+import {IImportConfig, IImportConfigColumn, IPagination, ITransformer} from "../interfaces/import-config";
 import {ConfigService} from "../services/config-service";
 import {Column} from "../models/column";
 import {IValidationController} from "@aurelia/validation-html";
@@ -17,6 +17,7 @@ export class ImportConfigColumns
     public columns:Column[];
     public tableColumns:IImportConfigColumn[];
     public pagination:IPagination;
+    public transformers:ITransformer[];
     public searchText:any;
 
     constructor(
@@ -35,6 +36,7 @@ export class ImportConfigColumns
         this.columns = [] as Column[];
         this.tmpConfigColumns = [] as Column[];
         this.tableColumns = [] as IImportConfigColumn[];
+        this.transformers = [] as ITransformer[];
         this.pagination = {} as IPagination;
     }
 
@@ -45,16 +47,20 @@ export class ImportConfigColumns
     public attached() {
         this.logger.trace('attached', this.id);
         const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET.replace('{id}', this.id);
+        const urlTransformer = this.configService.getApiBaseUrl()+EApi.GET_TRANSFORMERS;
         const urlTableColums = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id);
 
         const getImportConfig = this.apiServices.get(url);
+        const getTransfromers = this.apiServices.getTransformer(urlTransformer);
         const getTableColumns = this.apiServices.getTableColumns(urlTableColums);
         Promise.all([
             getImportConfig,
+            getTransfromers,
             getTableColumns
         ]).then((result) => {
             this.model = result[0];
-            this.tableColumns = result[1];
+            this.transformers = result[1];
+            this.tableColumns = result[2];
             const urlGetColmuns = this.prepareGetUrl(this.id);
             this.getColumns(urlGetColmuns);
         });

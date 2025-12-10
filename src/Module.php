@@ -12,13 +12,18 @@
 namespace fractalCms\importExport;
 
 use Exception;
+use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
-use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
+use fractalCms\importExport\console\ImportExportController;
+use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\DbView;
 use fractalCms\importExport\services\Parameter;
+use fractalCms\importExport\services\Transform;
+use fractalCms\importExport\services\Transform as TransformService;
+use fractalCms\importExport\transformers\DateTransformer;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
@@ -31,6 +36,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     public $version = 'v1.0.0';
     public string $name = 'importExport';
     public string $filePathImport = '@webroot/imports';
+    public int $maxRows = 20000;
+    public int $maxColumns = 80;
+    public int $maxEstimatedMb = 500;
     public array $pathsNamespacesModels = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
@@ -43,9 +51,24 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
             ]);
+            Yii::$container->setDefinitions([
+                TransformService::class => function() {
+                    return new TransformService([
+                        new DateTransformer()
+                    ]);
+                }
+            ]);
             $app->setComponents([
                 'importDbParameters' => [
                     'class' => Parameter::class
+                ]
+            ]);
+            $app->setComponents([
+                'exportLimiter' => [
+                    'class' => ExportLimiter::class,
+                    'maxRows' => $this->maxRows,
+                    'maxColumns' => $this->maxColumns,
+                    'maxEstimatedMb' => $this->maxEstimatedMb
                 ]
             ]);
 
@@ -82,6 +105,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\importExport\migrations'];
                 }
             }
+            $app->controllerMap[$this->commandNameSpace.'import-export'] = [
+                'class' => ImportExportController::class,
+            ];
         }catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -190,6 +216,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/exporter' => $contextId.'/import-config/export',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',
+            $coreId.'/api/import-config/transformers' => $contextId.'/api/import-config/get-transform-services',
             $coreId.'/api/import-config/<id:([^/]+)>' => $contextId.'/api/import-config/get',
             $coreId.'/api/import-config/<id:([^/]+)>/post-columns' => $contextId.'/api/import-config/post-columns',
             $coreId.'/api/import-config/<id:([^/]+)>/get-columns' => $contextId.'/api/import-config/get-columns',

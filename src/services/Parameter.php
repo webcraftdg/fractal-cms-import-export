@@ -25,7 +25,7 @@ class Parameter implements ParameterInterface
      * @return array
      * @throws Exception
      */
-    public function getTables(): array
+    public function getActiveModelTableNames(): array
     {
         try {
             $tables = [];

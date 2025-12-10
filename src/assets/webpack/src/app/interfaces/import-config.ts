@@ -33,3 +33,8 @@ export interface IHttpResponse {
     data:any;
     extras:any;
 }
+export interface ITransformer {
+    name:string;
+    description:string;
+    options:any;
+}

@@ -31,6 +31,7 @@ class m251121_133115_initDatabase extends Migration
                 'truncateTable' => $this->boolean()->defaultValue(false),
                 'table'=> $this->string()->defaultValue(null),
                 'sql' => $this->binary(),
+                'exportTarget' => 'ENUM(\'sql\', \'view\') DEFAULT NULL',
                 'dateCreate'=> $this->datetime()->defaultValue(null),
                 'dateUpdate'=> $this->datetime()->defaultValue(null),
             ]

@@ -67,6 +67,14 @@ use fractalCms\core\helpers\Html;
                     ]);
                     ?>
                 </div>
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'exportTarget', ['label' => 'Cible de l\'export', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'exportTarget', ImportConfig::optsTargets(), [
+                        'prompt' => 'Sélectionner une cible', 'class' => 'form-control',
+                    ]);
+                    ?>
+                </div>
             </div>
             <div class="col-sm-6">
                 <div class="col form-group p-0">

@@ -1,6 +1,6 @@
 <?php
 /**
- * ImportXlsx.php
+ * Transform.php
  *
  * PHP Version 8.2+
  *
@@ -10,17 +10,60 @@
  */
 namespace fractalCms\importExport\services;
 
+use fractalCms\importExport\interfaces\Transform as TransformInterface;
 use Exception;
 use Yii;
 
-class Transform implements \fractalCms\importExport\interfaces\Transform
+class Transform
 {
-    const FORMAT_DATE = 'date';
+    /** @var TransformInterface[] */
+    private array $transformers = [];
 
-    public static function apply(mixed $data): mixed
+    /**
+     * @param iterable $transformers
+     * @throws Exception
+     */
+    public function __construct(iterable $transformers)
     {
         try {
-            return $data;
+            foreach ($transformers as $transformer) {
+                $this->transformers[$transformer->getName()] = $transformer;
+            }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param string $name
+     * @param mixed $value
+     * @param array $options
+     * @return mixed
+     * @throws Exception
+     */
+    public function apply(string $name, mixed $value, array $options = []): mixed
+    {
+        try {
+            $newValue = $value;
+            if (empty($name) === false && isset($this->transformers[$name]) === true) {
+                $newValue = $this->transformers[$name]->transform($value, $options);
+            }
+            return $newValue;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @return array
+     * @throws Exception
+     */
+    public function getTransformers(): array
+    {
+        try {
+            return $this->transformers;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

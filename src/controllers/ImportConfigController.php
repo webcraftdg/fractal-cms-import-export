@@ -12,19 +12,17 @@
 
 namespace fractalCms\importExport\controllers;
 
-use fractalCms\importExport\components\Constant;
+use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
+use fractalCms\importExport\components\Constant;
+use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\DbView;
-use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Parameter;
-use yii\filters\AccessControl;
-use Exception;
 use Yii;
+use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
-use yii\helpers\Json;
 
 class ImportConfigController extends BaseController
 {
@@ -136,7 +134,7 @@ class ImportConfigController extends BaseController
             $response = null;
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
-            $tables = $this->parameter->getTables();
+            $tables = $this->parameter->getActiveModelTableNames();
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
@@ -190,7 +188,7 @@ class ImportConfigController extends BaseController
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
-            $tables = $this->parameter->getTables();
+            $tables = $this->parameter->getActiveModelTableNames();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
@@ -219,35 +217,6 @@ class ImportConfigController extends BaseController
         }
     }
 
-    /**
-     * Export
-     *
-     * @param $id
-     * @return void
-     * @throws NotFoundHttpException
-     * @throws \yii\db\Exception
-     * @throws \yii\web\RangeNotSatisfiableHttpException
-     */
-    public function actionExport($id)
-    {
-        try {
-            $model = ImportConfig::findOne($id);
-            if ($model === null) {
-                throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
-            }
-            /** @var ImportJob $importJob */
-            $importJob = Export::run($model);
-            try {
-                $this->download($importJob->filePath, $model->exportFormat);
-            } catch (Exception $e) {
-                Yii::error($e->getMessage(), __METHOD__);
-            }
-
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
 
     /**
      * @return string
@@ -269,8 +238,11 @@ class ImportConfigController extends BaseController
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if($model->validate() === true) {
                     $importJob = $model->manageImportExport();
-                    if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false) {
+                    if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
                         $readyToDownload = true;
+                    } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
+                        $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
+                        $readyToDownload = false;
                     }
                 }
             }
@@ -304,14 +276,14 @@ class ImportConfigController extends BaseController
     protected function download(string $path, $type)
     {
         try {
-            $filename = 'export_'.date('d_m-Y');
             if (file_exists($path) === true) {
+                $info = pathinfo($path);
+                $filename = $info['basename'];
+                $extension = strtolower($info['extension']);
                 $data = file_get_contents($path);
-                if (in_array($type, [ImportConfig::FORMAT_EXCEL , ImportConfig::FORMAT_EXCEL_X ]) === true) {
-                    $filename = $filename.'.xlsx';
+                if ($extension === ImportConfig::FORMAT_CSV) {
                     Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
                 } else {
-                    $filename = $filename.'.csv';
                     Yii::$app->response->headers->set('Content-Type', 'text/csv; charset=utf-8');
                     Yii::$app->response->sendContentAsFile($data, $filename, ['mimeType' => 'text/csv']);
                 }

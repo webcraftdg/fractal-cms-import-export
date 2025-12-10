@@ -34,12 +34,19 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
                     ]);
                     ?>
                 </div>
+                <div class="col">
+                    <?php
+                    if ($model->hasErrors('type') === true) {
+                        echo Html::tag('p', $model->getFirstError('type'), ['class' => 'text-red-600 text-sm m-0']);
+                    }
+                    ?>
+                </div>
             </div>
             <div class="col-sm-6">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'testModelId', ['label' => 'Configuration', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'testModelId', $importConfigs, [
+                    echo Html::activeLabel($model, 'importConfigId', ['label' => 'Configuration', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'importConfigId', $importConfigs, [
                         'prompt' => 'Sélectionner une config', 'class' => 'form-control',
                     ]);
                     ?>
