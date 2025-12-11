@@ -6,6 +6,7 @@ import {ConfigService} from "../services/config-service";
 import {Column} from "../models/column";
 import {IValidationController} from "@aurelia/validation-html";
 import {IValidationRules} from "@aurelia/validation";
+import {Transformer} from "../models/transformer";
 
 @customElement('fractal-cms-import-columns')
 
@@ -66,6 +67,11 @@ export class ImportConfigColumns
         });
     }
 
+    transformerMatcher = (a:ITransformer, b:ITransformer) =>
+    {
+        return ((a && typeof(a)== 'object' && a.hasOwnProperty('name')) && (b && typeof(b)== 'object' && b.hasOwnProperty('name')) && a.name == b.name);
+    }
+
 
     public search(event:Event)
     {
@@ -83,6 +89,15 @@ export class ImportConfigColumns
         event.preventDefault();
         let urlGetColmuns = this.prepareGetUrl(this.id, page, this.searchText);
         this.getColumns(urlGetColmuns);
+    }
+
+    public changeTransform(event:Event, index:number)
+    {
+        this.logger.trace('changeTransform');
+        event.preventDefault();
+        if (this.columns[index] ) {
+            this.logger.trace('changeTransform',this.columns[index]);
+        }
     }
 
     private getColumns(url:string) {
@@ -204,15 +219,21 @@ export class ImportConfigColumns
     private loadColumns()
     {
         if (this.tmpConfigColumns) {
-            this.columns = [] as Column[];
-            this.logger.trace('loadColumns', this.tmpConfigColumns);
+            this.columns.splice(0, this.columns.length);
             this.tmpConfigColumns.forEach((value:IImportConfigColumn, index)=> {
                 let newColumn:IImportConfigColumn = Object.assign(value, {} as IImportConfigColumn);
                 const columnModel = new Column(this.logger, this.validationRules);
                 Object.assign(columnModel, newColumn);
+
+                if (newColumn.transformer) {
+                    let newTransform = Object.assign(newColumn.transformer, {} as ITransformer);
+                    columnModel.transformer  = new Transformer(this.logger, this.validationRules);
+                    Object.assign(columnModel.transformer , newTransform);
+                }
                 this.validationController.addObject(columnModel);
                 this.columns.push(columnModel);
             });
+            this.logger.trace('loadColumns', this.columns);
         }
     }
 

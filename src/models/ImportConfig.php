@@ -128,15 +128,6 @@ class ImportConfig extends \yii\db\ActiveRecord
         return $scenarios;
     }
 
-
-    /**
-     * @inheritDoc
-     */
-    public function afterFind()
-    {
-        parent::afterFind();
-    }
-
     /**
      * {@inheritdoc}
      */
@@ -213,11 +204,10 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * Validate attributes
-     *
      * @param $attribute
      * @param $params
      * @return bool
+     * @throws Exception
      */
     public function validateTable($attribute, $params) : bool
     {
@@ -585,6 +575,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             foreach ($columns as $column) {
                 $importColumn = null;
                 if (isset($column['id']) === true) {
+                    /** @var ImportConfigColumn $importColumn */
                     $importColumn = ImportConfigColumn::findOne($column['id']);
                 }
                 if ($importColumn === null) {
@@ -594,7 +585,18 @@ class ImportConfig extends \yii\db\ActiveRecord
                 } else {
                     $importColumn->scenario = ImportConfigColumn::SCENARIO_UPDATE;
                 }
+                $transformer = null;
+                $transformerOptions = null;
+                if (isset($column['transformer']) === true) {
+                    list($transformer, $transformerOptions) = $importColumn->buildTransformer($column['transformer'], $column['transformerOptions']);
+                    $transformer = Json::encode($transformer);
+                    $transformerOptions = Json::encode($transformerOptions);
+                    unset($column['transformer']);
+                    unset($column['transformerOptions']);
+                }
                 $importColumn->attributes = $column;
+                $importColumn->transformer = $transformer;
+                $importColumn->transformerOptions = $transformerOptions;
                 if (empty($importColumn->order) === true) {
                     $importColumn->order = ($index + 0.5);
                 } else {

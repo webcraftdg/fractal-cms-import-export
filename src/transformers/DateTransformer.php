@@ -10,12 +10,12 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transform;
+use fractalCms\importExport\interfaces\Transformer;
 use DateTime;
 use Exception;
 use Yii;
 
-class DateTransformer implements Transform
+class DateTransformer implements Transformer
 {
     /**
      * @return string
@@ -39,8 +39,8 @@ class DateTransformer implements Transform
     public function getOptionsSchema(): array
     {
         return [
-            'from' => ['type'=>'string','required'=>true,'label'=>'Format source'],
-            'to'   => ['type'=>'string','required'=>true,'label'=>'Format cible'],
+            ['key' => 'from', 'type'=>'string','required'=>true,'label'=>'Format source'],
+            ['key' => 'to', 'type'=>'string','required'=>true,'label'=>'Format cible'],
         ];
     }
 

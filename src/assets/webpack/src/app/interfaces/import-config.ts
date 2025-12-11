@@ -5,7 +5,8 @@ export interface IImportConfigColumn {
     target:string;
     type:string;
     defaultValue?:any;
-    transform?:any;
+    transformer?:ITransformer;
+    transformerOptions?:any;
     order:number;
 }
 export interface IImportConfig {
@@ -36,5 +37,13 @@ export interface IHttpResponse {
 export interface ITransformer {
     name:string;
     description:string;
-    options:any;
+    optionsSchema?:IOptionSchema[];
+    toJson():any;
+}
+export interface IOptionSchema {
+    key:string;
+    type:string;
+    required:boolean;
+    label:string;
+    value?:any;
 }

@@ -10,9 +10,12 @@
  */
 namespace fractalCms\importExport\models;
 
-use Yii;
+use fractalCms\importExport\services\Transformer;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
+use yii\helpers\Json;
+use Exception;
+use Yii;
 
 /**
  * This is the model class for table "importConfigColumns".
@@ -23,7 +26,8 @@ use yii\db\Expression;
  * @property string|null $target
  * @property string|null $type
  * @property string|null $defaultValue
- * @property string|null $transform
+ * @property resource|null $transformer
+ * @property resource|null $transformerOptions
  * @property float|null $order
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
@@ -63,14 +67,59 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transform', 'order', 'dateCreate', 'dateUpdate'
+            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate' , 'transformerOptions',
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transform', 'order', 'dateCreate', 'dateUpdate'
+            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate', 'transformerOptions',
         ];
 
         return $scenarios;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function afterFind()
+    {
+        parent::afterFind();
+        if (empty($this->transformer) === false && is_string($this->transformer) === true) {
+            $transformer = Json::decode($this->transformer);
+            $transformerOptions = [];
+            if (empty($this->transformerOptions) === false && is_string($this->transformerOptions) === true) {
+                $transformerOptions = Json::decode($this->transformerOptions);
+            }
+            list($this->transformer, $this->transformerOptions) = $this->buildTransformer($transformer, $transformerOptions);
+        }
+    }
+
+    /**
+     * @param array $transformer
+     * @param array $transformerOptions
+     * @return array
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function buildTransformer(array $transformer, array $transformerOptions = []) : array
+    {
+        try {
+            if (isset($transformer['name']) === true) {
+                $transformService = Yii::$container->get(transformer::class);
+                if ($transformService instanceof Transformer) {
+                    $transformers = $transformService->getTransformers();
+                    if (isset($transformers[$transformer['name']]) === true && $transformers[$transformer['name']] instanceof \fractalCms\importExport\interfaces\Transformer) {
+                        $transformerService = $transformers[$transformer['name']];
+                        $transformer['optionsSchema'] = $transformerService->getOptionsSchema() ;
+                        $transformer['description'] = ($transformer['description']) ?? $transformerService->getDescription();
+                    }
+                    
+                }
+            }
+            return [$transformer, $transformerOptions];
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
     }
 
     /**
@@ -79,11 +128,12 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['importConfigId', 'source', 'target', 'type', 'defaultValue', 'transform', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
+            [['importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
             [['importConfigId'], 'integer'],
             [['order'], 'number'],
             [['dateCreate', 'dateUpdate'], 'safe'],
-            [['source', 'target', 'defaultValue', 'transform'], 'string', 'max' => 255],
+            [['transformer', 'transformerOptions'], 'string'],
+            [['source', 'target', 'defaultValue',], 'string', 'max' => 255],
             [['type'], 'string', 'max' => 50],
             [['importConfigId', 'source', 'target', 'type'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
             [['importConfigId'], 'exist', 'skipOnError' => true, 'targetClass' => ImportConfig::class, 'targetAttribute' => ['importConfigId' => 'id']],
@@ -102,7 +152,7 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
             'target' => 'Target',
             'type' => 'Type',
             'defaultValue' => 'Default Value',
-            'transform' => 'Transform',
+            'transformer' => 'transformer',
             'order' => 'Order',
             'dateCreate' => 'Date Create',
             'dateUpdate' => 'Date Update',

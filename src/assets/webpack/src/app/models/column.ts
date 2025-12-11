@@ -1,7 +1,7 @@
 import { ILogger, resolve} from 'aurelia';
 import {IValidationRules} from "@aurelia/validation";
 
-import {IImportConfigColumn} from "../interfaces/import-config";
+import {IImportConfigColumn, ITransformer} from "../interfaces/import-config";
 
 export class Column implements IImportConfigColumn
 {
@@ -12,7 +12,8 @@ export class Column implements IImportConfigColumn
     public type:string;
     public default?:any;
     public order:number;
-    public transform?:any;
+    public transformer?:ITransformer;
+    public transformerOptions?:any;
 
     constructor(
         private readonly logger: ILogger = resolve(ILogger),
@@ -22,6 +23,7 @@ export class Column implements IImportConfigColumn
         this.logger.trace('constructor');
         this.initValidationRules(this.validationRules);
     }
+
 
     /**
      * To json
@@ -36,7 +38,8 @@ export class Column implements IImportConfigColumn
             'type': this.type,
             'order': this.order,
             'default': this.default,
-            'transform': this.transform
+            'transformerOptions': this.transformerOptions,
+            'transformer': this.transformer.toJson()
         };
     }
     /**
@@ -90,6 +93,16 @@ export class Column implements IImportConfigColumn
                 }
                 return true
             })
-            .withMessage('Le default doit être une string');
+            .withMessage('Le default doit être une string')
+            .ensure('transformerOptions')
+            .required()
+            .then()
+            .satisfies((value: any, object) => {
+                if (value && typeof(value) !== 'string') {
+                    return false;
+                }
+                return true
+            })
+            .withMessage('Les options sont obligatoires');
     }
 }

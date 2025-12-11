@@ -10,11 +10,11 @@
  */
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\interfaces\Transform as TransformInterface;
+use fractalCms\importExport\interfaces\Transformer as TransformInterface;
 use Exception;
 use Yii;
 
-class Transform
+class Transformer
 {
     /** @var TransformInterface[] */
     private array $transformers = [];

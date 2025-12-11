@@ -185,6 +185,49 @@
                     />
                     <p class="error-message" repeat.for="error of column.defaultErrors" id.bind="'column.defaultErrors'+column.id">${error.result.message}</p>
                 </div>
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.transformerErrors">
+                    <label class="form-label" for.bind="'transformer-'+column.id" id="labelTransformer">Transformeur de donnée</label>
+                    <select
+                            class="form-control"
+                            id.bind="'transformer-'+column.id"
+                            matcher.bind="transformerMatcher"
+                            value.bind="column.transformer & validate"
+                            name.bind="'ImportConfig[tmpColumns]['+$index+'][transformer][name]'"
+                            class.bind="column.transformerErrors.length ? 'error' : ''"
+                            aria-describedby="labeltransformer"
+                            aria-invalid.bind="column.transformerErrors.length ? 'true' : 'false'"
+                    >
+                        <option value="">Sélectionner une transformation</option>
+                        <option repeat.for="transformer of transformers"  model.bind="transformer" value.bind="transformer.name">
+                            ${transformer.name}
+                        </option>
+                    </select>
+                    <div class="mt-2" if.bind="column.transformer && column.transformer.optionsSchema">
+                       <div class="text-pretty">${column.transformer.description}</div>
+                        <div class="row" repeat.for="option of column.transformer.optionsSchema">
+                            <div class="col-sm-3  form-group" validation-errors.from-view="column.transformer.optionsSchema[$index].keyErrors">
+                                <label
+                                        class="form-label"
+                                        for.bind="'transformer-'+column.id+option.key"
+                                        id.bind="'transformerOptions-'+column.id+option.key+'label-'+$index">
+                                    ${option.label}
+                                </label>
+                                <input
+                                        id.bind="'transformer-'+column.id+option.key"
+                                        class="form-control"
+                                        name.bind="'ImportConfig[tmpColumns]['+$parent.$index+'][transformerOptions]['+option.key+']'"
+                                        type="text"
+                                        value.bind="column.transformerOptions[option.key] & validate"
+                                        aria-describedby.bind="'transformerOptions-'+column.id+option.key+'label-'+$index"
+                                        aria-required.bind="option.required"
+                                        aria-invalid.bind="column.transformer.transformerOptions[$index].keyErrors.length ? 'true' : 'false'"
+                                        required.bind="option.required"
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <p class="error-message" repeat.for="error of column.transformerErrors" id.bind="'column.transformerErrors'+column.id">${error.result.message}</p>
+                </div>
             </div>
         </div>
     </div>

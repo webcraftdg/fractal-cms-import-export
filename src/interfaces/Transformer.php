@@ -1,6 +1,6 @@
 <?php
 /**
- * Transform.php
+ * Transformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-interface Transform
+interface Transformer
 {
 
     /**
