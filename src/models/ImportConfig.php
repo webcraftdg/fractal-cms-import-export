@@ -588,7 +588,8 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $transformer = null;
                 $transformerOptions = null;
                 if (isset($column['transformer']) === true) {
-                    list($transformer, $transformerOptions) = $importColumn->buildTransformer($column['transformer'], $column['transformerOptions']);
+                    $transformerOptions = ($column['transformerOptions']) ?? [];
+                    list($transformer, $transformerOptions) = $importColumn->buildTransformer($column['transformer'], $transformerOptions);
                     $transformer = Json::encode($transformer);
                     $transformerOptions = Json::encode($transformerOptions);
                     unset($column['transformer']);
