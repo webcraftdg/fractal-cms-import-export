@@ -9,7 +9,7 @@ export class Column implements IImportConfigColumn
     public importConfigId:number;
     public source:string;
     public target:string;
-    public type:string;
+    public format:string;
     public default?:any;
     public order:number;
     public transformer?:ITransformer;
@@ -35,7 +35,7 @@ export class Column implements IImportConfigColumn
             'id': this.id,
             'source': this.source,
             'target': this.target,
-            'type': this.type,
+            'type': this.format,
             'order': this.order,
             'default': this.default,
             'transformerOptions': this.transformerOptions,

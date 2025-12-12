@@ -33,6 +33,7 @@ use yii\web\UploadedFile;
  * @property string|null $name
  * @property int|null $version
  * @property int|null $active
+ * @property string $type
  * @property string $exportFormat
  * @property int|null $truncateTable
  * @property string $table
@@ -63,7 +64,6 @@ class ImportConfig extends \yii\db\ActiveRecord
     const TARGET_VIEW = 'view';
 
     public $importFile;
-    public $type;
     public $importConfigId;
 
     public $tmpColumns = [];
@@ -108,19 +108,19 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget', 'type'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget', 'type'
         ];
 
         $scenarios[self::SCENARIO_IMPORT_FILE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget', 'type'
         ];
 
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat', 'exportTarget', 'type'
         ];
         $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
             'type', 'importFile', 'importConfigId'
@@ -134,7 +134,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'exportFormat', 'exportTarget'], 'default', 'value' => null],
+            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'exportFormat', 'exportTarget', 'type'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['active', 'truncateTable'], 'default', 'value' => 0],
             [['active', 'version', 'truncateTable'], 'integer'],
@@ -171,7 +171,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                     return $this->type === static::TYPE_IMPORT;
                 }
             ],
-            [['version'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['version', 'type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['type', 'importConfigId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['importConfigId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['importConfigId'],
@@ -587,14 +587,14 @@ class ImportConfig extends \yii\db\ActiveRecord
                 }
                 $transformer = null;
                 $transformerOptions = null;
-                if (isset($column['transformer']) === true) {
+                if (isset($column['transformer']) === true && empty($column['transformer']['name']) === false) {
                     $transformerOptions = ($column['transformerOptions']) ?? [];
                     list($transformer, $transformerOptions) = $importColumn->buildTransformer($column['transformer'], $transformerOptions);
                     $transformer = Json::encode($transformer);
                     $transformerOptions = Json::encode($transformerOptions);
-                    unset($column['transformer']);
-                    unset($column['transformerOptions']);
                 }
+                unset($column['transformer']);
+                unset($column['transformerOptions']);
                 $importColumn->attributes = $column;
                 $importColumn->transformer = $transformer;
                 $importColumn->transformerOptions = $transformerOptions;
@@ -728,6 +728,15 @@ class ImportConfig extends \yii\db\ActiveRecord
         return $query;
     }
 
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getImportColumnsWithTransformers()
+    {
+        $query = $this->getImportColumns();
+        $query->andWhere(['not', [ImportConfigColumn::tableName().'.[[transformer]]' => null]]);
+        return $query;
+    }
     /**
      * Reorder columns
      *

@@ -1,6 +1,6 @@
 <?php
 /**
- * DateTransformer.php
+ * NumberTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -11,18 +11,17 @@
 namespace fractalCms\importExport\transformers;
 
 use fractalCms\importExport\interfaces\Transformer;
-use DateTime;
 use Exception;
 use Yii;
 
-class DateTransformer implements Transformer
+class NumberTransformer implements Transformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'date';
+        return 'decimals';
     }
 
     /**
@@ -30,7 +29,7 @@ class DateTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Convertit un format de date';
+        return 'Force une valeur numérique';
     }
 
     /**
@@ -39,8 +38,7 @@ class DateTransformer implements Transformer
     public function getOptionsSchema(): array
     {
         return [
-            ['key' => 'from', 'type'=>'text','required'=>true,'label'=>'Format source'],
-            ['key' => 'to', 'type'=>'text','required'=>true,'label'=>'Format cible'],
+            ['key' => 'decimals', 'type'=>'number','required'=>false,'label'=>'Décimales'],
         ];
     }
 
@@ -53,14 +51,12 @@ class DateTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            $date = $value;
-            if(empty($value) === false) {
-                $dateTime = DateTime::createFromFormat($options['from'], (string)$value);
-                if ($dateTime !== false) {
-                    $date = $dateTime->format($options['to']);
-                }
+            if (is_numeric($value) === false) {
+                $value = (float)$value;
             }
-            return $date;
+            $decimals = $options['decimals'] ?? 0;
+            return $decimals !== null ? number_format((float)$value, $decimals, '.', '')
+                : $value;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

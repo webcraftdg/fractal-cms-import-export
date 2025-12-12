@@ -130,20 +130,20 @@
                     <p class="error-message" repeat.for="error of column.targetErrors" id.bind="'column.targetErrors'+column.id">${error.result.message}</p>
 
                 </div>
-                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.typeErrors">
-                    <label class="form-label"  for.bind="'type-'+column.id" id="labelType">Type de données</label>
+                <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.formatErrors">
+                    <label class="form-label"  for.bind="'format-'+column.id" id="labelFormat">Format de données</label>
                     <select
                         class="form-control"
-                        id.bind="'type-'+column.id"
-                        value.bind="column.type & validate"
-                        name.bind="'ImportConfig[tmpColumns]['+$index+'][type]'"
-                        class.bind="column.typeErrors.length ? 'error' : ''"
-                        aria-describedby="labelType"
+                        id.bind="'format-'+column.id"
+                        value.bind="column.format & validate"
+                        name.bind="'ImportConfig[tmpColumns]['+$index+'][format]'"
+                        class.bind="column.formatErrors.length ? 'error' : ''"
+                        aria-describedby="labelFormat"
                         aria-required="true"
-                        aria-invalid.bind="column.typeErrors.length ? 'true' : 'false'"
+                        aria-invalid.bind="column.formatErrors.length ? 'true' : 'false'"
                         required
                     >
-                        <option value="">Sélectionner un type de donnée</option>
+                        <option value="">Sélectionner un format de donnée</option>
                         <option value="pk">pk</option>
                         <option value="upk">upk</option>
                         <option value="bigpk">bigpk</option>
@@ -167,7 +167,7 @@
                         <option value="money">money</option>
                         <option value="json">json</option>
                     </select>
-                    <p class="error-message" repeat.for="error of column.typeErrors" id.bind="'column.typeErrors'+column.id">${error.result.message}</p>
+                    <p class="error-message" repeat.for="error of column.formatErrors" id.bind="'column.formatErrors'+column.id">${error.result.message}</p>
 
                 </div>
                 <div class="col-sm--3 form-group p-2" validation-errors.from-view="column.defaultErrors">
@@ -208,17 +208,17 @@
                             <div class="col-sm-3  form-group" validation-errors.from-view="column.transformer.optionsSchema[$index].keyErrors">
                                 <label
                                         class="form-label"
-                                        for.bind="'transformer-'+column.id+option.key"
-                                        id.bind="'transformerOptions-'+column.id+option.key+'label-'+$index">
+                                        for.bind="'transformer-'+column.id+'-'+column.transformer.name+option.key"
+                                        id.bind="'transformerOptions-'+column.id+'-'+option.key+'-label-'+$index">
                                     ${option.label}
                                 </label>
                                 <input
-                                        id.bind="'transformer-'+column.id+option.key"
+                                        id.bind="'transformer-'+column.id+'-'+column.transformer.name+option.key"
                                         class="form-control"
                                         name.bind="'ImportConfig[tmpColumns]['+$parent.$index+'][transformerOptions]['+option.key+']'"
-                                        type="text"
+                                        type.bind="option.type"
                                         value.bind="column.transformerOptions[option.key] & validate"
-                                        aria-describedby.bind="'transformerOptions-'+column.id+option.key+'label-'+$index"
+                                        aria-describedby.bind="'transformerOptions-'+column.id+'-'+option.key+'-label-'+$index"
                                         aria-required.bind="option.required"
                                         aria-invalid.bind="column.transformer.transformerOptions[$index].keyErrors.length ? 'true' : 'false'"
                                         required.bind="option.required"

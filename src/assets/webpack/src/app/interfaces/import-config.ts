@@ -3,7 +3,7 @@ export interface IImportConfigColumn {
     importConfigId:number;
     source:string;
     target:string;
-    type:string;
+    format:string;
     defaultValue?:any;
     transformer?:ITransformer;
     transformerOptions?:any;

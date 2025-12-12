@@ -42,7 +42,7 @@ class Transformer
      * @return mixed
      * @throws Exception
      */
-    public function apply(string $name, mixed $value, array $options = []): mixed
+    public function apply(string $name, mixed $value, mixed $options = []): mixed
     {
         try {
             $newValue = $value;

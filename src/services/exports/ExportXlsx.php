@@ -17,7 +17,9 @@ use Exception;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export as ExportService;
+use fractalCms\importExport\services\Transformer as TransformerService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Yii;
 use yii\db\Query;
@@ -33,11 +35,13 @@ class ExportXlsx implements Export
     public static function run(ImportConfig $importConfig): ImportJob
     {
         try {
+            $transformerService = Yii::$container->get(TransformerService::class);
             $query = ExportService::getExportQuery($importConfig, 1000);
             $totalCount = 0;
             $successRows = 0;
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
+            $configColumns = [];
 
             // Headers
             $colIndex = 1;
@@ -46,6 +50,7 @@ class ExportXlsx implements Export
             foreach ($importConfig->getImportColumns()->each() as $column) {
                 $sheet->getColumnDimensionByColumn($colIndex)->setWidth(strlen($column->target));
                 $sheet->setCellValue([$colIndex, $row], $column->target);
+                $configColumns[$column->source] = $column;
                 $colIndex++;
             }
 
@@ -55,15 +60,7 @@ class ExportXlsx implements Export
                 if ($query instanceof Query) {
                     $totalCount = $query->count();
                     foreach ($query->each() as $row) {
-                        $colIndex = 1;
-                        /** @var ImportConfigColumn $column */
-                        foreach ($importConfig->getImportColumns()->each()  as $column) {
-                            $sheet->setCellValue(
-                                [$colIndex, $rowIndex],
-                                $row[$column->source] ?? ''
-                            );
-                            $colIndex++;
-                        }
+                        static::writeRow($sheet, $configColumns, $row, $rowIndex, $transformerService);
                         $rowIndex++;
                         $successRows += 1;
                     }
@@ -71,15 +68,7 @@ class ExportXlsx implements Export
                     $totalCount = $query->getCount();
                     foreach ($query->getIterator() as $rows) {
                         foreach ($rows as $row) {
-                            $colIndex = 1;
-                            /** @var ImportConfigColumn $column */
-                            foreach ($importConfig->getImportColumns()->each()  as $column) {
-                                $sheet->setCellValue(
-                                    [$colIndex, $rowIndex],
-                                    $row[$column->source] ?? ''
-                                );
-                                $colIndex++;
-                            }
+                            static::writeRow($sheet, $importConfig, $row, $rowIndex);
                         }
                         $rowIndex++;
                         $successRows += 1;
@@ -99,6 +88,37 @@ class ExportXlsx implements Export
             $importJob->successRows = $successRows;
             $importJob->save();
             return $importJob;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    protected static function writeRow(Worksheet $sheet, array $configColumns, $row, $rowIndex, TransformerService $transformerService) : void
+    {
+        try {
+            $colIndex = 1;
+            /** @var ImportConfigColumn $column */
+            foreach ($configColumns  as $column) {
+                $value = $row[$column->source] ?? null;
+                if (
+                    $value !== null
+                    && $transformerService instanceof TransformerService
+                    && $column->transformer !== null
+                    && empty($column->transformer['name'] === false)
+                ) {
+                    $value = $transformerService->apply(
+                        $column->transformer['name'],
+                        $value,
+                        $column->transformerOptions
+                    );
+                }
+                $sheet->setCellValue(
+                    [$colIndex, $rowIndex],
+                    $value
+                );
+                $colIndex++;
+            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

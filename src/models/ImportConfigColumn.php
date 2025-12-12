@@ -24,7 +24,7 @@ use Yii;
  * @property int|null $importConfigId
  * @property string|null $source
  * @property string|null $target
- * @property string|null $type
+ * @property string|null $format
  * @property string|null $defaultValue
  * @property resource|null $transformer
  * @property resource|null $transformerOptions
@@ -67,11 +67,11 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate' , 'transformerOptions',
+            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate' , 'transformerOptions',
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate', 'transformerOptions',
+            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate', 'transformerOptions',
         ];
 
         return $scenarios;
@@ -82,15 +82,21 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
      */
     public function afterFind()
     {
-        parent::afterFind();
-        if (empty($this->transformer) === false && is_string($this->transformer) === true) {
-            $transformer = Json::decode($this->transformer);
-            $transformerOptions = [];
-            if (empty($this->transformerOptions) === false && is_string($this->transformerOptions) === true) {
-                $transformerOptions = Json::decode($this->transformerOptions);
+        try {
+            parent::afterFind();
+            if (empty($this->transformer) === false && is_string($this->transformer) === true) {
+                $transformer = Json::decode($this->transformer);
+                $transformerOptions = [];
+                if (empty($this->transformerOptions) === false && is_string($this->transformerOptions) === true) {
+                    $transformerOptions = Json::decode($this->transformerOptions);
+                }
+                list($this->transformer, $this->transformerOptions) = $this->buildTransformer($transformer, $transformerOptions);
             }
-            list($this->transformer, $this->transformerOptions) = $this->buildTransformer($transformer, $transformerOptions);
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
         }
+
     }
 
     /**
@@ -128,14 +134,14 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['importConfigId', 'source', 'target', 'type', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
+            [['importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
             [['importConfigId'], 'integer'],
             [['order'], 'number'],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['transformer', 'transformerOptions'], 'string'],
             [['source', 'target', 'defaultValue',], 'string', 'max' => 255],
-            [['type'], 'string', 'max' => 50],
-            [['importConfigId', 'source', 'target', 'type'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
+            [['format'], 'string', 'max' => 50],
+            [['importConfigId', 'source', 'target', 'format'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
             [['importConfigId'], 'exist', 'skipOnError' => true, 'targetClass' => ImportConfig::class, 'targetAttribute' => ['importConfigId' => 'id']],
         ];
     }
@@ -150,7 +156,7 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
             'importConfigId' => 'Import Config ID',
             'source' => 'Source',
             'target' => 'Target',
-            'type' => 'Type',
+            'format' => 'format',
             'defaultValue' => 'Default Value',
             'transformer' => 'transformer',
             'order' => 'Order',

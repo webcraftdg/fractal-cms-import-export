@@ -69,9 +69,17 @@ use fractalCms\core\helpers\Html;
                 </div>
                 <div class="col form-group p-0">
                     <?php
+                    echo Html::activeLabel($model, 'type', ['label' => 'Type (import ou export)', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'type', ImportConfig::optsTypes(), [
+                        'prompt' => 'Sélectionner un type', 'class' => 'form-control',
+                    ]);
+                    ?>
+                </div>
+                <div class="col form-group p-0">
+                    <?php
                     echo Html::activeLabel($model, 'exportTarget', ['label' => 'Cible de l\'export', 'class' => 'form-label']);
                     echo Html::activeDropDownList($model, 'exportTarget', ImportConfig::optsTargets(), [
-                        'prompt' => 'Sélectionner une cible', 'class' => 'form-control',
+                        'prompt' => 'Sélectionner une cible (pour la requête SQL)', 'class' => 'form-control',
                     ]);
                     ?>
                 </div>
@@ -83,7 +91,7 @@ use fractalCms\core\helpers\Html;
                     echo Html::activeTextarea($model, 'sql', [
                         'class' => 'form-control',
                         'cols' => 10,
-                        'rows' => 5,
+                        'rows' => 7,
                     ]);
                     if ($model->hasErrors('sql') === true) {
                         echo Html::tag('div', $model->errors['sql'][0], ['class' => 'text-danger']);

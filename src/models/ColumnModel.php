@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\models;
 
+use fractalCms\importExport\interfaces\Transformer;
 use yii\base\Model;
 
 class ColumnModel extends Model
@@ -20,19 +21,19 @@ class ColumnModel extends Model
     public string $id;
     public string $source;
     public string $target;
-    public string $type;
+    public string $format;
     public mixed $default;
-    public mixed $transform;
+    public Transformer|null $transformer;
 
     public function scenarios() : array
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'id', 'source', 'target', 'type', 'default', 'transform'
+            'id', 'source', 'target', 'format', 'default', 'transformer'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'id', 'source', 'target', 'type', 'default', 'transform'
+            'id', 'source', 'target', 'format', 'default', 'transformer'
         ];
         return $scenarios;
     }
@@ -43,8 +44,8 @@ class ColumnModel extends Model
     public function rules()
     {
         return [
-            [[ 'id', 'source', 'target', 'type', 'default', 'transform'], 'default', 'value' => null],
-            [['source', 'target', 'type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [[ 'id', 'source', 'target', 'format', 'default', 'transformer'], 'default', 'value' => null],
+            [['source', 'target', 'format'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
         ];
     }
 }

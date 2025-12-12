@@ -23,7 +23,13 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\Transformer;
 use fractalCms\importExport\services\Transformer as TransformService;
+use fractalCms\importExport\transformers\BooleanTransformer;
 use fractalCms\importExport\transformers\DateTransformer;
+use fractalCms\importExport\transformers\LowerTransformer;
+use fractalCms\importExport\transformers\NumberTransformer;
+use fractalCms\importExport\transformers\ReplaceTransformer;
+use fractalCms\importExport\transformers\TrimTransformer;
+use fractalCms\importExport\transformers\UpperTransformer;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
@@ -54,7 +60,13 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setDefinitions([
                 TransformService::class => function() {
                     return new TransformService([
-                        new DateTransformer()
+                        new DateTransformer(),
+                        new TrimTransformer(),
+                        new UpperTransformer(),
+                        new LowerTransformer(),
+                        new ReplaceTransformer(),
+                        new NumberTransformer(),
+                        new BooleanTransformer(),
                     ]);
                 }
             ]);

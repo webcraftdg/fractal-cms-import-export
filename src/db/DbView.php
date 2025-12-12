@@ -118,7 +118,7 @@ class DbView extends Component implements \fractalCms\importExport\interfaces\Db
                     $newColumn = new ColumnModel(['scenario' => ColumnModel::SCENARIO_CREATE]);
                     $newColumn->source = $columnSchema->name;
                     $newColumn->target = ucfirst($columnSchema->name);
-                    $newColumn->type = $columnSchema->type;
+                    $newColumn->format = $columnSchema->type;
                     return $newColumn;
                 }, Yii::$app->db->getSchema()->getTableSchema($name)->columns);
             }
