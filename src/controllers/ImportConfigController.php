@@ -19,6 +19,8 @@ use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Parameter;
+use fractalCms\importExport\services\RowTransformer as RowTransformerService;
+use fractalCms\importExport\interfaces\RowTransformer;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
@@ -29,6 +31,7 @@ class ImportConfigController extends BaseController
 
     protected DbView $dbView;
     protected Parameter $parameter;
+    public array $rowTransformers = [];
 
     /**
      * @inheritDoc
@@ -39,6 +42,12 @@ class ImportConfigController extends BaseController
        $this->dbView = $dbView;
        if (Yii::$app->has('importDbParameters') === true) {
            $this->parameter = Yii::$app->importDbParameters;
+       }
+       if (Yii::$container->has(RowTransformerService::class) === true) {
+           $rowTransformerService = Yii::$container->get(RowTransformerService::class);
+           if ($rowTransformerService instanceof RowTransformerService) {
+               $this->rowTransformers = $rowTransformerService->getRowTransformers();
+           }
        }
    }
 
@@ -95,7 +104,7 @@ class ImportConfigController extends BaseController
             $request = Yii::$app->request;
             $modelQuery = ImportConfig::find();
             $model = Yii::createObject(ImportConfig::class);
-            $model->scenario = ImportConfig::SCENARIO_IMPORT_FILE;
+            $model->scenario = ImportConfig::SCENARIO_IMPORT_JSON_FILE;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
@@ -160,7 +169,8 @@ class ImportConfigController extends BaseController
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
-                    'tables' => $tables
+                    'tables' => $tables,
+                    'rowTransformers' => array_keys($this->rowTransformers),
                 ]);
             }
             return $response;
@@ -207,7 +217,8 @@ class ImportConfigController extends BaseController
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
-                    'tables' => $tables
+                    'tables' => $tables,
+                    'rowTransformers' => array_keys($this->rowTransformers),
                 ]);
             }
             return $response;
@@ -238,19 +249,24 @@ class ImportConfigController extends BaseController
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if($model->validate() === true) {
                     $importJob = $model->manageImportExport();
-                    if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
-                        $readyToDownload = true;
-                    } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
-                        $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
-                        $readyToDownload = false;
+                    if($importJob !== null) {
+                        if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
+                            $readyToDownload = true;
+                        } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
+                            $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
+                            $readyToDownload = false;
+                        }
+                    } else {
+                        $model->addError('importFile', 'Merci de télécharger un fichier');
                     }
+
                 }
             }
             $importConfigs = [];
             /** @var  ImportConfig $importConfig */
             foreach ($modelQuery->each() as $importConfig) {
-                $type = (empty($importConfig->table) === false) ? $importConfig->table : 'Requête SQL';
-                $importConfigs[$importConfig->id] = $importConfig->name.': version :'.$importConfig->version.' : '.$type;
+                $statement = (empty($importConfig->table) === false) ? $importConfig->table : 'Requête SQL';
+                $importConfigs[$importConfig->id] = $importConfig->name.': version :'.$importConfig->version.' : "'.$importConfig->type.'" : '.$statement;
             }
             if ($readyToDownload === true) {
                 $this->download($importJob->filePath, $model->exportFormat);

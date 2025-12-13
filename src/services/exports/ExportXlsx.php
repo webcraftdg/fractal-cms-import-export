@@ -68,18 +68,18 @@ class ExportXlsx implements Export
                     $totalCount = $query->getCount();
                     foreach ($query->getIterator() as $rows) {
                         foreach ($rows as $row) {
-                            static::writeRow($sheet, $importConfig, $row, $rowIndex);
+                            static::writeRow($sheet, $configColumns, $row, $rowIndex, $transformerService);
                         }
                         $rowIndex++;
                         $successRows += 1;
                     }
                 }
-                $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
                 $status = ImportJob::STATUS_SUCCESS;
             } catch (Exception $e) {
                 Yii::error($e->getMessage(), __METHOD__);
                 $status = ImportJob::STATUS_FAILED;
             }
+            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             (new Xlsx($spreadsheet))->save($path);
@@ -94,6 +94,15 @@ class ExportXlsx implements Export
         }
     }
 
+    /**
+     * @param Worksheet $sheet
+     * @param array $configColumns
+     * @param $row
+     * @param $rowIndex
+     * @param TransformerService $transformerService
+     * @return void
+     * @throws Exception
+     */
     protected static function writeRow(Worksheet $sheet, array $configColumns, $row, $rowIndex, TransformerService $transformerService) : void
     {
         try {

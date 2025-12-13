@@ -24,9 +24,10 @@ class ExportLimiter extends Component
 
     /**
      * @param LimiterModel $limiterModel
-     * @return void
+     * @return string|null
+     * @throws Exception
      */
-    public function assertAllowed(LimiterModel $limiterModel): string
+    public function assertAllowed(LimiterModel $limiterModel): string | null
     {
         try {
             $rows    = $limiterModel->rows ?? 0;
@@ -62,6 +63,6 @@ class ExportLimiter extends Component
              'Export impossible via l’interface web<br/>'
             .$reason.'<br/>'
             .'Merci d\'utiliser la commande CLI :<br/>'
-            .'php yii.php fractalCmsImportExport:import-export/index  -name='.$statementName.' -version=1 -type=export';
+            .'php yii.php fractalCmsImportExport:import-export/index  -name='.$statementName.' -version={versionActive}';
     }
 }

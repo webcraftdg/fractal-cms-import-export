@@ -10,6 +10,7 @@
  * @var $this yii\web\View
  * @var ImportConfig $model
  * @var array $tables
+ * @var array $rowTransformers
  */
 
 use fractalCms\importExport\models\ImportConfig;
@@ -19,15 +20,25 @@ use fractalCms\core\helpers\Html;
     <div class="col-sm-12">
         <?php echo Html::beginForm('', 'post', []); ?>
         <div class="row  justify-content-center">
-            <div class="col form-check p-0">
-                <?php
-                echo Html::activeCheckbox($model, 'active', ['label' =>  null, 'class' => 'form-check-input']);
-                echo Html::activeLabel($model, 'active', ['label' => 'Actif', 'class' => 'form-check-label']);
-                ?>
+            <div class="row">
+                <div class="col form-check p-0">
+                    <?php
+                    echo Html::activeCheckbox($model, 'active', ['label' =>  null, 'class' => 'form-check-input']);
+                    echo Html::activeLabel($model, 'active', ['label' => 'Actif', 'class' => 'form-check-label']);
+                    ?>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col form-check p-0">
+                    <?php
+                    echo Html::activeCheckbox($model, 'stopOnError', ['label' =>  null, 'class' => 'form-check-input']);
+                    echo Html::activeLabel($model, 'stopOnError', ['label' => 'Arrêter l\'import si une ligne est en erreur', 'class' => 'form-check-label']);
+                    ?>
+                </div>
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-4">
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'name', ['label' => 'Nom', 'class' => 'form-label']);
@@ -38,7 +49,7 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
@@ -46,7 +57,7 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'exportFormat', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);
@@ -56,6 +67,18 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
+            <?php if (empty($rowTransformers) === false):?>
+            <div class="col-sm-3">
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformer de ligne', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'rowTransformer', $rowTransformers, [
+                        'prompt' => 'Sélectionner un transformer', 'class' => 'form-control',
+                    ]);
+                    ?>
+                </div>
+            </div>
+            <?php endif;?>
         </div>
         <div class="row">
             <div class="col-sm-6">

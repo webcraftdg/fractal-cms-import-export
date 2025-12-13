@@ -10,19 +10,25 @@
  */
 namespace fractalCms\importExport\services\imports;
 
+use fractalCms\importExport\exceptions\ImportError;
+use fractalCms\importExport\exceptions\ImportErrorCollector;
+use fractalCms\importExport\exceptions\InsertResult;
+use fractalCms\importExport\exceptions\RowTransformException;
 use fractalCms\importExport\interfaces\ImportFile;
+use fractalCms\importExport\interfaces\RowTransformer as RowTransformerInterface;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\contexts\Import as ImportContext;
 use Exception;
 use fractalCms\importExport\models\ImportJob;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Psy\Util\Json;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
 use yii\db\Transaction;
-use yii\helpers\Json;
 
 class ImportXlsx implements ImportFile
 {
@@ -40,6 +46,15 @@ class ImportXlsx implements ImportFile
     public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false): ImportJob
     {
         try {
+            $errorCollector = new ImportErrorCollector();
+            $baseImportContext = new ImportContext(
+                config: $importConfig,
+                errors: $errorCollector,
+                stopOnError: $importConfig->stopOnError,
+                dryRun:$isTest,
+                rowNumber: -1
+            );
+            $rowTransformer = $importConfig->getRowTransformer();
             $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
             $importJob->importConfigId = $importConfig->id;
             $importJob->userId = Yii::$app->user->identity->getId();
@@ -59,7 +74,10 @@ class ImportXlsx implements ImportFile
                 $importJob->totalRows = $endRow;
                 $importJob->save();
                 $importJob->refresh();
-                $indexRow = 1;
+                $transaction = null;
+                if ((boolean)$importConfig->stopOnError === true) {
+                    $transaction = Yii::$app->db->beginTransaction();
+                }
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
                     $indexJsonSource = 0;
                     $attributes = [];
@@ -72,25 +90,65 @@ class ImportXlsx implements ImportFile
                         $indexJsonSource += 1;
                     }
                     if (empty($attributes) === false) {
-                        $importJobLog = static::insert($importConfig, $attributes, $isTest);
-                        $importJobLog['row'] = $indexRow;
-                        $importJobLog['importJogId'] = $importJob->id;
-                        if ($importJobLog['message'] !== ImportJob::STATUS_SUCCESS) {
+                        if ($rowTransformer instanceof RowTransformerInterface) {
+                            try {
+                                $result = $rowTransformer->transformRow(
+                                    $attributes,
+                                    $baseImportContext->withRowNumber($row)
+                                );
+                                if ($result->handled === true) {
+                                    $importJob->successRows++;
+                                    continue;
+                                }
+                                $attributes = $result->attributes ?? $attributes;
+                            } catch (RowTransformException $e) {
+                                $error = new ImportError($row, '*', $e->getMessage());
+                                $errorCollector->add($error);
+                                $importJob->errorRows++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
+                                continue;
+                            }
+                        }
+                        if (empty($importConfig->table) === false) {
+                            $importResult = static::insertActiveRecord($importConfig, $attributes, $row);
+                        } else {
+                            $importResult = static::insertSql($importConfig, $attributes, $row);
+                        }
+                        if ($importResult->success === false) {
                             $importJob->errorRows += 1;
+                            foreach ($importResult->errors as $field => $messages) {
+                                foreach ($messages as $msg) {
+                                    $errorCollector->add(
+                                        new ImportError($row, $field, $msg)
+                                    );
+                                }
+                            }
                         } else {
                             $importJob->successRows += 1;
                         }
-                        $importJob->logs[] = $importJobLog;
                     }
-                    $indexRow += 1;
                 }
-                if ($importJob->errorRows > 0) {
+                if ($errorCollector->hasErrors() === true) {
                     $importJob->status = ImportJob::STATUS_FAILED;
+                    if ($transaction instanceof Transaction) {
+                        $transaction->rollBack();
+                    }
                 } else {
                     $importJob->status = ImportJob::STATUS_SUCCESS;
+                    if ($transaction instanceof Transaction) {
+                        $transaction->commit();
+                    }
                 }
             }
+            $importJob->errorCollector = $errorCollector;
+            if ($importJob->errorRows < 50) {
+                $importJob->errors = Json::encode($errorCollector->toCsvRows());
+            }
+            $importJob->saveFileErrorCsv();
             $importJob->save();
+            $importJob->refresh();
             return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
@@ -99,59 +157,58 @@ class ImportXlsx implements ImportFile
     }
 
     /**
-     * insert
-     *
      * @param ImportConfig $importConfig
      * @param array $attributes
-     * @param bool $isTest
-     * @return array
+     * @return InsertResult
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false): array
+    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes): InsertResult
     {
         try {
-            $importJobLog = [];
-            $importJobLog['data'] = Json::encode($attributes);
-            $isSql = (empty($importConfig->sql) === false);
-            $transaction = null;
-            if ($isTest === true) {
-                $transaction = Yii::$app->db->beginTransaction();
-            }
-            if ($isSql === false && empty($importConfig->table) === false) {
-                try {
-                    if (class_exists($importConfig->table) === true)  {
-                        /** @var ActiveRecord $model */
-                        $model = Yii::createObject($importConfig->table);
-                        $model->attributes = $attributes;
-                        if ($model->validate() === true) {
-                            $model->save();
-                            $importJobLog['message'] = ImportJob::STATUS_SUCCESS;
-                        } else {
-                            $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Erreur de validation du Model : '.$importConfig->table;
-                        }
-                    }
-                } catch (Exception $e) {
-                    Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Exception, veuillez vérifier votre fichier';
-                }
-            } else {
-                try {
-                    $viewName = $importConfig->getContextName();
-                    Yii::$app->db->createCommand()->insert(
-                        $viewName,
-                        $attributes
-                    )->execute();
-                    $importJobLog['message'] = ImportJob::STATUS_SUCCESS;
-                } catch (Exception $e) {
-                    Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog['message'] = ImportJob::STATUS_FAILED.' : Exception, veuillez vérifier votre requête SQL';
+            $success = true;
+            $errors = [];
+            if (class_exists($importConfig->table) === true)  {
+                /** @var ActiveRecord $model */
+                $model = Yii::createObject($importConfig->table);
+                $model->attributes = $attributes;
+                if ($model->validate() === true) {
+                    $model->save();
+                } else {
+                    $success = false;
+                    $errors[] = $model->errors;
                 }
             }
-            if ($transaction instanceof Transaction) {
-                $transaction->rollBack();
+            return new InsertResult($success, $errors);
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param array $attributes
+     * @return InsertResult
+     * @throws \yii\db\Exception
+     */
+    public static function insertSql(ImportConfig $importConfig, array $attributes): InsertResult
+    {
+        try {
+            $success = true;
+            $errors = [];
+            try {
+                $viewName = $importConfig->getContextName();
+                Yii::$app->db->createCommand()->insert(
+                    $viewName,
+                    $attributes
+                )->execute();
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $success = false;
+                $errors['*'][] = $e->getMessage();
             }
-            return $importJobLog;
+            return new InsertResult($success, $errors);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

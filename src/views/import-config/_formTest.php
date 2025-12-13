@@ -25,50 +25,41 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
     <div class="col-sm-12">
         <?php echo Html::beginForm('', 'post', ['enctype' => 'multipart/form-data']); ?>
         <div class="row">
-            <div class="col-sm-6">
-                <div class="col form-group p-0">
+            <div class="col form-group">
+                <?php
+                echo Html::activeLabel($model, 'importFile', ['label' => 'Importer un fichier (uniquement config \'import\')', 'class' => 'form-label']);
+                ?>
+                <div class="flex items-center gap-1 align-self-start">
                     <?php
-                    echo Html::activeLabel($model, 'type', ['label' => 'Type', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'type', ImportConfig::optsTypes(), [
-                        'prompt' => 'Sélectionner un type', 'class' => 'form-control',
-                    ]);
-                    ?>
-                </div>
-                <div class="col">
-                    <?php
-                    if ($model->hasErrors('type') === true) {
-                        echo Html::tag('p', $model->getFirstError('type'), ['class' => 'text-red-600 text-sm m-0']);
+                    echo Html::activeFileInput($model, 'importFile',
+                        [
+                            'placeholder' => 'Import',
+                            'accept' => '.xls, .xlsx, .csv',
+                            'class' => 'rounded-l-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500']);
+                    if ($model->hasErrors('importFile') === true) {
+                        echo Html::tag('p', $model->getFirstError('importFile'), ['class' => 'text-red-600 text-sm m-0']);
                     }
                     ?>
                 </div>
+
+
             </div>
-            <div class="col-sm-6">
-                <div class="col form-group p-0">
-                    <?php
-                    echo Html::activeLabel($model, 'importConfigId', ['label' => 'Configuration', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'importConfigId', $importConfigs, [
-                        'prompt' => 'Sélectionner une config', 'class' => 'form-control',
-                    ]);
-                    ?>
-                </div>
+            <div class="col form-group">
+                <?php
+                echo Html::activeLabel($model, 'importConfigId', ['label' => 'Configuration', 'class' => 'form-label']);
+                echo Html::activeDropDownList($model, 'importConfigId', $importConfigs, [
+                    'prompt' => 'Sélectionner une config', 'class' => 'form-control',
+                ]);
+                if ($model->hasErrors('importConfigId') === true) {
+                    echo Html::tag('p', $model->getFirstError('importConfigId'), ['class' => 'text-red-600 text-sm m-0']);
+                }
+                ?>
             </div>
         </div>
     </div>
     <div class="col-sm-12 mt-3">
         <div class="row justify-content-between">
-            <div class="col flex items-center gap-1 align-self-start">
-                <?php
-                echo Html::activeFileInput($model, 'importFile',
-                    [
-                        'placeholder' => 'Import',
-                        'accept' => '.xls, .xlsx, .csv',
-                        'class' => 'rounded-l-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500']);
-                if ($model->hasErrors('importFile') === true) {
-                    echo Html::tag('p', $model->getFirstError('importFile'), ['class' => 'text-red-600 text-sm m-0']);
-                }
-                ?>
 
-            </div>
         </div>
         <div class="row  justify-content-center mt-3">
             <div  class="col-sm-6 text-center form-group">
@@ -79,7 +70,7 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
     </div>
 </div>
 <?php
-if (in_array($importJob->status, [ImportJob::STATUS_SUCCESS, ImportJob::STATUS_FAILED]) === true) {
+if ($importJob !== null && in_array($importJob->status, [ImportJob::STATUS_SUCCESS, ImportJob::STATUS_FAILED]) === true) {
     echo $this->render('_importJobLog', ['importJob' => $importJob,]);
 }
 ?>

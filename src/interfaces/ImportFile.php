@@ -10,8 +10,8 @@
  */
 namespace fractalCms\importExport\interfaces;
 
+use fractalCms\importExport\exceptions\InsertResult;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\models\ImportJobLog;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
@@ -21,10 +21,17 @@ interface ImportFile extends Import
     /**
      * @param ImportConfig $importConfig
      * @param array $attributes
-     * @param bool $isTest
-     * @return array
+     * @return InsertResult
      */
-    public static function insert(ImportConfig $importConfig, array $attributes, bool $isTest = false) : array;
+    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes) : InsertResult;
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param array $attributes
+     * @return InsertResult
+     */
+    public static function insertSql(ImportConfig $importConfig, array $attributes) : InsertResult;
+
 
     /**
      * @param string $filePath
