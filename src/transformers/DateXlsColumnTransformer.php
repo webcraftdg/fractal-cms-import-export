@@ -1,6 +1,6 @@
 <?php
 /**
- * BooleanTransformer.php
+ * DateXlsTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,20 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
+use DateTime;
 use Exception;
+use PhpOffice\PhpSpreadsheet\Shared\Date;
 use Yii;
 
-class BooleanTransformer implements Transformer
+class DateXlsColumnTransformer implements ColumnTransformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'boolean';
+        return 'date-xls';
     }
 
     /**
@@ -29,7 +31,7 @@ class BooleanTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Convertit un bool en libellé';
+        return 'Convertit un format de date';
     }
 
     /**
@@ -38,8 +40,7 @@ class BooleanTransformer implements Transformer
     public function getOptionsSchema(): array
     {
         return [
-            ['key' => 'true', 'type'=>'string','required'=>true,'label'=>'Valeur si vrai'],
-            ['key' => 'false', 'type'=>'string','required'=>true,'label'=>'Valeur si faux'],
+            ['key' => 'to', 'type'=>'text','required'=>true,'label'=>'Format cible'],
         ];
     }
 
@@ -52,9 +53,19 @@ class BooleanTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            return filter_var($value, FILTER_VALIDATE_BOOLEAN)
-                ? $options['true']
-                : $options['false'];
+            $date = $value;
+            $to = $options['to'] ?? 'Y-m-d';
+
+            // Cas 1 : date Excel (numérique)
+            if (is_numeric($value)) {
+                $date =  Date::excelToDateTimeObject($value)->format($to);
+            } elseif (is_string($value)) {
+                $timestamp = strtotime($value);
+                if ($timestamp !== false) {
+                    $date =  date($to, $timestamp);
+                }
+            }
+            return  $date;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

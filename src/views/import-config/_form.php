@@ -71,7 +71,7 @@ use fractalCms\core\helpers\Html;
             <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformer de ligne', 'class' => 'form-label']);
+                    echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformer de ligne (Import)', 'class' => 'form-label']);
                     echo Html::activeDropDownList($model, 'rowTransformer', $rowTransformers, [
                         'prompt' => 'Sélectionner un transformer', 'class' => 'form-control',
                     ]);
@@ -100,9 +100,9 @@ use fractalCms\core\helpers\Html;
                 </div>
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'exportTarget', ['label' => 'Cible de l\'export', 'class' => 'form-label']);
+                    echo Html::activeLabel($model, 'exportTarget', ['label' => 'Cible de l\'export (pour une requête SQL)', 'class' => 'form-label']);
                     echo Html::activeDropDownList($model, 'exportTarget', ImportConfig::optsTargets(), [
-                        'prompt' => 'Sélectionner une cible (pour la requête SQL)', 'class' => 'form-control',
+                        'prompt' => 'Sélectionner une cible (pour une requête SQL)', 'class' => 'form-control',
                     ]);
                     ?>
                 </div>

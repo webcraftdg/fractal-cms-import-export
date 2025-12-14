@@ -21,16 +21,18 @@ interface ImportFile extends Import
     /**
      * @param ImportConfig $importConfig
      * @param array $attributes
+     * @param int $rowNumber
      * @return InsertResult
      */
-    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes) : InsertResult;
+    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes, int $rowNumber) : InsertResult;
 
     /**
      * @param ImportConfig $importConfig
      * @param array $attributes
+     * @param int $rowNumber
      * @return InsertResult
      */
-    public static function insertSql(ImportConfig $importConfig, array $attributes) : InsertResult;
+    public static function insertSql(ImportConfig $importConfig, array $attributes, int $rowNumber) : InsertResult;
 
 
     /**

@@ -41,12 +41,10 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
                 echo Html::beginTag('button', ['type' => 'submit', 'class' => 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-lg border border-blue-600 flex items-center']);
                 echo Html::img($baseUrl.'/img/upload.svg', ['width' => 24, 'height' => 24, 'alt' => 'télécharger']);
                 echo Html::endTag('button');
-                if ($model->hasErrors('importFile') === true) {
-                    echo Html::tag('p', $model->getFirstError('importFile'), ['class' => 'text-red-600 text-sm m-0']);
-                } elseif ($model->hasErrors('name') === true) {
-                    echo Html::tag('p', $model->getFirstError('name'), ['class' => 'text-red-600 text-sm m-0']);
-                } elseif ($model->hasErrors('table') === true) {
-                    echo Html::tag('p', $model->getFirstError('table'), ['class' => 'text-red-600 text-sm m-0']);
+                if ($model->hasErrors() === true) {
+                    foreach ($model->errors as $field => $error) {
+                        echo Html::tag('p', $model->getFirstError($field), ['class' => 'text-red-600 text-sm m-0']);
+                    }
                 }
                 ?>
 

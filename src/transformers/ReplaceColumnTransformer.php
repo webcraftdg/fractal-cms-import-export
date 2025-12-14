@@ -1,6 +1,6 @@
 <?php
 /**
- * UpperTransformer.php
+ * ReplaceTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,18 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use Exception;
 use Yii;
 
-class UpperTransformer implements Transformer
+class ReplaceColumnTransformer implements ColumnTransformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'upper';
+        return 'replace';
     }
 
     /**
@@ -29,7 +29,7 @@ class UpperTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Convertit en majuscules';
+        return 'Remplace du texte';
     }
 
     /**
@@ -37,7 +37,10 @@ class UpperTransformer implements Transformer
      */
     public function getOptionsSchema(): array
     {
-        return [];
+        return [
+            ['key' => 'search', 'type'=>'text','required'=>true,'label'=>'Rechercher'],
+            ['key' => 'replace', 'type'=>'text','required'=>true,'label'=>'Remplacer'],
+        ];
     }
 
     /**
@@ -49,7 +52,9 @@ class UpperTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            return is_string($value) ? mb_strtoupper($value) : $value;
+            return is_string($value)
+                ? str_replace($options['search'], $options['replace'], $value)
+                : $value;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

@@ -19,12 +19,13 @@ use fractalCms\importExport\interfaces\RowTransformer as RowTransformerInterface
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\contexts\Import as ImportContext;
 use Exception;
+use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Psy\Util\Json;
+use yii\helpers\Json;
 use Yii;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
@@ -75,17 +76,17 @@ class ImportXlsx implements ImportFile
                 $importJob->save();
                 $importJob->refresh();
                 $transaction = null;
-                if ((boolean)$importConfig->stopOnError === true) {
+                if ((boolean)$importConfig->stopOnError === true || $baseImportContext->dryRun === true) {
                     $transaction = Yii::$app->db->beginTransaction();
                 }
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
                     $indexJsonSource = 0;
                     $attributes = [];
                     for($col = $starCol; $col < ($endColumn + 1); $col += 1) {
-                        $mappingColumn = ($mappingColumns[$indexJsonSource]) ?? [];
-                        if (isset($mappingColumn['source']) === true) {
+                        $mappingColumn = ($mappingColumns[$indexJsonSource]) ?? null;
+                        if ($mappingColumn instanceof ImportConfigColumn) {
                             $value = $sheet->getCell([$col, $row])->getValue();
-                            $attributes[$mappingColumn['source']] = $value;
+                            $attributes[$mappingColumn->source] = $value;
                         }
                         $indexJsonSource += 1;
                     }
@@ -118,12 +119,11 @@ class ImportXlsx implements ImportFile
                         }
                         if ($importResult->success === false) {
                             $importJob->errorRows += 1;
-                            foreach ($importResult->errors as $field => $messages) {
-                                foreach ($messages as $msg) {
-                                    $errorCollector->add(
-                                        new ImportError($row, $field, $msg)
-                                    );
-                                }
+                            /** @var ImportError $error */
+                            foreach ($importResult->errors as $error) {
+                                $errorCollector->add(
+                                    $error
+                                );
                             }
                         } else {
                             $importJob->successRows += 1;
@@ -132,12 +132,13 @@ class ImportXlsx implements ImportFile
                 }
                 if ($errorCollector->hasErrors() === true) {
                     $importJob->status = ImportJob::STATUS_FAILED;
-                    if ($transaction instanceof Transaction) {
-                        $transaction->rollBack();
-                    }
                 } else {
                     $importJob->status = ImportJob::STATUS_SUCCESS;
-                    if ($transaction instanceof Transaction) {
+                }
+                if ($transaction instanceof Transaction) {
+                    if ($baseImportContext->dryRun === true || $errorCollector->hasErrors() === true) {
+                        $transaction->rollBack();
+                    } else {
                         $transaction->commit();
                     }
                 }
@@ -147,7 +148,7 @@ class ImportXlsx implements ImportFile
                 $importJob->errors = Json::encode($errorCollector->toCsvRows());
             }
             $importJob->saveFileErrorCsv();
-            $importJob->save();
+            $importJob->save(false);
             $importJob->refresh();
             return $importJob;
         } catch (Exception $e)  {
@@ -159,11 +160,12 @@ class ImportXlsx implements ImportFile
     /**
      * @param ImportConfig $importConfig
      * @param array $attributes
+     * @param int $rowNumber
      * @return InsertResult
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes): InsertResult
+    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes, int $rowNumber): InsertResult
     {
         try {
             $success = true;
@@ -176,7 +178,13 @@ class ImportXlsx implements ImportFile
                     $model->save();
                 } else {
                     $success = false;
-                    $errors[] = $model->errors;
+                    foreach ($model->errors as $field => $validateErrors) {
+                        foreach ($validateErrors as $message) {
+                            $errors[] = new ImportError(
+                                rowNumber: $rowNumber,column: $field,message: $message,level: ImportError::LEVEL_VALIDATION_ERROR
+                            );
+                        }
+                    }
                 }
             }
             return new InsertResult($success, $errors);
@@ -189,10 +197,11 @@ class ImportXlsx implements ImportFile
     /**
      * @param ImportConfig $importConfig
      * @param array $attributes
+     * @param int $rowNumber
      * @return InsertResult
      * @throws \yii\db\Exception
      */
-    public static function insertSql(ImportConfig $importConfig, array $attributes): InsertResult
+    public static function insertSql(ImportConfig $importConfig, array $attributes, int $rowNumber): InsertResult
     {
         try {
             $success = true;
@@ -206,7 +215,9 @@ class ImportXlsx implements ImportFile
             } catch (Exception $e) {
                 Yii::error($e->getMessage(), __METHOD__);
                 $success = false;
-                $errors['*'][] = $e->getMessage();
+                $errors[] = new ImportError(
+                    rowNumber: $rowNumber,column: '*',message: $e->getMessage()
+                );
             }
             return new InsertResult($success, $errors);
         } catch (Exception $e)  {
@@ -313,7 +324,7 @@ class ImportXlsx implements ImportFile
     public static function getEndColumn(ImportConfig $importConfig): int
     {
         try {
-            return count($importConfig->tmpColumns);
+            return $importConfig->getImportColumns()->count();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

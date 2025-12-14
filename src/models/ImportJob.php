@@ -15,6 +15,7 @@ use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use Exception;
 use Yii;
+use yii\helpers\FileHelper;
 
 /**
  * This is the model class for table "importJobs".
@@ -56,9 +57,9 @@ class ImportJob extends \yii\db\ActiveRecord
     const TYPE_EXPORT = 'export';
 
     /**
-     * @var ImportErrorCollector
+     * @var ImportErrorCollector|null
      */
-    public $errorCollector;
+    public ?ImportErrorCollector $errorCollector = null;
 
     /**
      * {@inheritdoc}
@@ -174,21 +175,21 @@ class ImportJob extends \yii\db\ActiveRecord
         try {
             $filename = 'import_rapport_error_importLogId_'.$this->id. date('Ymd_His') . '.csv';
             $path = Yii::getAlias('@runtime') . '/import_file_errors';
-            if (file_exists($path) === false) {
-                mkdir($path);
-            }
-            $pathFile =  Yii::getAlias('@runtime') . '/import_file_errors/'.$filename;
-            if($this->errorCollector instanceof ImportErrorCollector) {
-                $csvRows = $this->errorCollector->toCsvRows();
-                if (empty($csvRows) === false) {
-                    $headers = array_keys($csvRows[0]);
-                    $f = fopen($pathFile, 'w');
-                    fputcsv($f, $headers, ';');
-                    foreach ($csvRows as $row) {
-                        fputcsv($f, $row, ';');
+            $success = FileHelper::createDirectory($path);
+            if ($success === true) {
+                $pathFile =  Yii::getAlias('@runtime') . '/import_file_errors/'.$filename;
+                if($this->errorCollector instanceof ImportErrorCollector) {
+                    $csvRows = $this->errorCollector->toCsvRows();
+                    if (empty($csvRows) === false) {
+                        $headers = array_keys($csvRows[0]);
+                        $f = fopen($pathFile, 'w');
+                        fputcsv($f, $headers, ';');
+                        foreach ($csvRows as $row) {
+                            fputcsv($f, $row, ';');
+                        }
+                        fclose($f);
+                        $this->errorFilePath = '@runtime/import_file_errors/'.$filename;
                     }
-                    fclose($f);
-                    $this->errorFilePath = '@runtime/import_file_errors/'.$filename;
                 }
             }
         } catch (Exception $e) {

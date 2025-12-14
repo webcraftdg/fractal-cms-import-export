@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use yii\base\Model;
 
 class ColumnModel extends Model
@@ -23,7 +23,7 @@ class ColumnModel extends Model
     public string $target;
     public string $format;
     public mixed $default;
-    public Transformer|null $transformer;
+    public ColumnTransformer|null $transformer;
 
     public function scenarios() : array
     {

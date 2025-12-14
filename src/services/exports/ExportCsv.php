@@ -17,7 +17,7 @@ use fractalCms\importExport\services\Export as ExportService;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\Transformer as TransformerService;
+use fractalCms\importExport\services\ColumnTransformer as TransformerService;
 use Yii;
 use yii\db\Query;
 
@@ -41,22 +41,20 @@ class ExportCsv implements Export
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
             $headers = [];
-            $configTransformerColumns = [];
+            $configColumns = [];
             /** @var ImportConfigColumn $column */
             foreach ($importConfig->getImportColumns()->each() as $column) {
                 $headers[] = $column->target;
-                if (empty($column->transformer) === false) {
-                    $configTransformerColumns[$column->source] = $column;
-                }
+                $configColumns[] = $column;
             }
-
             fputcsv($f, $headers, ';');
             try {
                 if ($query instanceof Query) {
                     $totalCount = $query->count();
                     foreach ($query->each() as $row) {
-                        $successRows = static::writeRow($f,
-                            $configTransformerColumns,
+                        $successRows = static::writeRow(
+                            $f,
+                            $configColumns,
                             $row,
                             $transformerService,
                             $successRows
@@ -66,8 +64,9 @@ class ExportCsv implements Export
                     $totalCount = $query->getCount();
                     foreach ($query->getIterator() as $rows) {
                         foreach ($rows as $row) {
-                            $successRows = static::writeRow($f,
-                                $configTransformerColumns,
+                            $successRows = static::writeRow(
+                                $f,
+                                $configColumns,
                                 $row,
                                 $transformerService,
                                 $successRows
@@ -93,20 +92,35 @@ class ExportCsv implements Export
         }
     }
 
-    protected static function writeRow($f, array $configTransformerColumns, $row, $transformerService, $successRows) : int
+    /**
+     * @param $f
+     * @param array $configColumns
+     * @param $row
+     * @param $transformerService
+     * @param $successRows
+     * @return int
+     * @throws Exception
+     */
+    protected static function writeRow($f, array $configColumns, $row, $transformerService, $successRows) : int
     {
         try {
-            $line = $row;
-            foreach ($configTransformerColumns as $source => $column) {
-                if (isset($row[$source]) === true
+            $line = [];
+            /** @var  ImportConfigColumn $column */
+            foreach ($configColumns as $column) {
+                $value = $row[$column->source] ?? null;
+                if (
+                    $value !== null
+                    && $transformerService instanceof TransformerService
+                    && $column->transformer !== null
                     && isset($column->transformer['name']) === true
-                    && $transformerService instanceof TransformerService) {
-                    $line[$source] = $transformerService->apply(
+                ) {
+                    $value = $transformerService->apply(
                         $column->transformer['name'],
-                        $row[$source],
+                        $value,
                         $column->transformerOptions
                     );
                 }
+                $line[$column->source] = $value;
             }
             fputcsv($f, $line, ';');
             $successRows += 1;

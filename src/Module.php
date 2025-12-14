@@ -21,15 +21,15 @@ use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\Transformer;
-use fractalCms\importExport\services\Transformer as TransformService;
-use fractalCms\importExport\transformers\BooleanTransformer;
-use fractalCms\importExport\transformers\DateTransformer;
-use fractalCms\importExport\transformers\LowerTransformer;
-use fractalCms\importExport\transformers\NumberTransformer;
-use fractalCms\importExport\transformers\ReplaceTransformer;
-use fractalCms\importExport\transformers\TrimTransformer;
-use fractalCms\importExport\transformers\UpperTransformer;
+use fractalCms\importExport\services\ColumnTransformer;
+use fractalCms\importExport\services\ColumnTransformer as TransformService;
+use fractalCms\importExport\transformers\BooleanColumnTransformer;
+use fractalCms\importExport\transformers\DateColumnTransformer;
+use fractalCms\importExport\transformers\LowerColumnTransformer;
+use fractalCms\importExport\transformers\NumberColumnTransformer;
+use fractalCms\importExport\transformers\ReplaceColumnTransformer;
+use fractalCms\importExport\transformers\TrimColumnTransformer;
+use fractalCms\importExport\transformers\UpperColumnTransformer;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
@@ -60,13 +60,13 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setDefinitions([
                 TransformService::class => function() {
                     return new TransformService([
-                        new DateTransformer(),
-                        new TrimTransformer(),
-                        new UpperTransformer(),
-                        new LowerTransformer(),
-                        new ReplaceTransformer(),
-                        new NumberTransformer(),
-                        new BooleanTransformer(),
+                        new DateColumnTransformer(),
+                        new TrimColumnTransformer(),
+                        new UpperColumnTransformer(),
+                        new LowerColumnTransformer(),
+                        new ReplaceColumnTransformer(),
+                        new NumberColumnTransformer(),
+                        new BooleanColumnTransformer(),
                     ]);
                 }
             ]);

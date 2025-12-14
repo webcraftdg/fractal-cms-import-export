@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-interface Transformer
+interface ColumnTransformer
 {
 
     /**

@@ -158,10 +158,17 @@ class ImportConfigController extends BaseController
                         $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
                     }
                     if ($buildViewOk === true) {
+                        $transaction = Yii::$app->db->beginTransaction();
                         $model->save();
                         $model->refresh();
-                        $model->buildInitColumns($this->dbView);
-                        $response = $this->redirect(['import-config/update', 'id' => $model->id]);
+                        $errorsColumns = $model->buildInitColumns($this->dbView);
+                        if (empty($errorsColumns) === true) {
+                            $transaction->commit();
+                            $response = $this->redirect(['import-config/update', 'id' => $model->id]);
+                        } else {
+                            $transaction->rollBack();
+                            $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                        }
                     }
 
                 }
@@ -200,6 +207,7 @@ class ImportConfigController extends BaseController
             }
             $tables = $this->parameter->getActiveModelTableNames();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
+
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 if(empty($body[$model->formName()]['tmpColumns']) === true) {
@@ -208,10 +216,17 @@ class ImportConfigController extends BaseController
                 $model->load($body);
                 if ($model->validate() === true) {
                     $tmpColumns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
-                    $model->manageColumns($tmpColumns);
+                    $transaction = Yii::$app->db->beginTransaction();
+                    $errorColumns = $model->manageColumns($tmpColumns);
                     $model->save();
                     $model->refresh();
-                    $response = $this->redirect(['import-config/index']);
+                    if (empty($errorColumns) === true) {
+                        $transaction->commit();
+                        $response = $this->redirect(['import-config/index']);
+                    } else {
+                        $transaction->rollBack();
+                        $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                    }
                 }
             }
             if ($response === null) {

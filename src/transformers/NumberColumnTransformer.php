@@ -1,6 +1,6 @@
 <?php
 /**
- * LowerTransformer.php
+ * NumberTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,18 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use Exception;
 use Yii;
 
-class LowerTransformer implements Transformer
+class NumberColumnTransformer implements ColumnTransformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'lower';
+        return 'decimals';
     }
 
     /**
@@ -29,7 +29,7 @@ class LowerTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Convertit en minuscules';
+        return 'Force une valeur numérique';
     }
 
     /**
@@ -37,7 +37,9 @@ class LowerTransformer implements Transformer
      */
     public function getOptionsSchema(): array
     {
-        return [];
+        return [
+            ['key' => 'decimals', 'type'=>'number','required'=>false,'label'=>'Décimales'],
+        ];
     }
 
     /**
@@ -49,7 +51,12 @@ class LowerTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            return is_string($value) ? mb_strtolower($value) : $value;
+            if (is_numeric($value) === false) {
+                $value = (float)$value;
+            }
+            $decimals = $options['decimals'] ?? 0;
+            return $decimals !== null ? number_format((float)$value, $decimals, '.', '')
+                : $value;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

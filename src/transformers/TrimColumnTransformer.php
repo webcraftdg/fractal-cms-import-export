@@ -1,6 +1,6 @@
 <?php
 /**
- * ReplaceTransformer.php
+ * TrimTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,18 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use Exception;
 use Yii;
 
-class ReplaceTransformer implements Transformer
+class TrimColumnTransformer implements ColumnTransformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'replace';
+        return 'trim';
     }
 
     /**
@@ -29,7 +29,7 @@ class ReplaceTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Remplace du texte';
+        return 'Supprime les espaces avant/après';
     }
 
     /**
@@ -37,10 +37,7 @@ class ReplaceTransformer implements Transformer
      */
     public function getOptionsSchema(): array
     {
-        return [
-            ['key' => 'search', 'type'=>'text','required'=>true,'label'=>'Rechercher'],
-            ['key' => 'replace', 'type'=>'text','required'=>true,'label'=>'Remplacer'],
-        ];
+        return [];
     }
 
     /**
@@ -52,9 +49,7 @@ class ReplaceTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            return is_string($value)
-                ? str_replace($options['search'], $options['replace'], $value)
-                : $value;
+            return is_string($value) ? trim($value) : $value;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

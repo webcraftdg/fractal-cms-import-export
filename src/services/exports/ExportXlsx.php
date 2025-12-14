@@ -17,7 +17,7 @@ use Exception;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\services\Transformer as TransformerService;
+use fractalCms\importExport\services\ColumnTransformer as TransformerService;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -60,18 +60,30 @@ class ExportXlsx implements Export
                 if ($query instanceof Query) {
                     $totalCount = $query->count();
                     foreach ($query->each() as $row) {
-                        static::writeRow($sheet, $configColumns, $row, $rowIndex, $transformerService);
+                        $successRows = static::writeRow(
+                            $sheet,
+                            $configColumns,
+                            $row,
+                            $transformerService,
+                            $successRows,
+                            $rowIndex
+                        );
                         $rowIndex++;
-                        $successRows += 1;
                     }
                 } elseif ($query instanceof SqlIterator) {
                     $totalCount = $query->getCount();
                     foreach ($query->getIterator() as $rows) {
                         foreach ($rows as $row) {
-                            static::writeRow($sheet, $configColumns, $row, $rowIndex, $transformerService);
+                            $successRows = static::writeRow(
+                                $sheet,
+                                $configColumns,
+                                $row,
+                                $transformerService,
+                                $successRows,
+                                $rowIndex
+                            );
+                            $rowIndex++;
                         }
-                        $rowIndex++;
-                        $successRows += 1;
                     }
                 }
                 $status = ImportJob::STATUS_SUCCESS;
@@ -98,12 +110,13 @@ class ExportXlsx implements Export
      * @param Worksheet $sheet
      * @param array $configColumns
      * @param $row
-     * @param $rowIndex
      * @param TransformerService $transformerService
-     * @return void
+     * @param $successRows
+     * @param $rowIndex
+     * @return int
      * @throws Exception
      */
-    protected static function writeRow(Worksheet $sheet, array $configColumns, $row, $rowIndex, TransformerService $transformerService) : void
+    protected static function writeRow(Worksheet $sheet, array $configColumns, $row, TransformerService $transformerService, $successRows, $rowIndex) : int
     {
         try {
             $colIndex = 1;
@@ -114,7 +127,7 @@ class ExportXlsx implements Export
                     $value !== null
                     && $transformerService instanceof TransformerService
                     && $column->transformer !== null
-                    && empty($column->transformer['name'] === false)
+                    && empty($column->transformer['name']) === false
                 ) {
                     $value = $transformerService->apply(
                         $column->transformer['name'],
@@ -128,6 +141,8 @@ class ExportXlsx implements Export
                 );
                 $colIndex++;
             }
+            $successRows += 1;
+            return $successRows;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

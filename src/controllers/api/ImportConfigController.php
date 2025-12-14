@@ -18,11 +18,11 @@ use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\Transformer as TransformService;
+use fractalCms\importExport\services\ColumnTransformer as TransformService;
 use Yii;
 use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
@@ -261,7 +261,7 @@ class ImportConfigController extends BaseController
     {
         try {
             $transformers = [];
-            /** @var Transformer $transformer */
+            /** @var ColumnTransformer $transformer */
             foreach ($this->transformService->getTransformers() as $transformer) {
                 $transformers[] = [
                     'name' => $transformer->getName(),

@@ -1,6 +1,6 @@
 <?php
 /**
- * TrimTransformer.php
+ * LowerTransformer.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,18 @@
  */
 namespace fractalCms\importExport\transformers;
 
-use fractalCms\importExport\interfaces\Transformer;
+use fractalCms\importExport\interfaces\ColumnTransformer;
 use Exception;
 use Yii;
 
-class TrimTransformer implements Transformer
+class LowerColumnTransformer implements ColumnTransformer
 {
     /**
      * @return string
      */
     public function getName(): string
     {
-        return 'trim';
+        return 'lower';
     }
 
     /**
@@ -29,7 +29,7 @@ class TrimTransformer implements Transformer
      */
     public function getDescription(): string
     {
-        return 'Supprime les espaces avant/après';
+        return 'Convertit en minuscules';
     }
 
     /**
@@ -49,7 +49,7 @@ class TrimTransformer implements Transformer
     public function transform(mixed $value, array $options = []): mixed
     {
         try {
-            return is_string($value) ? trim($value) : $value;
+            return is_string($value) ? mb_strtolower($value) : $value;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

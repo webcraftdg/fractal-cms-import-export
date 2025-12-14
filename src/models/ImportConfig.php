@@ -15,6 +15,7 @@ use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
+use fractalCms\importExport\exceptions\ImportError;
 use fractalCms\importExport\interfaces\RowTransformer;
 use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\Module;
@@ -389,11 +390,19 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
-    public function buildInitColumns(DbView $dbView) : void
+    /**
+     * @param DbView $dbView
+     * @return array
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\base\NotSupportedException
+     * @throws \yii\db\Exception
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function buildInitColumns(DbView $dbView) : array
     {
         try {
             $columns = $this->getContextColumns($dbView);
-            $this->manageColumns($columns);
+            return $this->manageColumns($columns);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -571,8 +580,18 @@ class ImportConfig extends \yii\db\ActiveRecord
                     if ($this->validate() === true) {
                         $this->save();
                         $this->refresh();
-                        $this->manageColumns($columns);
-                        $transaction->commit();
+                        $errorsColumns = $this->manageColumns($columns);
+                        if (empty($errorsColumns) === true) {
+                            $transaction->commit();
+                        } else {
+                            $transaction->rollBack();
+                            /** @var ImportError $errorsColumn */
+                            foreach ($errorsColumns as $errorsColumn) {
+                                $this->addError('tmpColumns', $errorsColumn->message);
+                                break;
+                            }
+                            $valid = false;
+                        }
                     } else {
                         $valid = false;
                         $transaction->rollBack();
@@ -589,18 +608,18 @@ class ImportConfig extends \yii\db\ActiveRecord
 
 
     /**
-     * Manage columns
-     *
      * @param array $columns
-     * @return void
+     * @return array
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
+     * @throws \yii\di\NotInstantiableException
      */
-    public function manageColumns(array $columns)
+    public function manageColumns(array $columns) : array
     {
         try {
             $index = 0;
-            foreach ($columns as $column) {
+            $errors = [];
+            foreach ($columns as $orderColumn => $column) {
                 $importColumn = null;
                 if (isset($column['id']) === true) {
                     /** @var ImportConfigColumn $importColumn */
@@ -634,10 +653,20 @@ class ImportConfig extends \yii\db\ActiveRecord
                 if ($importColumn->validate() === true) {
                     $importColumn->save();
                 } else {
-                    Yii::debug(Json::encode($importColumn->errors), __FUNCTION__);
+                    foreach ($importColumn->errors as $field => $error) {
+                        $errors[] = new ImportError(
+                            rowNumber: $orderColumn,
+                            column: $field,
+                            message: 'Colonne : '.$importColumn->source.':'.$importColumn->getFirstError($field),
+                            level: ImportError::LEVEL_VALIDATION_ERROR
+                        );
+                    }
                 }
             }
-            $this->reorderColumns();
+            if (empty($errors) === true) {
+                $this->reorderColumns();
+            }
+            return $errors;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
