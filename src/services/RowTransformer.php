@@ -67,4 +67,22 @@ class RowTransformer
             throw  $e;
         }
     }
+
+    /**
+     * @return array
+     * @throws Exception
+     */
+    public function getRowTransformersToList(): array
+    {
+        try {
+            $rowTransformersList = [];
+            foreach ($this->rowTransformers as $rowTransformer) {
+                $rowTransformersList[$rowTransformer->getName()] = $rowTransformer->getName();
+            }
+            return $rowTransformersList;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
 }

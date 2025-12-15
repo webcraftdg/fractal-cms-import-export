@@ -22,7 +22,8 @@ final class Import
         public readonly ImportErrorCollector $errors,
         public readonly bool $stopOnError,
         public readonly bool $dryRun,
-        public int $rowNumber
+        public int $rowNumber,
+        public array $params = []
     ) {}
 
     /**
@@ -40,5 +41,24 @@ final class Import
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
         }
+    }
+
+    /**
+     * @param string $key
+     * @param mixed|null $default
+     * @return mixed
+     */
+    public function getParam(string $key, mixed $default = null): mixed
+    {
+        return $this->params[$key] ?? $default;
+    }
+
+    /**
+     * @param string $key
+     * @return bool
+     */
+    public function hasParam(string $key): bool
+    {
+        return array_key_exists($key, $this->params);
     }
 }

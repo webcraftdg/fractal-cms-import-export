@@ -49,11 +49,11 @@ export class ImportConfigColumns
         this.logger.trace('attached', this.id);
         const url = this.configService.getApiBaseUrl()+EApi.IMPORT_CONFIG_JSON_GET.replace('{id}', this.id);
         const urlTransformer = this.configService.getApiBaseUrl()+EApi.GET_TRANSFORMERS;
-        const urlTableColums = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id);
+        let urlTableColumns = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.id).replace('{name}', null);
 
         const getImportConfig = this.apiServices.get(url);
         const getTransfromers = this.apiServices.getTransformer(urlTransformer);
-        const getTableColumns = this.apiServices.getTableColumns(urlTableColums);
+        const getTableColumns = this.apiServices.getTableColumns(urlTableColumns);
         Promise.all([
             getImportConfig,
             getTransfromers,
@@ -66,12 +66,6 @@ export class ImportConfigColumns
             this.getColumns(urlGetColmuns);
         });
     }
-
-    transformerMatcher = (a:ITransformer, b:ITransformer) =>
-    {
-        return ((a && typeof(a)== 'object' && a.hasOwnProperty('name')) && (b && typeof(b)== 'object' && b.hasOwnProperty('name')) && a.name == b.name);
-    }
-
 
     public search(event:Event)
     {
@@ -174,16 +168,23 @@ export class ImportConfigColumns
     {
         this.logger.trace('add');
         event.preventDefault();
-        const newColumn = {} as IImportConfigColumn;
         const newModel = new Column(this.logger, this.validationRules);
-        Object.assign(newModel, newColumn);
         this.validationController.addObject(newModel);
         this.columns.push(newModel);
         this.platform.taskQueue.queueTask(() => {
-            this.save();
+            this.validate();
         }, {delay:50});
     }
 
+    private validate() {
+        this.validationController.validate().then((validation) => {
+            if (!validation.valid) {
+                this.logger.trace('validate:error', validation.results);
+            }
+        }).catch((error) => {
+            this.logger.trace('validate:error', error);
+        });
+    }
     /**
      * Save
      *

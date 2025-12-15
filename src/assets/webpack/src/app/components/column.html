@@ -1,0 +1,165 @@
+<template>
+    <div class="card-body">
+        <div class="row">
+            <input
+                    id.bind="'hidden-id-'+model.id"
+                    value.bind="model.id"
+                    type="hidden"
+                    name.bind="'ImportConfig[tmpColumns]['+index+'][id]'"
+            />
+            <input
+                    id.bind="'hidden-order-'+model.id"
+                    value.bind="model.order"
+                    type="hidden"
+                    name.bind="'ImportConfig[tmpColumns]['+index+'][order]'"
+            />
+            <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.sourceErrors">
+                <label class="form-label" for.bind="'source-'+model.id" id="labelSource">Colonne Source</label>
+                <div class="form-control p-0"   class.bind="model.sourceErrors.length ? 'error' : ''">
+                    <input
+                            type="text"
+                            value.bind="model.source & validate"
+                            placeholder="Saisisser ou sélectionner une colonne source"
+                            name.bind="'ImportConfig[tmpColumns]['+index+'][source]'"
+                            class="form-control border-0"
+                            input.trigger="updateSelectColumns($event)"
+                            id.bind="'source-'+model.id"
+                            aria-describedby="labelSource"
+                            aria-required="true"
+                            aria-invalid.bind="model.sourceErrors.length ? 'true' : 'false'"
+                            required
+                    />
+                    <select
+                            if.bind="tableColumns.length > 0"
+
+                            class="mt-3 form-select border border-gray-800 columns"
+                            id.bind="'search-'+index+model.id"
+                            change.trigger="changeSelect($event)"
+                            value.bind="model.search"
+                    >
+                        <option value="">Colonnes disponible</option>
+                        <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.source">
+                            ${tableColumn.target}
+                        </option>
+                    </select>
+                </div>
+                <p class="error-message" repeat.for="error of model.sourceErrors" id.bind="'model.sourceErrors'+model.id">${error.result.message}</p>
+            </div>
+            <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.targetErrors">
+                <label class="form-label" for.bind="'target-'+model.id" id="labelTarget">Colonne cible</label>
+                <input
+                        class="form-control"
+                        id.bind="'target-'+model.id"
+                        type="text"
+                        name.bind="'ImportConfig[tmpColumns]['+index+'][target]'"
+                        value.bind="model.target & validate"
+                        class.bind="model.targetErrors.length ? 'error' : ''"
+                        aria-describedby="labelTarget"
+                        aria-required="true"
+                        aria-invalid.bind="model.targetErrors.length ? 'true' : 'false'"
+                        required
+                />
+                <p class="error-message" repeat.for="error of model.targetErrors" id.bind="'model.targetErrors'+model.id">${error.result.message}</p>
+
+            </div>
+            <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.formatErrors">
+                <label class="form-label"  for.bind="'format-'+model.id" id="labelFormat">Format de données</label>
+                <select
+                        class="form-control"
+                        id.bind="'format-'+model.id"
+                        value.bind="model.format & validate"
+                        name.bind="'ImportConfig[tmpColumns]['+index+'][format]'"
+                        class.bind="model.formatErrors.length ? 'error' : ''"
+                        aria-describedby="labelFormat"
+                        aria-required="true"
+                        aria-invalid.bind="model.formatErrors.length ? 'true' : 'false'"
+                        required
+                >
+                    <option value="">Sélectionner un format de donnée</option>
+                    <option value="pk">pk</option>
+                    <option value="upk">upk</option>
+                    <option value="bigpk">bigpk</option>
+                    <option value="ubigpk">ubigpk</option>
+                    <option value="char">char</option>
+                    <option value="string">string</option>
+                    <option value="text">text</option>
+                    <option value="tinyint">tinyint</option>
+                    <option value="smallint">smallint</option>
+                    <option value="integer">integer</option>
+                    <option value="bigint">bigint</option>
+                    <option value="float">float</option>
+                    <option value="double">double</option>
+                    <option value="decimal">decimal</option>
+                    <option value="datetime">datetime</option>
+                    <option value="timestamp">timestamp</option>
+                    <option value="time">time</option>
+                    <option value="date">date</option>
+                    <option value="binary">binary</option>
+                    <option value="boolean">boolean</option>
+                    <option value="money">money</option>
+                    <option value="json">json</option>
+                </select>
+                <p class="error-message" repeat.for="error of model.formatErrors" id.bind="'model.formatErrors'+model.id">${error.result.message}</p>
+
+            </div>
+            <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.defaultErrors">
+                <label class="form-label" for.bind="'default-'+model.id" id="labelDefault">Valeur par défaut</label>
+                <input
+                        class="form-control"
+                        id.bind="'default-'+model.id"
+                        type="text"
+                        name.bind="'ImportConfig[tmpColumns]['+index+'][default]'"
+                        value.bind="model.default & validate"
+                        class.bind="model.defaultErrors.length ? 'error' : ''"
+                        aria-describedby="labelDefault"
+                        aria-required="true"
+                        aria-invalid.bind="model.defaultErrors.length ? 'true' : 'false'"
+                />
+                <p class="error-message" repeat.for="error of model.defaultErrors" id.bind="'model.defaultErrors'+model.id">${error.result.message}</p>
+            </div>
+            <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.transformerErrors">
+                <label class="form-label" for.bind="'transformer-'+model.id" id="labelTransformer">Transformeur de donnée</label>
+                <select
+                        class="form-control"
+                        id.bind="'transformer-'+model.id"
+                        matcher.bind="transformerMatcher"
+                        value.bind="model.transformer & validate"
+                        name.bind="'ImportConfig[tmpColumns]['+index+'][transformer][name]'"
+                        class.bind="model.transformerErrors.length ? 'error' : ''"
+                        aria-describedby="labeltransformer"
+                        aria-invalid.bind="model.transformerErrors.length ? 'true' : 'false'"
+                >
+                    <option value="">Sélectionner une transformation</option>
+                    <option repeat.for="transformer of transformers"  model.bind="transformer" value.bind="transformer.name">
+                        ${transformer.name}
+                    </option>
+                </select>
+                <div class="mt-2" if.bind="model.transformer && model.transformer.optionsSchema">
+                    <div class="text-pretty">${model.transformer.description}</div>
+                    <div class="row" repeat.for="option of model.transformer.optionsSchema">
+                        <div class="col-sm-3  form-group" validation-errors.from-view="model.transformer.optionsSchema[$parent.$index].keyErrors">
+                            <label
+                                    class="form-label"
+                                    for.bind="'transformer-'+model.id+'-'+model.transformer.name+option.key"
+                                    id.bind="'transformerOptions-'+model.id+'-'+option.key+'-label-'+$parent.$index">
+                                ${option.label}
+                            </label>
+                            <input
+                                    id.bind="'transformer-'+model.id+'-'+model.transformer.name+option.key"
+                                    class="form-control"
+                                    name.bind="'ImportConfig[tmpColumns]['+index+'][transformerOptions]['+option.key+']'"
+                                    type.bind="option.type"
+                                    value.bind="model.transformerOptions[option.key] & validate"
+                                    aria-describedby.bind="'transformerOptions-'+model.id+'-'+option.key+'-label-'+$parent.index"
+                                    aria-required.bind="option.required"
+                                    aria-invalid.bind="model.transformer.transformerOptions[index].keyErrors.length ? 'true' : 'false'"
+                                    required.bind="option.required"
+                            >
+                        </div>
+                    </div>
+                </div>
+                <p class="error-message" repeat.for="error of model.transformerErrors" id.bind="'model.transformerErrors'+model.id">${error.result.message}</p>
+            </div>
+        </div>
+    </div>
+</template>

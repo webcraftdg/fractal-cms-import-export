@@ -78,6 +78,24 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
+            [['importConfigId'], 'integer'],
+            [['order'], 'number'],
+            [['dateCreate', 'dateUpdate'], 'safe'],
+            [['transformer', 'transformerOptions'], 'string'],
+            [['source', 'target', 'defaultValue',], 'string', 'max' => 255],
+            [['format'], 'string', 'max' => 50],
+            [['importConfigId', 'source', 'target', 'format'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
+            [['importConfigId'], 'exist', 'skipOnError' => true, 'targetClass' => ImportConfig::class, 'targetAttribute' => ['importConfigId' => 'id']],
+        ];
+    }
+
+    /**
      * @inheritDoc
      */
     public function afterFind()
@@ -117,6 +135,9 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
                         $transformerService = $transformers[$transformer['name']];
                         $transformer['optionsSchema'] = $transformerService->getOptionsSchema() ;
                         $transformer['description'] = ($transformer['description']) ?? $transformerService->getDescription();
+                    }else {
+                        $transformer = null;
+                        $transformerOptions = null;
                     }
                     
                 }
@@ -126,24 +147,6 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
         }
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function rules()
-    {
-        return [
-            [['importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
-            [['importConfigId'], 'integer'],
-            [['order'], 'number'],
-            [['dateCreate', 'dateUpdate'], 'safe'],
-            [['transformer', 'transformerOptions'], 'string'],
-            [['source', 'target', 'defaultValue',], 'string', 'max' => 255],
-            [['format'], 'string', 'max' => 50],
-            [['importConfigId', 'source', 'target', 'format'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
-            [['importConfigId'], 'exist', 'skipOnError' => true, 'targetClass' => ImportConfig::class, 'targetAttribute' => ['importConfigId' => 'id']],
-        ];
     }
 
     /**

@@ -55,7 +55,7 @@ export class HttpService {
             };
         }
         requestInit.method = 'DELETE';
-        return this.fetch(url, null, requestInit);
+        return this.fetch(url, requestInit, null);
     }
 
 

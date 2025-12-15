@@ -18,6 +18,7 @@ use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\interfaces\ColumnTransformer;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
@@ -35,7 +36,7 @@ use yii\web\Response;
 class ImportConfigController extends BaseController
 {
 
-    private DbView $dbView;
+    private DbViewInterface $dbView;
     private TransformService $transformService;
 
     /**
@@ -315,11 +316,19 @@ class ImportConfigController extends BaseController
     public function actionGetTableColumns($id) : array
     {
         try {
+            $request = Yii::$app->request;
             $importConfig = ImportConfig::findOne($id);
             if ($importConfig === null) {
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
-            return $importConfig->getContextColumns($this->dbView);
+            $name = $request->getQueryParam('name', null);
+            $columns =  $importConfig->getContextColumns($this->dbView);
+            if (empty($name) === false) {
+                $columns = array_filter($columns, function($value) use ($name){
+                    return isset($value['source']) === true && str_contains($value['source'], $name) === true;
+                });
+            }
+            return array_values($columns);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

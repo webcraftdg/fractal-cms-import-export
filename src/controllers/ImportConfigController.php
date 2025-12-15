@@ -16,11 +16,12 @@ use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\interfaces\DbView as DbViewInterface;
+use fractalCms\importExport\interfaces\RowTransformer;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\RowTransformer as RowTransformerService;
-use fractalCms\importExport\interfaces\RowTransformer;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
@@ -29,7 +30,7 @@ use yii\web\UploadedFile;
 class ImportConfigController extends BaseController
 {
 
-    protected DbView $dbView;
+    protected DbViewInterface $dbView;
     protected Parameter $parameter;
     public array $rowTransformers = [];
 
@@ -46,7 +47,7 @@ class ImportConfigController extends BaseController
        if (Yii::$container->has(RowTransformerService::class) === true) {
            $rowTransformerService = Yii::$container->get(RowTransformerService::class);
            if ($rowTransformerService instanceof RowTransformerService) {
-               $this->rowTransformers = $rowTransformerService->getRowTransformers();
+               $this->rowTransformers = $rowTransformerService->getRowTransformersToList();
            }
        }
    }
@@ -229,11 +230,12 @@ class ImportConfigController extends BaseController
                     }
                 }
             }
+
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => array_keys($this->rowTransformers),
+                    'rowTransformers' => $this->rowTransformers,
                 ]);
             }
             return $response;

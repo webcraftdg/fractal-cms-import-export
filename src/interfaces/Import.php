@@ -23,7 +23,8 @@ interface Import
      * @param ImportConfig $importConfig
      * @param string $filePath
      * @param bool $isTest
+     * @param array $params
      * @return ImportJob
      */
-    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false) : ImportJob;
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, array $params = []) : ImportJob;
 }

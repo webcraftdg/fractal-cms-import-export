@@ -21,7 +21,6 @@ use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\ColumnTransformer;
 use fractalCms\importExport\services\ColumnTransformer as TransformService;
 use fractalCms\importExport\transformers\BooleanColumnTransformer;
 use fractalCms\importExport\transformers\DateColumnTransformer;
@@ -234,6 +233,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             $coreId.'/api/import-config/<id:([^/]+)>/get-columns' => $contextId.'/api/import-config/get-columns',
             $coreId.'/api/import-config/<id:([^/]+)>/columns/<columnId:([^/]+)>/delete' => $contextId.'/api/import-config/delete-column',
             $coreId.'/api/import-config/<id:([^/]+)>/table-columns' => $contextId.'/api/import-config/get-table-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/table-columns/<name:([^/]+)>' => $contextId.'/api/import-config/get-table-columns',
             $coreId.'/api/db/tables' => $contextId.'/api/db/get-tables',
         ];
     }

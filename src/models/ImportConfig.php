@@ -12,6 +12,7 @@ namespace fractalCms\importExport\models;
 
 use Exception;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
@@ -75,6 +76,7 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     protected Parameter $parameter;
     protected ExportLimiter $exportLimiter;
+    protected ?DbViewInterface $dbView = null;
 
     public function init()
     {
@@ -84,6 +86,9 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
         if (Yii::$app->has('exportLimiter') === true) {
             $this->exportLimiter = Yii::$app->exportLimiter;
+        }
+        if (Yii::$container->has(DbView::class) === true) {
+            $this->dbView = Yii::$container->get(DbView::class);
         }
     }
 
@@ -184,7 +189,8 @@ class ImportConfig extends \yii\db\ActiveRecord
                 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['importConfigId'], 'validateLimit', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).'
+                , 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE, self::SCENARIO_IMPORT_JSON_FILE]],
             [['type', 'table', 'sql', 'rowTransformer',], 'string'],
             [['table'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
                 return empty($this->sql) === true;
@@ -373,11 +379,11 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
     /**
-     * @param DbView $dbView
+     * @param DbViewInterface $dbView
      * @return void
      * @throws Exception
      */
-    public function buildDbView(DbView $dbView) : void
+    public function buildDbView(DbViewInterface $dbView) : void
     {
         try {
             if (empty($this->sql) === false) {
@@ -391,14 +397,14 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @param DbView $dbView
+     * @param DbViewInterface $dbView
      * @return array
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\base\NotSupportedException
      * @throws \yii\db\Exception
      * @throws \yii\di\NotInstantiableException
      */
-    public function buildInitColumns(DbView $dbView) : array
+    public function buildInitColumns(DbViewInterface $dbView) : array
     {
         try {
             $columns = $this->getContextColumns($dbView);
@@ -412,16 +418,16 @@ class ImportConfig extends \yii\db\ActiveRecord
     /**
      * Get context columns
      *
-     * @param DbView $dbView
+     * @param DbViewInterface $dbView
      * @return array
      * @throws \yii\base\NotSupportedException
      */
-    public function getContextColumns(DbView $dbView) : array
+    public function getContextColumns(DbViewInterface $dbView) : array
     {
         try {
             $values = [];
             $name = $this->getContextName();
-            $columns =  $dbView->getColumns($name);
+            $columns =  $dbView->getTableColumns($name);
             /**
              * @var string $id
              * @var ColumnModel $params
@@ -637,8 +643,12 @@ class ImportConfig extends \yii\db\ActiveRecord
                 if (isset($column['transformer']) === true && empty($column['transformer']['name']) === false) {
                     $transformerOptions = ($column['transformerOptions']) ?? [];
                     list($transformer, $transformerOptions) = $importColumn->buildTransformer($column['transformer'], $transformerOptions);
-                    $transformer = Json::encode($transformer);
-                    $transformerOptions = Json::encode($transformerOptions);
+                    if ($transformer !== null) {
+                        $transformer = Json::encode($transformer);
+                    }
+                    if ($transformerOptions !== null) {
+                        $transformerOptions = Json::encode($transformerOptions);
+                    }
                 }
                 unset($column['transformer']);
                 unset($column['transformerOptions']);
@@ -662,6 +672,21 @@ class ImportConfig extends \yii\db\ActiveRecord
                         );
                     }
                 }
+
+                if ($this->dbView instanceof DbViewInterface) {
+                    $tableName = $this->getContextName();
+                    $columnExist = $this->dbView->columnExists($tableName, $importColumn->source);
+                    if ($columnExist === false && empty($this->rowTransformer) === true) {
+                        $errors[] = new ImportError(
+                            rowNumber: $orderColumn,
+                            column: $importColumn->source,
+                            message: 'Colonne : '.$importColumn->source.': Colonne externe RowTransfomer obligatoire',
+                            level: ImportError::LEVEL_ERROR
+                        );
+                    }
+                }
+
+
             }
             if (empty($errors) === true) {
                 $this->reorderColumns();

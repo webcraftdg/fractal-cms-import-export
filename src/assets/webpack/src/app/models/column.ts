@@ -7,11 +7,13 @@ export class Column implements IImportConfigColumn
 {
     public id:string;
     public importConfigId:number;
+    public search:string;
     public source:string;
     public target:string;
     public format:string;
     public default?:any;
     public order:number;
+    public tableColumns:IImportConfigColumn[];
     public transformer?:ITransformer;
     public transformerOptions?:any;
 
@@ -74,9 +76,9 @@ export class Column implements IImportConfigColumn
                 return true
             })
             .withMessage('La Cible doit être une string')
-            .ensure('type')
+            .ensure('format')
             .required()
-            .withMessage('Le type est obligatoire')
+            .withMessage('Le format est obligatoire')
             .then()
             .satisfies((value: string, object) => {
                 if (!value || value.toString() == '' || typeof(value) !== 'string') {
@@ -84,7 +86,7 @@ export class Column implements IImportConfigColumn
                 }
                 return true
             })
-            .withMessage('Le type doit être une string')
+            .withMessage('Le format doit être une string')
             .ensure('default')
             .then()
             .satisfies((value: string, object) => {
@@ -98,7 +100,7 @@ export class Column implements IImportConfigColumn
             .required()
             .then()
             .satisfies((value: any, object) => {
-                if (value && typeof(value) !== 'string') {
+                if (!value && this.transformer) {
                     return false;
                 }
                 return true

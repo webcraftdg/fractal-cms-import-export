@@ -30,6 +30,7 @@ use Yii;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
 use yii\db\Transaction;
+use yii\web\Application;
 
 class ImportXlsx implements ImportFile
 {
@@ -44,7 +45,7 @@ class ImportXlsx implements ImportFile
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false): ImportJob
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
             $errorCollector = new ImportErrorCollector();
@@ -53,12 +54,15 @@ class ImportXlsx implements ImportFile
                 errors: $errorCollector,
                 stopOnError: $importConfig->stopOnError,
                 dryRun:$isTest,
-                rowNumber: -1
+                rowNumber: -1,
+                params: $params
             );
             $rowTransformer = $importConfig->getRowTransformer();
             $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
             $importJob->importConfigId = $importConfig->id;
-            $importJob->userId = Yii::$app->user->identity->getId();
+            if (Yii::$app instanceof Application) {
+                $importJob->userId = Yii::$app->user->identity->getId();
+            }
             $importJob->type = ImportJob::TYPE_IMPORT;
             $importJob->filePath = $filePath;
             $importJob->status = ImportJob::STATUS_RUNNING;
@@ -82,10 +86,10 @@ class ImportXlsx implements ImportFile
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
                     $indexJsonSource = 0;
                     $attributes = [];
-                    for($col = $starCol; $col < ($endColumn + 1); $col += 1) {
+                    for($col = 0; $col < $endColumn; $col += 1) {
                         $mappingColumn = ($mappingColumns[$indexJsonSource]) ?? null;
                         if ($mappingColumn instanceof ImportConfigColumn) {
-                            $value = $sheet->getCell([$col, $row])->getValue();
+                            $value = $sheet->getCell([($col+1), $row])->getValue();
                             $attributes[$mappingColumn->source] = $value;
                         }
                         $indexJsonSource += 1;
@@ -274,7 +278,7 @@ class ImportXlsx implements ImportFile
     public static function getStartRow(): int
     {
         try {
-            return 1;
+            return 2;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

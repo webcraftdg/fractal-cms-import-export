@@ -28,17 +28,20 @@ class Import implements ImportInterface
      * @param ImportConfig $importConfig
      * @param string $filePath
      * @param bool $isTest
+     * @param $params
      * @return ImportJob
+     * @throws NotSupportedException
+     * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false): ImportJob
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
             switch ($importConfig->exportFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
                 case ImportConfig::FORMAT_CSV:
-                    $importJob = ImportXlsx::run($importConfig, $filePath, $isTest);
+                    $importJob = ImportXlsx::run($importConfig, $filePath, $isTest, $params);
                     break;
                 default:
                     throw new NotSupportedException('Import de ce type de fichier non supporté');
