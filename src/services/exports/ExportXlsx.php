@@ -11,35 +11,48 @@
 namespace fractalCms\importExport\services\exports;
 
 use fractalCms\importExport\db\SqlIterator;
-use fractalCms\importExport\interfaces\Export;
+use fractalCms\importExport\interfaces\Export as ExportInterface;
+use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
 use fractalCms\importExport\models\ImportConfig;
-use Exception;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export as ExportService;
 use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\contexts\Export as ExportContext;
+use fractalCms\importExport\writers\XlsxWriter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Yii;
 use yii\db\Query;
+use Exception;
+use Yii;
 
-class ExportXlsx implements Export
+class ExportXlsx implements ExportInterface
 {
     /**
-     * Run export CSv
      * @param ImportConfig $importConfig
+     * @param $params
      * @return ImportJob
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig): ImportJob
+    public static function run(ImportConfig $importConfig, $params = []): ImportJob
     {
         try {
             $transformerService = Yii::$container->get(TransformerService::class);
+            $rowTransformer = $importConfig->getRowTransformer();
             $query = ExportService::getExportQuery($importConfig, 1000);
             $totalCount = 0;
             $successRows = 0;
             $spreadsheet = new Spreadsheet();
+
+            $writer = new XlsxWriter($spreadsheet);
+            $baseExportContext = new ExportContext(
+                config: $importConfig,
+                dryRun: false,
+                rowNumber: -1,
+                writer: $writer,
+                params: $params
+            );
+
             $sheet = $spreadsheet->getActiveSheet();
             $configColumns = [];
 
@@ -53,6 +66,7 @@ class ExportXlsx implements Export
                 $configColumns[$column->source] = $column;
                 $colIndex++;
             }
+            $importJob = ExportService::prepareImportJob($importConfig);
 
             // Data
             $rowIndex = 2;
@@ -60,28 +74,64 @@ class ExportXlsx implements Export
                 if ($query instanceof Query) {
                     $totalCount = $query->count();
                     foreach ($query->each() as $row) {
-                        $successRows = static::writeRow(
-                            $sheet,
-                            $configColumns,
-                            $row,
+                        if ($rowTransformer instanceof RowTransformerInterface) {
+                            try {
+                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                                $result = $rowTransformer->transformRow(
+                                    $row,
+                                    $baseExportContext
+                                );
+                                if( $result->handled === true) {
+                                    $importJob->successRows++;
+                                    continue;
+                                }
+                                $row = $result->attributes ?? $row;
+                            } catch (Exception $e) {
+                                $importJob->errorRows++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
+                                continue;
+                            }
+                        }
+                        $row = static::prepareRow(
                             $transformerService,
-                            $successRows,
-                            $rowIndex
+                            $configColumns,
+                            $row
                         );
+                        $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
                         $rowIndex++;
                     }
                 } elseif ($query instanceof SqlIterator) {
                     $totalCount = $query->getCount();
                     foreach ($query->getIterator() as $rows) {
                         foreach ($rows as $row) {
-                            $successRows = static::writeRow(
-                                $sheet,
-                                $configColumns,
-                                $row,
+                            if ($rowTransformer instanceof RowTransformerInterface) {
+                                try {
+                                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                                    $result = $rowTransformer->transformRow(
+                                        $row,
+                                        $baseExportContext
+                                    );
+                                    if( $result->handled === true) {
+                                        $importJob->successRows++;
+                                        continue;
+                                    }
+                                    $row = $result->attributes ?? $row;
+                                } catch (Exception $e) {
+                                    $importJob->errorRows++;
+                                    if ($importConfig->stopOnError) {
+                                        break;
+                                    }
+                                    continue;
+                                }
+                            }
+                            $row = static::prepareRow(
                                 $transformerService,
-                                $successRows,
-                                $rowIndex
+                                $configColumns,
+                                $row
                             );
+                            $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
                             $rowIndex++;
                         }
                     }
@@ -91,7 +141,7 @@ class ExportXlsx implements Export
                 Yii::error($e->getMessage(), __METHOD__);
                 $status = ImportJob::STATUS_FAILED;
             }
-            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
+            $importJob->totalRows = $totalCount;
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             (new Xlsx($spreadsheet))->save($path);
@@ -107,19 +157,19 @@ class ExportXlsx implements Export
     }
 
     /**
-     * @param Worksheet $sheet
-     * @param array $configColumns
-     * @param $row
      * @param TransformerService $transformerService
-     * @param $successRows
-     * @param $rowIndex
-     * @return int
+     * @param array $configColumns
+     * @param array $row
+     * @return array
      * @throws Exception
      */
-    protected static function writeRow(Worksheet $sheet, array $configColumns, $row, TransformerService $transformerService, $successRows, $rowIndex) : int
+    protected static function prepareRow(
+        TransformerService $transformerService,
+        array $configColumns,
+        array $row
+    ) : array
     {
         try {
-            $colIndex = 1;
             /** @var ImportConfigColumn $column */
             foreach ($configColumns  as $column) {
                 $value = $row[$column->source] ?? null;
@@ -135,14 +185,9 @@ class ExportXlsx implements Export
                         $column->transformerOptions
                     );
                 }
-                $sheet->setCellValue(
-                    [$colIndex, $rowIndex],
-                    $value
-                );
-                $colIndex++;
+                $row[$column->source]  = $value;
             }
-            $successRows += 1;
-            return $successRows;
+            return $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

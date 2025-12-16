@@ -56,7 +56,7 @@ class Export implements ExportInterfaces
      * @return ImportJob
      * @throws Exception
      */
-    public static function prepareImportJob(ImportConfig $importConfig, int $rowsCount) : ImportJob
+    public static function prepareImportJob(ImportConfig $importConfig, int $rowsCount = null) : ImportJob
     {
         try {
             $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);

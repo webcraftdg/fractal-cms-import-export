@@ -17,7 +17,6 @@ use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\interfaces\RowTransformer;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Parameter;

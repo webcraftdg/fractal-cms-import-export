@@ -12,53 +12,39 @@ namespace fractalCms\importExport\contexts;
 
 use fractalCms\importExport\exceptions\ImportErrorCollector;
 use fractalCms\importExport\models\ImportConfig;
-use Exception;
-use Yii;
 
-final class Import
+final class Import extends AbstractContext
 {
+
+    /**
+     * @var ImportErrorCollector
+     */
+    public readonly ImportErrorCollector $errors;
+
+    /**
+     * @param ImportConfig $config
+     * @param ImportErrorCollector $errors
+     * @param bool $stopOnError
+     * @param bool $dryRun
+     * @param int $rowNumber
+     * @param array $params
+     */
     public function __construct(
-        public readonly ImportConfig $config,
-        public readonly ImportErrorCollector $errors,
-        public readonly bool $stopOnError,
-        public readonly bool $dryRun,
-        public int $rowNumber,
-        public array $params = []
-    ) {}
+        ImportConfig $config,
+        ImportErrorCollector $errors,
+        bool $stopOnError,
+        bool $dryRun,
+        int $rowNumber,
+        array $params = []
+    ) {
+        parent::__construct(
+            config: $config,
+            stopOnError: $stopOnError,
+            dryRun: $dryRun,
+            rowNumber: $rowNumber,
+            params: $params
+        );
 
-    /**
-     * @param int $row
-     * @return $this
-     * @throws Exception
-     */
-    public function withRowNumber(int $row) : Import
-    {
-        try {
-            $clone = clone $this;
-            $clone->rowNumber = $row;
-            return $clone;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * @param string $key
-     * @param mixed|null $default
-     * @return mixed
-     */
-    public function getParam(string $key, mixed $default = null): mixed
-    {
-        return $this->params[$key] ?? $default;
-    }
-
-    /**
-     * @param string $key
-     * @return bool
-     */
-    public function hasParam(string $key): bool
-    {
-        return array_key_exists($key, $this->params);
+        $this->errors = $errors;
     }
 }

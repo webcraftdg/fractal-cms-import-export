@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\interfaces\RowTransformer as RowTransformInterface;
+use fractalCms\importExport\interfaces\RowImportTransformer as RowTransformInterface;
 use Exception;
 use Yii;
 

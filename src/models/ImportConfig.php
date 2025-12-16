@@ -17,7 +17,7 @@ use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\exceptions\ImportError;
-use fractalCms\importExport\interfaces\RowTransformer;
+use fractalCms\importExport\interfaces\RowImportTransformer;
 use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\Module;
 use fractalCms\importExport\services\Export;
@@ -811,11 +811,11 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @return RowTransformer|null
+     * @return RowImportTransformer|null
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\di\NotInstantiableException
      */
-    public function getRowTransformer() : RowTransformer | null
+    public function getRowTransformer() : RowImportTransformer | null
     {
         try {
             $rowTransformer = null;

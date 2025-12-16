@@ -13,9 +13,8 @@ namespace fractalCms\importExport\services\imports;
 use fractalCms\importExport\exceptions\ImportError;
 use fractalCms\importExport\exceptions\ImportErrorCollector;
 use fractalCms\importExport\exceptions\InsertResult;
-use fractalCms\importExport\exceptions\RowTransformException;
 use fractalCms\importExport\interfaces\ImportFile;
-use fractalCms\importExport\interfaces\RowTransformer as RowTransformerInterface;
+use fractalCms\importExport\interfaces\RowImportTransformer as RowTransformerInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\contexts\Import as ImportContext;
 use Exception;
@@ -106,7 +105,7 @@ class ImportXlsx implements ImportFile
                                     continue;
                                 }
                                 $attributes = $result->attributes ?? $attributes;
-                            } catch (RowTransformException $e) {
+                            } catch (Exception $e) {
                                 $error = new ImportError($row, '*', $e->getMessage());
                                 $errorCollector->add($error);
                                 $importJob->errorRows++;
