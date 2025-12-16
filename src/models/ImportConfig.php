@@ -822,7 +822,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             $rowTransformerService = (
             Yii::$container->has(RowTransformerService::class)
             ) ? Yii::$container->get(RowTransformerService::class) : null;
-            if ($rowTransformerService !== null) {
+            if ($rowTransformerService !== null && $this->rowTransformer !== null) {
                 $rowTransformer = $rowTransformerService->get($this->rowTransformer);
             }
             return $rowTransformer;

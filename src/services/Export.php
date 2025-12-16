@@ -26,22 +26,21 @@ class Export implements ExportInterfaces
 {
 
     /**
-     * Run export
-     *
      * @param ImportConfig $importConfig
+     * @param array $params
      * @return ImportJob
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig): ImportJob
+    public static function run(ImportConfig $importConfig, array $params = []): ImportJob
     {
         try {
             switch ($importConfig->exportFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
-                    $importJob = ExportXlsx::run($importConfig);
+                    $importJob = ExportXlsx::run($importConfig, $params);
                     break;
                 default:
-                    $importJob = ExportCsv::run($importConfig);
+                    $importJob = ExportCsv::run($importConfig, $params);
             }
             return $importJob;
         } catch (Exception $e)  {

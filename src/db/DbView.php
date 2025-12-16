@@ -144,7 +144,7 @@ class DbView extends Component implements DbViewInterface
             $hasTable = in_array($tableName, $dbTables);
             if ($this->exists($tableName) === true && $hasTable === true) {
                 $columns = Yii::$app->db->getSchema()->getTableSchema($tableName)->columns;
-                $exists = in_array($columnName, $columns);
+                $exists = in_array($columnName, array_keys($columns));
             }
             return $exists;
         } catch (Exception $e)  {
