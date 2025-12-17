@@ -13,7 +13,10 @@ namespace fractalCms\importExport\models;
 use Exception;
 use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\db\SqlIterator;
+use fractalCms\importExport\interfaces\ExportDataProvider;
+use fractalCms\importExport\interfaces\RowExportTransformer;
+use fractalCms\importExport\providers\SqlExportData as SqlExportDataProvider;
+use fractalCms\importExport\providers\QueryExportData as QueryExportDataProvider;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\exceptions\ImportError;
@@ -444,38 +447,30 @@ class ImportConfig extends \yii\db\ActiveRecord
 
 
     /**
-     * @return Query
-     * @throws \yii\db\Exception
+     * @param int $batchSize
+     * @return ExportDataProvider
+     * @throws Exception
      */
-    public function getImportExportQueryDb() : Query
+    public function getImportExportQueryProvider(int $batchSize = 1000) : ExportDataProvider
     {
         try {
-            $cols = $this->buildConfigColumns();
-            $statementName = $this->getContextName();
-            $query = new Query();
-            $query->select($cols);
-            $query->from($statementName);
-            return  $query;
+            if (empty($this->table) === false) {
+                $cols = $this->buildConfigColumns();
+                $statementName = $this->getContextName();
+                $query = new Query();
+                $query->select($cols);
+                $query->from($statementName);
+                $provider = new QueryExportDataProvider(query: $query, batchSize: $batchSize);
+            } else {
+                $provider = new SqlExportDataProvider(command: Yii::$app->db->createCommand($this->sql), batchSize: $batchSize);
+            }
+            return  $provider;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
         }
     }
 
-    /**
-     * @param $batchSize
-     * @return SqlIterator
-     * @throws Exception
-     */
-    public function getImportExportQueryIterator($batchSize = 1000) : SqlIterator
-    {
-        try {
-            return  new SqlIterator($this->sql, $batchSize);
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
 
     /**
      * Build column config list
@@ -624,6 +619,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $index = 0;
+            $prevIndex= -1;
             $errors = [];
             foreach ($columns as $orderColumn => $column) {
                 $importColumn = null;
@@ -656,9 +652,10 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $importColumn->transformer = $transformer;
                 $importColumn->transformerOptions = $transformerOptions;
                 if (empty($importColumn->order) === true) {
-                    $importColumn->order = ($index + 0.5);
+                    $order = ($prevIndex > -1) ? ($prevIndex + 0.5) : $index;
+                    $importColumn->order = $order;
                 } else {
-                    $index = $importColumn->order;
+                    $prevIndex = $importColumn->order;
                 }
                 if ($importColumn->validate() === true) {
                     $importColumn->save();
@@ -685,8 +682,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                         );
                     }
                 }
-
-
+                $index++;
             }
             if (empty($errors) === true) {
                 $this->reorderColumns();
@@ -811,11 +807,11 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @return RowImportTransformer|null
+     * @return RowImportTransformer|RowExportTransformer|null
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\di\NotInstantiableException
      */
-    public function getRowTransformer() : RowImportTransformer | null
+    public function getRowTransformer() : RowImportTransformer | RowExportTransformer | null
     {
         try {
             $rowTransformer = null;
@@ -823,7 +819,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             Yii::$container->has(RowTransformerService::class)
             ) ? Yii::$container->get(RowTransformerService::class) : null;
             if ($rowTransformerService !== null && $this->rowTransformer !== null) {
-                $rowTransformer = $rowTransformerService->get($this->rowTransformer);
+                $rowTransformer = $rowTransformerService->create($this->type, $this->rowTransformer);
             }
             return $rowTransformer;
         } catch (Exception $e)  {

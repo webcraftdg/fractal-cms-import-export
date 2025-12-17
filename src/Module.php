@@ -22,11 +22,13 @@ use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\ColumnTransformer as TransformService;
+use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\transformers\BooleanColumnTransformer;
 use fractalCms\importExport\transformers\DateColumnTransformer;
 use fractalCms\importExport\transformers\LowerColumnTransformer;
 use fractalCms\importExport\transformers\NumberColumnTransformer;
 use fractalCms\importExport\transformers\ReplaceColumnTransformer;
+use fractalCms\importExport\transformers\StrPadColumnTransformer;
 use fractalCms\importExport\transformers\TrimColumnTransformer;
 use fractalCms\importExport\transformers\UpperColumnTransformer;
 use Yii;
@@ -45,6 +47,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     public int $maxColumns = 80;
     public int $maxEstimatedMb = 500;
     public array $pathsNamespacesModels = [];
+    public array $rowTransformers = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -59,16 +62,18 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setDefinitions([
                 TransformService::class => function() {
                     return new TransformService([
-                        new DateColumnTransformer(),
-                        new TrimColumnTransformer(),
-                        new UpperColumnTransformer(),
-                        new LowerColumnTransformer(),
-                        new ReplaceColumnTransformer(),
-                        new NumberColumnTransformer(),
                         new BooleanColumnTransformer(),
+                        new DateColumnTransformer(),
+                        new LowerColumnTransformer(),
+                        new NumberColumnTransformer(),
+                        new ReplaceColumnTransformer(),
+                        new TrimColumnTransformer(),
+                        new StrPadColumnTransformer(),
+                        new UpperColumnTransformer(),
                     ]);
                 }
             ]);
+            $this->registerRowTransformers();
             $app->setComponents([
                 'importDbParameters' => [
                     'class' => Parameter::class
@@ -96,6 +101,14 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         }
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
+    protected function registerRowTransformers() : void
+    {
+        Yii::$container->set(RowTransformerService::class, new RowTransformerService($this->rowTransformers));
+    }
 
     /**
      * Config Console Application

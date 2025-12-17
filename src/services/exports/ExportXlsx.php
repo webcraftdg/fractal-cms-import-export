@@ -10,19 +10,18 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\db\SqlIterator;
+use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export as ExportInterface;
 use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use fractalCms\importExport\contexts\Export as ExportContext;
 use fractalCms\importExport\writers\XlsxWriter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use yii\db\Query;
 use Exception;
 use Yii;
 
@@ -37,9 +36,9 @@ class ExportXlsx implements ExportInterface
     public static function run(ImportConfig $importConfig, $params = []): ImportJob
     {
         try {
-            $transformerService = Yii::$container->get(TransformerService::class);
+            $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
-            $query = ExportService::getExportQuery($importConfig, 1000);
+            $provider = ExportService::getExportQueryProvider($importConfig);
             $totalCount = 0;
             $successRows = 0;
             $spreadsheet = new Spreadsheet();
@@ -71,40 +70,9 @@ class ExportXlsx implements ExportInterface
             // Data
             $rowIndex = 2;
             try {
-                if ($query instanceof Query) {
-                    $totalCount = $query->count();
-                    foreach ($query->each() as $row) {
-                        if ($rowTransformer instanceof RowTransformerInterface) {
-                            try {
-                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
-                                $result = $rowTransformer->transformRow(
-                                    $row,
-                                    $baseExportContext
-                                );
-                                if( $result->handled === true) {
-                                    $importJob->successRows++;
-                                    continue;
-                                }
-                                $row = $result->attributes ?? $row;
-                            } catch (Exception $e) {
-                                $importJob->errorRows++;
-                                if ($importConfig->stopOnError) {
-                                    break;
-                                }
-                                continue;
-                            }
-                        }
-                        $row = static::prepareRow(
-                            $transformerService,
-                            $configColumns,
-                            $row
-                        );
-                        $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
-                        $rowIndex++;
-                    }
-                } elseif ($query instanceof SqlIterator) {
-                    $totalCount = $query->getCount();
-                    foreach ($query->getIterator() as $rows) {
+                if ($provider instanceof ExportDataProvider) {
+                    $totalCount = $provider->count();
+                    foreach ($provider->getIterator() as $rows) {
                         foreach ($rows as $row) {
                             if ($rowTransformer instanceof RowTransformerInterface) {
                                 try {
@@ -127,9 +95,9 @@ class ExportXlsx implements ExportInterface
                                 }
                             }
                             $row = static::prepareRow(
-                                $transformerService,
-                                $configColumns,
-                                $row
+                                transformerService: $transformerService,
+                                configColumns: $configColumns,
+                                row: $row
                             );
                             $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
                             $rowIndex++;
@@ -157,17 +125,13 @@ class ExportXlsx implements ExportInterface
     }
 
     /**
-     * @param TransformerService $transformerService
+     * @param ColumnTransformerService $transformerService
      * @param array $configColumns
      * @param array $row
      * @return array
      * @throws Exception
      */
-    protected static function prepareRow(
-        TransformerService $transformerService,
-        array $configColumns,
-        array $row
-    ) : array
+    protected static function prepareRow(ColumnTransformerService $transformerService, array $configColumns, array $row) : array
     {
         try {
             /** @var ImportConfigColumn $column */
@@ -175,7 +139,7 @@ class ExportXlsx implements ExportInterface
                 $value = $row[$column->source] ?? null;
                 if (
                     $value !== null
-                    && $transformerService instanceof TransformerService
+                    && $transformerService instanceof ColumnTransformerService
                     && $column->transformer !== null
                     && empty($column->transformer['name']) === false
                 ) {

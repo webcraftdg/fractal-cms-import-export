@@ -31,7 +31,7 @@ class ImportConfigController extends BaseController
 
     protected DbViewInterface $dbView;
     protected Parameter $parameter;
-    public array $rowTransformers = [];
+    public RowTransformerService $rowTransformersService;
 
     /**
      * @inheritDoc
@@ -44,10 +44,7 @@ class ImportConfigController extends BaseController
            $this->parameter = Yii::$app->importDbParameters;
        }
        if (Yii::$container->has(RowTransformerService::class) === true) {
-           $rowTransformerService = Yii::$container->get(RowTransformerService::class);
-           if ($rowTransformerService instanceof RowTransformerService) {
-               $this->rowTransformers = $rowTransformerService->getRowTransformersToList();
-           }
+           $this->rowTransformersService = Yii::$container->get(RowTransformerService::class);
        }
    }
 
@@ -177,7 +174,7 @@ class ImportConfigController extends BaseController
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => array_keys($this->rowTransformers),
+                    'rowTransformers' => [],
                 ]);
             }
             return $response;
@@ -229,12 +226,13 @@ class ImportConfigController extends BaseController
                     }
                 }
             }
-
+            $rowTransformers = ($this->rowTransformersService instanceof RowTransformerService) ?
+                $this->rowTransformersService->getToList($model->type) : [];
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => $this->rowTransformers,
+                    'rowTransformers' => $rowTransformers,
                 ]);
             }
             return $response;

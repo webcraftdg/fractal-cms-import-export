@@ -10,36 +10,50 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\db\SqlIterator;
+use fractalCms\importExport\contexts\Export as ExportContext;
+use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export;
-use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
+use fractalCms\importExport\services\ColumnTransformer;
 use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\models\ImportConfig;
-use Exception;
-use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\writers\CsvWriter;
+use Exception;
 use Yii;
-use yii\db\Query;
 
 class ExportCsv implements Export
 {
 
     /**
-     * Run export CSv
      * @param ImportConfig $importConfig
+     * @param $params
      * @return ImportJob
-     * @throws \yii\db\Exception
+     * @throws Exception
      */
-    public static function run(ImportConfig $importConfig): ImportJob
+    public static function run(ImportConfig $importConfig, $params = []): ImportJob
     {
         try {
             $transformerService = Yii::$container->get(TransformerService::class);
-            $query = ExportService::getExportQuery($importConfig, 1000);
+            $rowTransformer = $importConfig->getRowTransformer();
+            $provider = ExportService::getExportQueryProvider($importConfig);
             $totalCount = 0;
             $successRows = 0;
             $filename = 'export_' . date('Ymd_His') . '.csv';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
+
+            $writer = new CsvWriter($f);
+            $baseExportContext = new ExportContext(
+                config: $importConfig,
+                dryRun: false,
+                rowNumber: -1,
+                writer: $writer,
+                params: $params
+            );
+
             $headers = [];
             $configColumns = [];
             /** @var ImportConfigColumn $column */
@@ -47,30 +61,40 @@ class ExportCsv implements Export
                 $headers[] = $column->target;
                 $configColumns[] = $column;
             }
-            fputcsv($f, $headers, ';');
+            $baseExportContext->writeRow('csv', $headers);
+            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             try {
-                if ($query instanceof Query) {
-                    $totalCount = $query->count();
-                    foreach ($query->each() as $row) {
-                        $successRows = static::writeRow(
-                            $f,
-                            $configColumns,
-                            $row,
-                            $transformerService,
-                            $successRows
-                        );
-                    }
-                } elseif ($query instanceof SqlIterator) {
-                    $totalCount = $query->getCount();
-                    foreach ($query->getIterator() as $rows) {
+                if ($provider instanceof ExportDataProvider) {
+                    $totalCount = $provider->count();
+                    foreach ($provider->getIterator() as $rowIndex => $rows) {
                         foreach ($rows as $row) {
-                            $successRows = static::writeRow(
-                                $f,
-                                $configColumns,
-                                $row,
-                                $transformerService,
-                                $successRows
+                            if ($rowTransformer instanceof RowTransformerInterface) {
+                                try {
+                                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                                    $result = $rowTransformer->transformRow(
+                                        $row,
+                                        $baseExportContext
+                                    );
+                                    if( $result->handled === true) {
+                                        $importJob->successRows++;
+                                        continue;
+                                    }
+                                    $row = $result->attributes ?? $row;
+                                } catch (Exception $e) {
+                                    $importJob->errorRows++;
+                                    if ($importConfig->stopOnError) {
+                                        break;
+                                    }
+                                    continue;
+                                }
+                            }
+                            $successRows = static::prepareRow(
+                                transformerService: $transformerService,
+                                configColumns: $configColumns,
+                                row: $row
                             );
+                            $baseExportContext->writeRow('csv', $row, $rowIndex);
+                            $importJob->successRows++;
                         }
                     }
                 }
@@ -79,7 +103,6 @@ class ExportCsv implements Export
                 Yii::error($e->getMessage(), __METHOD__);
                 $status = ImportJob::STATUS_FAILED;
             }
-            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             $importJob->successRows = $successRows;
             $importJob->status = $status;
             fclose($f);
@@ -101,10 +124,9 @@ class ExportCsv implements Export
      * @return int
      * @throws Exception
      */
-    protected static function writeRow($f, array $configColumns, $row, $transformerService, $successRows) : int
+    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : int
     {
         try {
-            $line = [];
             /** @var  ImportConfigColumn $column */
             foreach ($configColumns as $column) {
                 $value = $row[$column->source] ?? null;
@@ -120,11 +142,9 @@ class ExportCsv implements Export
                         $column->transformerOptions
                     );
                 }
-                $line[$column->source] = $value;
+                $row[$column->source] = $value;
             }
-            fputcsv($f, $line, ';');
-            $successRows += 1;
-            return $successRows;
+            return  $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

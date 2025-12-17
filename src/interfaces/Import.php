@@ -12,9 +12,6 @@ namespace fractalCms\importExport\interfaces;
 
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\models\ImportJobLog;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 interface Import
 {

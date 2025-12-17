@@ -38,7 +38,7 @@ use fractalCms\core\helpers\Html;
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-3">
+            <div class="col-sm-4">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'name', ['label' => 'Nom', 'class' => 'form-label']);
@@ -49,7 +49,7 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
@@ -57,7 +57,7 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-3">
+            <div class="col-sm-4">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'exportFormat', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);
@@ -67,18 +67,6 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <?php if (empty($rowTransformers) === false):?>
-            <div class="col-sm-3">
-                <div class="col form-group p-0">
-                    <?php
-                    echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformer de ligne (Import)', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'rowTransformer', $rowTransformers, [
-                        'prompt' => 'Sélectionner un transformer', 'class' => 'form-control',
-                    ]);
-                    ?>
-                </div>
-            </div>
-            <?php endif;?>
         </div>
         <div class="row">
             <div class="col-sm-6">
@@ -124,6 +112,20 @@ use fractalCms\core\helpers\Html;
             </div>
         </div>
         <?php if ($model->isNewRecord === false): ?>
+            <?php if (empty($rowTransformers) === false):?>
+                <div class="row mt-6">
+                        <div class="col-sm-3">
+                            <div class="col form-group p-0">
+                                <?php
+                                echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformeur de données de la ligne', 'class' => 'form-label']);
+                                echo Html::activeDropDownList($model, 'rowTransformer', $rowTransformers, [
+                                    'prompt' => 'Sélectionner un transformer', 'class' => 'form-control',
+                                ]);
+                                ?>
+                            </div>
+                        </div>
+                </div>
+            <?php endif;?>
         <div class="row mt-3">
             <div class="card">
                 <div class="card-header">

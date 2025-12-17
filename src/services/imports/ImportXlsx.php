@@ -15,21 +15,23 @@ use fractalCms\importExport\exceptions\ImportErrorCollector;
 use fractalCms\importExport\exceptions\InsertResult;
 use fractalCms\importExport\interfaces\ImportFile;
 use fractalCms\importExport\interfaces\RowImportTransformer as RowTransformerInterface;
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\contexts\Import as ImportContext;
-use Exception;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use yii\db\ActiveQuery;
 use yii\helpers\Json;
-use Yii;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
 use yii\db\Transaction;
 use yii\web\Application;
+use Exception;
+use Yii;
 
 class ImportXlsx implements ImportFile
 {
@@ -48,6 +50,7 @@ class ImportXlsx implements ImportFile
     {
         try {
             $errorCollector = new ImportErrorCollector();
+            $transformerColumnsService = Yii::$container->get(ColumnTransformerService::class);
             $baseImportContext = new ImportContext(
                 config: $importConfig,
                 errors: $errorCollector,
@@ -68,13 +71,10 @@ class ImportXlsx implements ImportFile
             $importJob->successRows = 0;
             $importJob->errorRows = 0;
             $spreadsheet = static::prepareSpreadSheet($filePath);
-            $mappingColumns = $importConfig->getImportColumns()->all();
             if($spreadsheet instanceof Spreadsheet) {
                 $sheet = $spreadsheet->getActiveSheet();
                 $startRow = static::getStartRow();
                 $endRow = static::getEndRow($sheet);
-                $starCol = static::getStartColumn();
-                $endColumn = static::getEndColumn($importConfig);
                 $importJob->totalRows = $endRow;
                 $importJob->save();
                 $importJob->refresh();
@@ -83,16 +83,12 @@ class ImportXlsx implements ImportFile
                     $transaction = Yii::$app->db->beginTransaction();
                 }
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
-                    $indexJsonSource = 0;
-                    $attributes = [];
-                    for($col = 0; $col < $endColumn; $col += 1) {
-                        $mappingColumn = ($mappingColumns[$indexJsonSource]) ?? null;
-                        if ($mappingColumn instanceof ImportConfigColumn) {
-                            $value = $sheet->getCell([($col+1), $row])->getValue();
-                            $attributes[$mappingColumn->source] = $value;
-                        }
-                        $indexJsonSource += 1;
-                    }
+                    $attributes = static::prepareAttributes(
+                        $transformerColumnsService,
+                        $importConfig->getImportColumns(),
+                        $sheet,
+                        $row
+                    );
                     if (empty($attributes) === false) {
                         if ($rowTransformer instanceof RowTransformerInterface) {
                             try {
@@ -154,6 +150,46 @@ class ImportXlsx implements ImportFile
             $importJob->save(false);
             $importJob->refresh();
             return $importJob;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * Prepare attributes
+     *
+     * @param ColumnTransformerService $transformerService
+     * @param ActiveQuery $configColumnsQuery
+     * @param Worksheet $sheet
+     * @param int $rowNumber
+     * @return array
+     * @throws Exception
+     */
+    protected static function prepareAttributes(ColumnTransformerService $transformerService, ActiveQuery $configColumnsQuery, Worksheet $sheet, int $rowNumber) : array
+    {
+        try {
+            $attributes = [];
+            $startCol = static::getStartColumn();
+            /** @var ImportConfigColumn $column */
+            foreach ($configColumnsQuery->each()  as $column) {
+                $value = $sheet->getCell([$startCol, $rowNumber])->getValue();
+                if (
+                    $value !== null
+                    && $transformerService instanceof ColumnTransformerService
+                    && $column->transformer !== null
+                    && empty($column->transformer['name']) === false
+                ) {
+                    $value = $transformerService->apply(
+                        $column->transformer['name'],
+                        $value,
+                        $column->transformerOptions
+                    );
+                }
+                $attributes[$column->source]  = $value;
+                $startCol++;
+            }
+            return $attributes;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

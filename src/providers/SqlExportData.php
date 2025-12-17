@@ -8,36 +8,26 @@
  * @version XXX
  * @package fractalCms\importExport\db
  */
-namespace fractalCms\importExport\db;
+namespace fractalCms\importExport\providers;
 
-use IteratorAggregate;
-use Generator;
-use Yii;
+use fractalCms\importExport\interfaces\ExportDataProvider;
+use yii\db\Command;
+use Traversable;
 use Exception;
+use Yii;
 
-class SqlIterator implements IteratorAggregate
+class SqlExportData implements ExportDataProvider
 {
-    private string $sql;
-    private int $batchSize;
 
-    /**
-     * @param string $sql
-     * @param int $batchSize
-     */
-    public function __construct(string $sql, int $batchSize = 1000)
-    {
-        $this->sql = $sql;
-        $this->batchSize = $batchSize;
-    }
+    public function __construct(
+        private readonly Command $command,
+        private readonly int $batchSize = 1000
+    ) {}
 
-    /**
-     * @return Generator
-     * @throws \yii\db\Exception
-     */
-    public function getIterator(): Generator
+    public function getIterator(): Traversable
     {
         try {
-            $reader = Yii::$app->db->createCommand($this->sql)->query();
+            $reader = $this->command->query();
             $batch = [];
             foreach ($reader as $row) {
                 $batch[] = $row;
@@ -59,10 +49,10 @@ class SqlIterator implements IteratorAggregate
      * @return int
      * @throws \yii\db\Exception
      */
-    public function getCount() : int
+    public function count() : int
     {
         try {
-            return Yii::$app->db->createCommand($this->sql)->query()->count();
+            return $this->command->query()->count();
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;

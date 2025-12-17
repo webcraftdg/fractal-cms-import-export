@@ -118,7 +118,7 @@
                 <p class="error-message" repeat.for="error of model.defaultErrors" id.bind="'model.defaultErrors'+model.id">${error.result.message}</p>
             </div>
             <div class="col-sm--3 form-group p-2" validation-errors.from-view="model.transformerErrors">
-                <label class="form-label" for.bind="'transformer-'+model.id" id="labelTransformer">Transformeur de donnée</label>
+                <label class="form-label" for.bind="'transformer-'+model.id" id="labelTransformer">Transformeur de donnée de la cellule</label>
                 <select
                         class="form-control"
                         id.bind="'transformer-'+model.id"
@@ -145,16 +145,36 @@
                                 ${option.label}
                             </label>
                             <input
+                                    if.bind="option.type !== 'list'"
                                     id.bind="'transformer-'+model.id+'-'+model.transformer.name+option.key"
                                     class="form-control"
                                     name.bind="'ImportConfig[tmpColumns]['+index+'][transformerOptions]['+option.key+']'"
                                     type.bind="option.type"
+                                    maxlength.bind="(option.type=='text' && option.max) ? option.max : 524288"
                                     value.bind="model.transformerOptions[option.key] & validate"
                                     aria-describedby.bind="'transformerOptions-'+model.id+'-'+option.key+'-label-'+$parent.index"
                                     aria-required.bind="option.required"
                                     aria-invalid.bind="model.transformer.transformerOptions[index].keyErrors.length ? 'true' : 'false'"
                                     required.bind="option.required"
                             >
+                            <select
+                                    class="form-control"
+                                    if.bind="option.type == 'list'"
+                                    id.bind="'transformer-'+model.id+'-'+model.transformer.name+option.key"
+                                    class="form-control"
+                                    name.bind="'ImportConfig[tmpColumns]['+index+'][transformerOptions]['+option.key+']'"
+                                    id.bind="'transformer-'+model.id"
+                                    value.bind="model.transformerOptions[option.key] & validate"
+                                    aria-describedby.bind="'transformerOptions-'+model.id+'-'+option.key+'-label-'+$parent.index"
+                                    aria-required.bind="option.required"
+                                    aria-invalid.bind="model.transformer.transformerOptions[index].keyErrors.length ? 'true' : 'false'"
+                                    required.bind="option.required"
+                            >
+                                <option value="">Sélectionner un type</option>
+                                <option repeat.for="type of option.options"  value.bind="type.value">
+                                    ${type.name}
+                                </option>
+                            </select>
                         </div>
                     </div>
                 </div>

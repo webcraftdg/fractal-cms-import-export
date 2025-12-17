@@ -11,15 +11,14 @@
 
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\db\SqlIterator;
 use fractalCms\importExport\interfaces\Export as ExportInterfaces;
+use fractalCms\importExport\interfaces\ExportDataProvider as ExportDataProviderInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\exports\ExportCsv;
 use fractalCms\importExport\services\exports\ExportXlsx;
 use Yii;
 use Exception;
-use yii\db\Query;
 use yii\web\Application;
 
 class Export implements ExportInterfaces
@@ -51,7 +50,7 @@ class Export implements ExportInterfaces
 
     /**
      * @param ImportConfig $importConfig
-     * @param int $rowsCount
+     * @param int|null $rowsCount
      * @return ImportJob
      * @throws Exception
      */
@@ -73,18 +72,14 @@ class Export implements ExportInterfaces
 
     /**
      * @param ImportConfig $importConfig
-     * @param $batchSize
-     * @return SqlIterator|Query
-     * @throws \yii\db\Exception
+     * @param int $batchSize
+     * @return ExportDataProviderInterface
+     * @throws Exception
      */
-    public static function getExportQuery(ImportConfig $importConfig, $batchSize = 1000) : SqlIterator | Query
+    public static function getExportQueryProvider(ImportConfig $importConfig, int $batchSize = 1000) : ExportDataProviderInterface
     {
         try {
-            $query = $importConfig->getImportExportQueryDb();
-            if (empty($importConfig->sql) === false && $importConfig->exportTarget === ImportConfig::TARGET_SQL) {
-                $query = $importConfig->getImportExportQueryIterator($batchSize);
-            }
-            return $query;
+            return $importConfig->getImportExportQueryProvider(batchSize: $batchSize);;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

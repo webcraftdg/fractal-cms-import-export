@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\estimations;
 
-use fractalCms\importExport\db\SqlIterator;
+use fractalCms\importExport\providers\SqlExportData as SqlExportDataProvider;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Export;
 use Yii;
@@ -28,12 +28,10 @@ class ExportEstimator
     public static function estimateRows(ImportConfig $config): int
     {
         try {
-            $query = Export::getExportQuery($config);
+            $query = Export::getExportQueryProvider($config);
             $count = 0;
-            if($query instanceof Query) {
+            if(($query instanceof Query) || ($query instanceof SqlExportDataProvider)) {
                 $count = $query->count();
-            } elseif ($query instanceof SqlIterator) {
-                $count = $query->getCount();
             }
             return $count;
         } catch (Exception $e)  {
