@@ -37,11 +37,6 @@ class XlsxWriter implements ExportWriter
     public function __construct(Spreadsheet $spreadsheet)
     {
         $this->spreadsheet = $spreadsheet;
-
-        // Indexer les feuilles déjà présentes (au cas où)
-        foreach ($this->spreadsheet->getAllSheets() as $sheet) {
-            $this->sheetsByTitle[$sheet->getTitle()] = $sheet;
-        }
     }
 
     /**
@@ -65,8 +60,8 @@ class XlsxWriter implements ExportWriter
             /** @var Worksheet $sheet */
             $sheet = $this->getOrCreateSheet($target->sheet);
 
-            $rowIndex = $target->row;
-            $colIndex = $target->col;
+            $rowIndex = $target->rowNumber;
+            $colIndex = $target->colNumber;
 
             foreach ($row as $value) {
                 $sheet->setCellValue([$colIndex, $rowIndex], $value);
@@ -90,16 +85,23 @@ class XlsxWriter implements ExportWriter
 
         try {
             if (isset($this->sheetsByTitle[$title])) {
-                return $this->sheetsByTitle[$title];
-            }
-            // Si une feuille existe déjà avec ce titre via PhpSpreadsheet (par sécurité)
-            $sheet = $this->spreadsheet->getSheetByName($title);
-            if ($sheet instanceof Worksheet) {
-                $this->sheetsByTitle[$title] = $sheet;
+                $sheet =  $this->sheetsByTitle[$title];
             } else {
-                // Créer une nouvelle feuille
-                $sheet = $this->spreadsheet->createSheet($title);
-                $this->sheetsByTitle[$title] = $sheet;
+                // Si une feuille existe déjà avec ce titre via PhpSpreadsheet (par sécurité)
+                $sheet = $this->spreadsheet->getSheetByName($title);
+                if ($sheet instanceof Worksheet) {
+                    $this->sheetsByTitle[$title] = $sheet;
+                } else {
+                    $sheetNumber = count($this->spreadsheet->getAllSheets());
+                    if ($sheetNumber === 1 && empty($this->sheetsByTitle) === true) {
+                        $sheet = $this->spreadsheet->getActiveSheet();
+                    } else {
+                        // Créer une nouvelle feuille
+                        $sheet = $this->spreadsheet->createSheet($sheetNumber);
+                    }
+                    $sheet->setTitle($title);
+                    $this->sheetsByTitle[$title] = $sheet;
+                }
             }
             return $sheet;
         } catch (Exception $e) {

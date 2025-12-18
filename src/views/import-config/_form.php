@@ -38,7 +38,7 @@ use fractalCms\core\helpers\Html;
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-4">
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'name', ['label' => 'Nom', 'class' => 'form-label']);
@@ -49,7 +49,7 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'form-label']);
@@ -57,7 +57,17 @@ use fractalCms\core\helpers\Html;
                     ?>
                 </div>
             </div>
-            <div class="col-sm-4">
+            <div class="col-sm-3">
+                <div class="col form-group p-0">
+                    <?php
+                    echo Html::activeLabel($model, 'sourceType', ['label' => 'Type de la source', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'sourceType', ImportConfig::optsSourceTypes(), [
+                        'prompt' => 'Sélectionner un type de source', 'class' => 'form-control',
+                    ]);
+                    ?>
+                </div>
+            </div>
+            <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
                     echo Html::activeLabel($model, 'exportFormat', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);

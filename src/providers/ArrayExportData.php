@@ -1,6 +1,6 @@
 <?php
 /**
- * SqlIterator.php
+ * ArrayExportData.php
  *
  * PHP Version 8.2+
  *
@@ -11,27 +11,25 @@
 namespace fractalCms\importExport\providers;
 
 use fractalCms\importExport\interfaces\ExportDataProvider;
-use yii\db\Command;
 use Traversable;
 use Exception;
 use Yii;
 
-class SqlExportData implements ExportDataProvider
+class ArrayExportData implements ExportDataProvider
 {
 
     public function __construct(
-        private readonly Command $command
+        private readonly array $rows
     ) {}
 
     /**
      * @return Traversable
-     * @throws \yii\db\Exception
+     * @throws Exception
      */
     public function getIterator(): Traversable
     {
         try {
-            $reader = $this->command->query();
-            foreach ($reader as $row) {
+            foreach ($this->rows as $row) {
                 yield $row;
             }
         } catch (Exception $e) {
@@ -47,7 +45,7 @@ class SqlExportData implements ExportDataProvider
     public function count() : int
     {
         try {
-            return $this->command->query()->count();
+            return count($this->rows);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;

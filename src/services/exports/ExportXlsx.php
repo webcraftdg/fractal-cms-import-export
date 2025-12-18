@@ -29,16 +29,16 @@ class ExportXlsx implements ExportInterface
 {
     /**
      * @param ImportConfig $importConfig
-     * @param $params
+     * @param ExportDataProvider $provider
+     * @param array $params
      * @return ImportJob
-     * @throws \yii\db\Exception
+     * @throws Exception
      */
-    public static function run(ImportConfig $importConfig, $params = []): ImportJob
+    public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []): ImportJob
     {
         try {
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
-            $provider = ExportService::getExportQueryProvider($importConfig);
             $totalCount = 0;
             $successRows = 0;
             $spreadsheet = new Spreadsheet();
@@ -72,36 +72,36 @@ class ExportXlsx implements ExportInterface
             try {
                 if ($provider instanceof ExportDataProvider) {
                     $totalCount = $provider->count();
-                    foreach ($provider->getIterator() as $rows) {
-                        foreach ($rows as $row) {
-                            if ($rowTransformer instanceof RowTransformerInterface) {
-                                try {
-                                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
-                                    $result = $rowTransformer->transformRow(
-                                        $row,
-                                        $baseExportContext
-                                    );
-                                    if( $result->handled === true) {
-                                        $importJob->successRows++;
-                                        continue;
-                                    }
-                                    $row = $result->attributes ?? $row;
-                                } catch (Exception $e) {
-                                    $importJob->errorRows++;
-                                    if ($importConfig->stopOnError) {
-                                        break;
-                                    }
+                    foreach ($provider->getIterator() as $row) {
+                        $row = static::prepareRow(
+                            transformerService: $transformerService,
+                            configColumns: $configColumns,
+                            row: $row
+                        );
+                        if ($rowTransformer instanceof RowTransformerInterface) {
+                            try {
+                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                                $result = $rowTransformer->transformRow(
+                                    $row,
+                                    $baseExportContext
+                                );
+                                if( $result->handled === true) {
+                                    $importJob->successRows++;
+                                    $rowIndex++;
                                     continue;
                                 }
+                                $row = $result->attributes ?? $row;
+                            } catch (Exception $e) {
+                                $importJob->errorRows++;
+                                $rowIndex++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
+                                continue;
                             }
-                            $row = static::prepareRow(
-                                transformerService: $transformerService,
-                                configColumns: $configColumns,
-                                row: $row
-                            );
-                            $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
-                            $rowIndex++;
                         }
+                        $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
+                        $rowIndex++;
                     }
                 }
                 $status = ImportJob::STATUS_SUCCESS;

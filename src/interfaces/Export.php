@@ -18,8 +18,9 @@ interface Export
 
     /**
      * @param ImportConfig $importConfig
+     * @param ExportDataProvider $provider
      * @param array $params
      * @return ImportJob
      */
-    public static function run(ImportConfig $importConfig, array $params = []) : ImportJob;
+    public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []) : ImportJob;
 }

@@ -26,6 +26,7 @@ class m251121_133115_initDatabase extends Migration
                 'id'=> $this->bigPrimaryKey(20),
                 'name'=> $this->string(150)->defaultValue(null),
                 'version' => $this->integer(),
+                'sourceType' => 'ENUM(\'table\', \'sql\', \'extern\') DEFAULT NULL',
                 'type' => 'ENUM(\'import\', \'export\') DEFAULT NULL',
                 'active'=> $this->boolean()->defaultValue(false),
                 'stopOnError'=> $this->boolean()->defaultValue(false),

@@ -26,13 +26,16 @@ class ImportExportController extends Controller
     public $name;
     public $version;
     public $pathFile;
+    public $isTest = 0;
+    public $params;
+    public $batchSize;
 
     /**
      * @inheritdoc
      */
     public function options($actionID)
     {
-        return ['name', 'version', 'pathFile',];
+        return ['name', 'version', 'pathFile', 'isTest', 'params', 'batchSize'];
     }
 
     /**
@@ -44,11 +47,14 @@ class ImportExportController extends Controller
             'name' => 'name',
             'version' => 'version',
             'pathFile' => 'pathFile',
+            'isTest' => 'isTest',
+            'params' => 'params',
+            'batchSize' => 'batchSize',
         ];
     }
 
     /**
-     * php yii.php fractalCmsImportExport:import-export/index -name={name} -version={version}
+     * php yii.php fractalCmsImportExport:import-export/index -name={name} -version={version} -isTest=1 -params='key:value, key:value' -batchSize=200
      *
      * @return void
      * @throws BaseException
@@ -72,10 +78,37 @@ class ImportExportController extends Controller
                 throw new BaseException('paramètre -pathFile est obligatoire pour un import');
             }
 
+            $batchSize = $this->batchSize;
+            if (empty($batchSize) === true) {
+                $batchSize = 1000;
+            }
+            $isTest = (boolean)$this->isTest;
+            $params = [];
+            if (empty($this->params) === false) {
+                $splits = preg_split('/\,/', $this->params);
+                foreach ($splits as $split) {
+                    $values = preg_split('/\:/', $split);
+                    $key = ($values[0]) ?? null;
+                    $value = ($values[1]) ?? null;
+                    if ($key !== null && $value !== null) {
+                        $params[$key] = $value;
+                    }
+                }
+            }
+
             if ($importConfig->type === ImportConfig::TYPE_IMPORT) {
-                $importJob = Import::run($importConfig, $this->pathFile);
+                $importJob = Import::run(
+                    importConfig: $importConfig,
+                    filePath: $this->pathFile,
+                    isTest: $isTest,
+                    params: $params
+                );
             } else {
-                $importJob = Export::run($importConfig);
+                $importJob = Export::run(
+                    importConfig: $importConfig,
+                    batchSize: (int)$batchSize,
+                    params: $params
+                );
             }
             $importJob->refresh();
             $this->stdout('Resultat : '.Json::encode($importJob->toArray(), JSON_PRETTY_PRINT)."\n");

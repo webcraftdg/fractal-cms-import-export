@@ -13,9 +13,9 @@ namespace fractalCms\importExport\writers;
 class WriteTarget
 {
     public function __construct(
-        public readonly string $sheet,
-        public readonly int $row = 1,
-        public readonly int $col = 1,
+        public readonly string  $sheet,
+        public readonly int     $rowNumber = 1,
+        public readonly int     $colNumber = 1,
         public readonly ?string $style = null
     ) {}
 }

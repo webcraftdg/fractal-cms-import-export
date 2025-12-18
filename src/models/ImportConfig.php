@@ -41,6 +41,7 @@ use yii\web\UploadedFile;
  * @property int|null $version
  * @property int|null $active
  * @property int $stopOnError
+ * @property string $sourceType
  * @property string $type
  * @property string $exportFormat
  * @property int|null $truncateTable
@@ -65,7 +66,12 @@ class ImportConfig extends \yii\db\ActiveRecord
     const FORMAT_EXCEL = 'xls';
     const FORMAT_EXCEL_X = 'xlsx';
     const FORMAT_CSV = 'csv';
-
+    
+    const SOURCE_TYPE_SQL = 'sql';
+    const SOURCE_TYPE_TABLE = 'table';
+    const SOURCE_TYPE_EXTERN = 'extern';
+    
+    
     const TYPE_IMPORT = 'import';
     const TYPE_EXPORT = 'export';
 
@@ -121,19 +127,23 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_IMPORT_JSON_FILE] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
-            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type', 'sourceType'
         ];
         $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
             'importFile', 'importConfigId'
@@ -147,11 +157,12 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type'], 'default', 'value' => null],
+            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'rowTransformer', 'exportFormat', 'exportTarget', 'type', 'sourceType'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['active', 'stopOnError', 'truncateTable'], 'default', 'value' => 0],
             [['active', 'stopOnError', 'version', 'truncateTable'], 'integer'],
             [['importConfigId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
+            [['sourceType'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['importFile'],
                 'required',
                 'message' => 'Veuillez télécharger un fichier',
@@ -196,10 +207,10 @@ class ImportConfig extends \yii\db\ActiveRecord
                 , 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE, self::SCENARIO_IMPORT_JSON_FILE]],
             [['type', 'table', 'sql', 'rowTransformer',], 'string'],
             [['table'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return empty($this->sql) === true;
+                return $this->sourceType === self::SOURCE_TYPE_TABLE;
             }],
             [['sql'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return empty($this->table) === true;
+                return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
             [['sql'], 'validateSql','message' => 'Le SQL doit être conforme (uniquement verb "SELECT")', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
@@ -208,8 +219,9 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['rowTransformer'], 'string', 'max' => 15],
             ['exportFormat', 'in', 'range' => array_keys(self::optsFormats())],
             ['exportTarget', 'in', 'range' => array_keys(self::optsTargets())],
+            ['sourceType', 'in', 'range' => array_keys(self::optsSourceTypes())],
             [['exportTarget'] , 'required', 'message' => 'La cible de l\'export doit-être valorisé avec un valeur SQL', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return empty($this->sql) === false;
+                return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
             [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
         ];
@@ -462,7 +474,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $query->from($statementName);
                 $provider = new QueryExportDataProvider(query: $query, batchSize: $batchSize);
             } else {
-                $provider = new SqlExportDataProvider(command: Yii::$app->db->createCommand($this->sql), batchSize: $batchSize);
+                $provider = new SqlExportDataProvider(command: Yii::$app->db->createCommand($this->sql));
             }
             return  $provider;
         } catch (Exception $e) {
@@ -527,6 +539,18 @@ class ImportConfig extends \yii\db\ActiveRecord
             self::FORMAT_EXCEL_X => 'Xlsx',
             self::FORMAT_EXCEL => 'Xls',
             self::FORMAT_CSV => 'csv',
+        ];
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function optsSourceTypes()
+    {
+        return [
+            self::SOURCE_TYPE_EXTERN => 'Externe',
+            self::SOURCE_TYPE_TABLE => 'Table',
+            self::SOURCE_TYPE_SQL => 'SQL',
         ];
     }
 
@@ -757,7 +781,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $name = strtolower($this->name.'_v'.$this->version);
-            if(empty($this->table) === false) {
+            if($this->sourceType === self::SOURCE_TYPE_TABLE && empty($this->table) === false) {
                 $name = $this->table;
                 if ($this->parameter instanceof Parameter) {
                     $dbTables = $this->parameter->getActiveModelTableNames();

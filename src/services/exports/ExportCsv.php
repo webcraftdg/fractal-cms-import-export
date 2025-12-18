@@ -29,16 +29,16 @@ class ExportCsv implements Export
 
     /**
      * @param ImportConfig $importConfig
-     * @param $params
+     * @param ExportDataProvider $provider
+     * @param array $params
      * @return ImportJob
      * @throws Exception
      */
-    public static function run(ImportConfig $importConfig, $params = []): ImportJob
+    public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []): ImportJob
     {
         try {
             $transformerService = Yii::$container->get(TransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
-            $provider = ExportService::getExportQueryProvider($importConfig);
             $totalCount = 0;
             $successRows = 0;
             $filename = 'export_' . date('Ymd_His') . '.csv';
@@ -66,36 +66,35 @@ class ExportCsv implements Export
             try {
                 if ($provider instanceof ExportDataProvider) {
                     $totalCount = $provider->count();
-                    foreach ($provider->getIterator() as $rowIndex => $rows) {
-                        foreach ($rows as $row) {
-                            if ($rowTransformer instanceof RowTransformerInterface) {
-                                try {
-                                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
-                                    $result = $rowTransformer->transformRow(
-                                        $row,
-                                        $baseExportContext
-                                    );
-                                    if( $result->handled === true) {
-                                        $importJob->successRows++;
-                                        continue;
-                                    }
-                                    $row = $result->attributes ?? $row;
-                                } catch (Exception $e) {
-                                    $importJob->errorRows++;
-                                    if ($importConfig->stopOnError) {
-                                        break;
-                                    }
+                    foreach ($provider->getIterator() as $rowIndex => $row) {
+                        //ColumnTransformer
+                        $row = static::prepareRow(
+                            transformerService: $transformerService,
+                            configColumns: $configColumns,
+                            row: $row
+                        );
+                        if ($rowTransformer instanceof RowTransformerInterface) {
+                            try {
+                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                                $result = $rowTransformer->transformRow(
+                                    $row,
+                                    $baseExportContext
+                                );
+                                if( $result->handled === true) {
+                                    $importJob->successRows++;
                                     continue;
                                 }
+                                $row = $result->attributes ?? $row;
+                            } catch (Exception $e) {
+                                $importJob->errorRows++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
+                                continue;
                             }
-                            $successRows = static::prepareRow(
-                                transformerService: $transformerService,
-                                configColumns: $configColumns,
-                                row: $row
-                            );
-                            $baseExportContext->writeRow('csv', $row, $rowIndex);
-                            $importJob->successRows++;
                         }
+                        $baseExportContext->writeRow('csv', $row, $rowIndex);
+                        $importJob->successRows++;
                     }
                 }
                 $status = ImportJob::STATUS_SUCCESS;
@@ -116,15 +115,13 @@ class ExportCsv implements Export
     }
 
     /**
-     * @param $f
+     * @param TransformerService $transformerService
      * @param array $configColumns
      * @param $row
-     * @param $transformerService
-     * @param $successRows
-     * @return int
+     * @return array
      * @throws Exception
      */
-    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : int
+    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : array
     {
         try {
             /** @var  ImportConfigColumn $column */

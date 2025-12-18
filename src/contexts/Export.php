@@ -20,6 +20,10 @@ final class Export extends AbstractContext
 {
 
     /**
+     * @var array
+     */
+    private array $writtenHeaders = [];
+    /**
      * @param ImportConfig $config
      * @param bool $dryRun
      * @param int $rowNumber
@@ -42,24 +46,68 @@ final class Export extends AbstractContext
     }
 
 
+    /**
+     * @param string $sheet
+     * @param array $row
+     * @param int $startRow
+     * @param int $startCol
+     * @param string|null $style
+     * @return void
+     */
     public function writeRow(
         string $sheet,
         array $row,
-        ?int $startRow = null,
+        int $startRow = 1,
         int $startCol = 1,
         ?string $style = null
     ): void {
         $this->writer->write(
             new WriteTarget(
                 sheet: $sheet,
-                row: $startRow,
-                col: $startCol,
+                rowNumber: $startRow,
+                colNumber: $startCol,
                 style: $style
             ),
             $row
         );
     }
 
+    /**
+     * @param string $sheet
+     * @param array $headers
+     * @param int $rowNumber
+     * @param int $colOffset
+     * @param string|null $style
+     * @return void
+     * @throws Exception
+     */
+    public function writeHeaderOne(string $sheet, array $headers, int $rowNumber, int $colOffset, ?string $style = null): void
+    {
+        try {
+            $key = sha1($sheet . ':' . $rowNumber . ':' . $colOffset);
+
+            if (isset($this->writtenHeaders[$key])) {
+                return;
+            }
+            $this->writeRow(
+                sheet: $sheet,
+                row: $headers,
+                startRow: $rowNumber,
+                startCol: $colOffset,
+                style: $style
+            );
+            $this->writtenHeaders[$key] = true;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
+    /**
+     * @param string $filePath
+     * @return void*
+     */
     public function finalize(string $filePath): void
     {
         $this->writer->save($filePath);
