@@ -24,6 +24,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Exception;
 use Yii;
+use yii\helpers\FileHelper;
 
 class ExportXlsx implements ExportInterface
 {
@@ -40,9 +41,7 @@ class ExportXlsx implements ExportInterface
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
-            $successRows = 0;
             $spreadsheet = new Spreadsheet();
-
             $writer = new XlsxWriter($spreadsheet);
             $baseExportContext = new ExportContext(
                 config: $importConfig,
@@ -70,38 +69,37 @@ class ExportXlsx implements ExportInterface
             // Data
             $rowIndex = 2;
             try {
-                if ($provider instanceof ExportDataProvider) {
-                    $totalCount = $provider->count();
-                    foreach ($provider->getIterator() as $row) {
-                        $row = static::prepareRow(
-                            transformerService: $transformerService,
-                            configColumns: $configColumns,
-                            row: $row
-                        );
+                $totalCount = $provider->count();
+                foreach ($provider->getIterator() as $row) {
+                    $row = static::prepareRow(
+                        transformerService: $transformerService,
+                        configColumns: $configColumns,
+                        row: $row
+                    );
+                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                    try {
                         if ($rowTransformer instanceof RowTransformerInterface) {
-                            try {
-                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
-                                $result = $rowTransformer->transformRow(
-                                    $row,
-                                    $baseExportContext
-                                );
-                                if( $result->handled === true) {
-                                    $importJob->successRows++;
-                                    $rowIndex++;
-                                    continue;
-                                }
-                                $row = $result->attributes ?? $row;
-                            } catch (Exception $e) {
-                                $importJob->errorRows++;
+                            $result = $rowTransformer->transformRow(
+                                $row,
+                                $baseExportContext
+                            );
+                            if( $result->handled === true) {
+                                $importJob->successRows++;
                                 $rowIndex++;
-                                if ($importConfig->stopOnError) {
-                                    break;
-                                }
                                 continue;
                             }
                         }
+                        $row = $result->attributes ?? $row;
                         $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
+                        $importJob->successRows++;
                         $rowIndex++;
+                    } catch (Exception $e) {
+                        $importJob->errorRows++;
+                        $rowIndex++;
+                        if ($importConfig->stopOnError) {
+                            break;
+                        }
+                        continue;
                     }
                 }
                 $status = ImportJob::STATUS_SUCCESS;
@@ -112,10 +110,10 @@ class ExportXlsx implements ExportInterface
             $importJob->totalRows = $totalCount;
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
-            (new Xlsx($spreadsheet))->save($path);
-            $importJob->filePath = $path;
+            FileHelper::createDirectory(Yii::getAlias('@runtime'));
+            $baseExportContext->finalize($path);
+            $importJob->filePath = '@runtime/'.$filename;
             $importJob->status = $status;
-            $importJob->successRows = $successRows;
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {

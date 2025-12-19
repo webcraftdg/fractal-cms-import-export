@@ -84,7 +84,7 @@ final class Export extends AbstractContext
     public function writeHeaderOne(string $sheet, array $headers, int $rowNumber, int $colOffset, ?string $style = null): void
     {
         try {
-            $key = sha1($sheet . ':' . $rowNumber . ':' . $colOffset);
+            $key = crc32($sheet . ':' . $rowNumber . ':' . $colOffset);
 
             if (isset($this->writtenHeaders[$key])) {
                 return;

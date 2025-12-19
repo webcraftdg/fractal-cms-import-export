@@ -34,7 +34,7 @@ class Export
     {
         try {
             $provider = $importConfig->getImportExportQueryProvider($batchSize);
-            switch ($importConfig->exportFormat) {
+            switch ($importConfig->fileFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
                     $importJob = ExportXlsx::run($importConfig, $provider, $params);
@@ -59,7 +59,7 @@ class Export
     public static function runWithProvider(ImportConfig $importConfig, ExportDataProviderInterface $provider, array $params = [])
     {
         try {
-            switch ($importConfig->exportFormat) {
+            switch ($importConfig->fileFormat) {
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
                     $importJob = ExportXlsx::run($importConfig, $provider, $params);
@@ -85,7 +85,7 @@ class Export
         try {
             $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
             $importJob->importConfigId = $importConfig->id;
-            $importJob->userId = (Yii::$app instanceof Application) ? Yii::$app->user->identity->getId() : null;
+            $importJob->userId = (Yii::$app instanceof Application && Yii::$app->user->identity !== null) ? Yii::$app->user->identity->getId() : null;
             $importJob->type = ImportJob::TYPE_EXPORT;
             $importJob->status = ImportJob::STATUS_RUNNING;
             $importJob->totalRows = $rowsCount;

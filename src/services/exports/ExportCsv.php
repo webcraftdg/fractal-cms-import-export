@@ -23,6 +23,7 @@ use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\writers\CsvWriter;
 use Exception;
 use Yii;
+use yii\helpers\FileHelper;
 
 class ExportCsv implements Export
 {
@@ -40,8 +41,8 @@ class ExportCsv implements Export
             $transformerService = Yii::$container->get(TransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
-            $successRows = 0;
             $filename = 'export_' . date('Ymd_His') . '.csv';
+            FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
 
@@ -64,37 +65,36 @@ class ExportCsv implements Export
             $baseExportContext->writeRow('csv', $headers);
             $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             try {
-                if ($provider instanceof ExportDataProvider) {
-                    $totalCount = $provider->count();
-                    foreach ($provider->getIterator() as $rowIndex => $row) {
-                        //ColumnTransformer
-                        $row = static::prepareRow(
-                            transformerService: $transformerService,
-                            configColumns: $configColumns,
-                            row: $row
-                        );
+                $totalCount = $provider->count();
+                foreach ($provider->getIterator() as $rowIndex => $row) {
+                    //ColumnTransformer
+                    $row = static::prepareRow(
+                        transformerService: $transformerService,
+                        configColumns: $configColumns,
+                        row: $row
+                    );
+                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                    try {
                         if ($rowTransformer instanceof RowTransformerInterface) {
-                            try {
-                                $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
-                                $result = $rowTransformer->transformRow(
-                                    $row,
-                                    $baseExportContext
-                                );
-                                if( $result->handled === true) {
-                                    $importJob->successRows++;
-                                    continue;
-                                }
-                                $row = $result->attributes ?? $row;
-                            } catch (Exception $e) {
-                                $importJob->errorRows++;
-                                if ($importConfig->stopOnError) {
-                                    break;
-                                }
+
+                            $result = $rowTransformer->transformRow(
+                                $row,
+                                $baseExportContext
+                            );
+                            if ($result->handled === true) {
+                                $importJob->successRows++;
                                 continue;
                             }
                         }
+                        $row = $result->attributes ?? $row;
                         $baseExportContext->writeRow('csv', $row, $rowIndex);
                         $importJob->successRows++;
+                    } catch (Exception $e) {
+                        $importJob->errorRows++;
+                        if ($importConfig->stopOnError) {
+                            break;
+                        }
+                        continue;
                     }
                 }
                 $status = ImportJob::STATUS_SUCCESS;
@@ -102,10 +102,10 @@ class ExportCsv implements Export
                 Yii::error($e->getMessage(), __METHOD__);
                 $status = ImportJob::STATUS_FAILED;
             }
-            $importJob->successRows = $successRows;
+            $importJob->totalRows = $totalCount;
             $importJob->status = $status;
             fclose($f);
-            $importJob->filePath = $path;
+            $importJob->filePath = '@runtime/'.$filename;
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {

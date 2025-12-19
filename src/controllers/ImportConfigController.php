@@ -251,7 +251,7 @@ class ImportConfigController extends BaseController
     {
         try {
             $request = Yii::$app->request;
-            $modelQuery = ImportConfig::find();
+            $modelQuery = ImportConfig::find()->andWhere(['not', ['sourceType' => ImportConfig::SOURCE_TYPE_EXTERN]]);
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
             $importJob = Yii::createObject(ImportJob::class);
@@ -264,7 +264,7 @@ class ImportConfigController extends BaseController
                 if($model->validate() === true) {
                     $importJob = $model->manageImportExport();
                     if($importJob !== null) {
-                        if($model->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
+                        if($importJob->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
                             $readyToDownload = true;
                         } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
                             $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
@@ -283,7 +283,7 @@ class ImportConfigController extends BaseController
                 $importConfigs[$importConfig->id] = $importConfig->name.': version :'.$importConfig->version.' : "'.$importConfig->type.'" : '.$statement;
             }
             if ($readyToDownload === true) {
-                $this->download($importJob->filePath, $model->exportFormat);
+                $this->download(Yii::getAlias($importJob->filePath));
             } else {
                 return $this->render('test-import', [
                     'importConfigs' => $importConfigs,
@@ -299,11 +299,10 @@ class ImportConfigController extends BaseController
 
     /**
      * @param string $path
-     * @param $type
      * @return void
      * @throws \yii\web\RangeNotSatisfiableHttpException
      */
-    protected function download(string $path, $type)
+    protected function download(string $path)
     {
         try {
             if (file_exists($path) === true) {

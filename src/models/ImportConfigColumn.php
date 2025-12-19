@@ -56,6 +56,15 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     }
 
     /**
+     * @var array $tmpTransformer
+     */
+    public $tmpTransformer;
+    /**
+     * @var array $tmpTransformerOptions
+     */
+    public $tmpTransformerOptions;
+
+    /**
      * {@inheritdoc}
      */
     public static function tableName()
@@ -67,11 +76,13 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate' , 'transformerOptions',
+            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate' ,
+            'transformerOptions', 'tmpTransformer', 'tmpTransformerOptions'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate', 'transformerOptions',
+            'importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'order', 'dateCreate', 'dateUpdate',
+            'transformerOptions', 'tmpTransformer', 'tmpTransformerOptions'
         ];
 
         return $scenarios;
@@ -86,8 +97,9 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
             [['importConfigId', 'source', 'target', 'format', 'defaultValue', 'transformer', 'transformerOptions', 'order', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
             [['importConfigId'], 'integer'],
             [['order'], 'number'],
-            [['dateCreate', 'dateUpdate'], 'safe'],
+            [['dateCreate', 'dateUpdate', 'tmpTransformer', 'tmpTransformerOptions'], 'safe'],
             [['transformer', 'transformerOptions'], 'string'],
+            [['tmpTransformer'], 'validateTransformer', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
             [['source', 'target', 'defaultValue',], 'string', 'max' => 255],
             [['format'], 'string', 'max' => 50],
             [['importConfigId', 'source', 'target', 'format'], 'required', 'on' => [static::SCENARIO_CREATE, static::SCENARIO_UPDATE]],
@@ -118,6 +130,38 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     }
 
     /**
+     * @param $attribute
+     * @param $params
+     * @return bool
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function validateTransformer($attribute, $params) : bool
+    {
+        try {
+            $tmpTransformer = $this->tmpTransformer;
+            $success = true;
+            if (empty($tmpTransformer) === false && empty($tmpTransformer['name']) === false) {
+                $tmpTransformerOptions = ($this->tmpTransformerOptions) ?? [];
+                list($transformer, $transformerOptions) = $this->buildTransformer($tmpTransformer, $tmpTransformerOptions);
+                if ($transformer === null) {
+                    $this->addError('transformer', 'Transformeur non valide');
+                    $success = false;
+                } else {
+                    $this->transformer = Json::encode($transformer);
+                    if ($transformerOptions !== null) {
+                        $this->transformerOptions = Json::encode($transformerOptions);
+                    }
+                }
+            }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
      * @param array $transformer
      * @param array $transformerOptions
      * @return array
@@ -135,7 +179,7 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
                         $transformerService = $transformers[$transformer['name']];
                         $transformer['optionsSchema'] = $transformerService->getOptionsSchema() ;
                         $transformer['description'] = ($transformer['description']) ?? $transformerService->getDescription();
-                    }else {
+                    } else {
                         $transformer = null;
                         $transformerOptions = null;
                     }

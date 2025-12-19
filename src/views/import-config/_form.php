@@ -70,8 +70,8 @@ use fractalCms\core\helpers\Html;
             <div class="col-sm-3">
                 <div class="col form-group p-0">
                     <?php
-                    echo Html::activeLabel($model, 'exportFormat', ['label' => 'Format du fichier d\'export', 'class' => 'form-label']);
-                    echo Html::activeDropDownList($model, 'exportFormat', ImportConfig::optsFormats(), [
+                    echo Html::activeLabel($model, 'fileFormat', ['label' => 'Format du fichier', 'class' => 'form-label']);
+                    echo Html::activeDropDownList($model, 'fileFormat', ImportConfig::optsFormats(), [
                         'prompt' => 'Sélectionner un format', 'class' => 'form-control',
                     ]);
                     ?>

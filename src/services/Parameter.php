@@ -30,7 +30,7 @@ class Parameter implements ParameterInterface
         try {
             $tables = [];
             $pathsNamespacesModels = Module::getInstance()->pathsNamespacesModels;
-            $paramsKeys = sha1(Json::encode($pathsNamespacesModels));
+            $paramsKeys = crc32(Json::encode($pathsNamespacesModels));
             if (isset($this->parameterTables[$paramsKeys]) === false) {
                 $this->parameterTables = [];
                 $dbTables = Yii::$app->db->getSchema()->tableNames;
@@ -42,7 +42,7 @@ class Parameter implements ParameterInterface
                             $baseName = pathinfo($pathFile, PATHINFO_FILENAME);
                             if (is_file($pathFile) === true && preg_match('/\.php$/', $modelFile) == 1) {
                                 try {
-                                    $class = $namespaceModel.$baseName;
+                                    $class = trim($namespaceModel, '\\').'\\'.$baseName;
                                     if(class_exists($class) === true && is_subclass_of($class, \yii\db\ActiveRecord::class)) {
                                         $tableName = $class::tableName();
                                         $tableName = static::normalizeTableName($tableName);

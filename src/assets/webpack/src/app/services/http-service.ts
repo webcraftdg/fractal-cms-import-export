@@ -171,16 +171,16 @@ export class HttpService {
             const lowerKey = key.trim().toLowerCase();
             switch (lowerKey) {
                 case 'x-pagination-current-page':
-                    pagination.page = parseInt(value);
+                    pagination.page = Number.parseInt(value);
                     break;
                 case 'x-pagination-total-page':
-                    pagination.pageCount = parseInt(value);
+                    pagination.pageCount = Number.parseInt(value);
                     break;
                 case 'x-pagination-per-page':
-                    pagination.pageSize = parseInt(value);
+                    pagination.pageSize = Number.parseInt(value);
                     break;
                 case 'x-pagination-total-entries':
-                    pagination.totalCount = parseInt(value);
+                    pagination.totalCount = Number.parseInt(value);
                     break;
             }
         });

@@ -88,15 +88,15 @@ echo Html::endForm();
 
 
         echo Html::beginTag('div', ['class' => implode(' ', $classes), 'fractal-cms-core-list-line' => $model->id]);
-        echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'col']);
-        echo Html::tag('div', 'Version : '.$model->version, ['class' => 'col']);
-        echo Html::tag('div', $model->type, ['class' => 'col']);
+        echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'col-sm-3']);
+        echo Html::tag('div', 'Version : '.$model->version, ['class' => 'col-sm-2']);
+        echo Html::tag('div', $model->type, ['class' => 'col-sm-2']);
         if (empty($model->table) === false) {
-            echo Html::tag('div', ucfirst($model->table), ['class' => 'col']);
+            echo Html::tag('div', ucfirst($model->table), ['class' => 'col-sm-3']);
         } else {
-            echo Html::tag('div', 'requête SQL', ['class' => 'col']);
+            echo Html::tag('div', 'requête SQL', ['class' => 'col-sm-3']);
         }
-        echo Html::beginTag('div', ['class' => 'col-sm-3']);
+        echo Html::beginTag('div', ['class' => 'col-sm-2']);
         echo Html::beginTag('div', ['class' => 'row align-items-center']);
         if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_UPDATE) === true)  {
             echo Html::beginTag('a', ['href' => Url::to(['import-config/update', 'id' => $model->id]), 'class' => 'icon-link col', 'title' => 'Editer']);
