@@ -34,6 +34,7 @@ use fractalCms\importExport\transformers\UpperColumnTransformer;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
+use yii\web\Application as WebApplication;
 use yii\helpers\Url;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
@@ -90,10 +91,11 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
             if ($app instanceof ConsoleApplication) {
                 $this->configConsoleApp($app);
-            }
-            $filePath = Yii::getAlias($this->filePathImport);
-            if(file_exists($filePath) === false) {
-                mkdir($filePath);
+            } elseif ($app instanceof WebApplication) {
+                $filePath = Yii::getAlias($this->filePathImport);
+                if(file_exists($filePath) === false) {
+                    mkdir($filePath);
+                }
             }
         } catch (Exception $e){
             Yii::error($e->getMessage(), __METHOD__);
