@@ -20,86 +20,89 @@ use fractalCms\core\helpers\Html;
 use yii\helpers\Url;
 $baseUrl = StaticAsset::register($this)->baseUrl;
 ?>
-<div class="row mt-3 align-items-center">
-    <div class="col-sm-6">
-        <h2>Liste des configurations d'imports/exports</h2>
+<div class="fc-list-header">
+    <div>
+        <h2 class="fc-list-header-title">Liste des configurations d'imports/exports</h2>
     </div>
 </div>
 <?php
     echo Html::beginForm('', 'post', ['enctype' => 'multipart/form-data']);
 ?>
-<div class="row mt-3">
-    <div class="col-sm-12">
-        <div class="row justify-content-between">
-            <div class="col flex items-center gap-1 align-self-start">
+<div class="fc-row px-6">
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <div  class="fc-input-group">
                 <?php
                 echo Html::activeFileInput($model, 'importFile',
                     [
                         'placeholder' => 'Import',
                         'accept' => '.json',
-                        'class' => 'rounded-l-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500']);
-                echo Html::beginTag('button', ['type' => 'submit', 'class' => 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-r-lg border border-blue-600 flex items-center']);
+                        'class' => 'fc-form-input'
+                    ]);
+                echo Html::beginTag('button', ['type' => 'submit', 'class' => 'fc-btn fc-btn-primary']);
                 echo Html::img($baseUrl.'/img/upload.svg', ['width' => 24, 'height' => 24, 'alt' => 'télécharger']);
                 echo Html::endTag('button');
+                ?>
+            </div>
+            <div>
+                <?php
                 if ($model->hasErrors() === true) {
                     foreach ($model->errors as $field => $error) {
-                        echo Html::tag('p', $model->getFirstError($field), ['class' => 'text-red-600 text-sm m-0']);
+                        echo Html::tag('p', $model->getFirstError($field), ['class' => 'fc-error']);
                     }
                 }
                 ?>
-
             </div>
-            <div class="col align-self-end" >
-                <?php
-                if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE) === true):
+        </div>
+        <div>
+            <?php
+            if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_CREATE) === true):
 
-                    echo Html::beginTag('a', ['href' => Url::to(['import-config/create']), 'class' => 'btn btn-outline-success']);
-                    ?>
-                    <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 12H15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M12 9L12 15" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#198754" stroke-width="2"/>
-                    </svg>
-                    <span>Ajouter manuellement</span>
-                    <?php
-                    echo Html::endTag('a');
-                endif;
-
+                echo Html::beginTag('a', ['href' => Url::to(['import-config/create']), 'class' => 'fc-btn fc-btn-success']);
                 ?>
-            </div>
+                <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M9 12H15" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 9L12 15" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#fff" stroke-width="2"/>
+                </svg>
+                <span>Créer manuellement</span>
+                <?php
+                echo Html::endTag('a');
+            endif;
+
+            ?>
         </div>
     </div>
 </div>
 <?php
 echo Html::endForm();
 ?>
-<div class="row m-3">
+<div class="fc-list">
     <?php
     /** @var ImportConfig $model */
     foreach ($modelQuery->each() as $model) {
-        $classes = ['row align-items-center  p-1 border mt-1'];
+        $classes = ['fc-list-item'];
         if ((boolean)$model->active === true) {
-            $classes[] = 'border-success';
+            $classes[] = 'fc-list-item-success';
         } elseif((boolean)$model->active === false) {
-            $classes[] = 'border-danger';
+            $classes[] = 'fc-list-item-danger';
         } else {
-            $classes[] = 'border-primary';
+            $classes[] = 'fc-list-item-primary';
         }
 
 
         echo Html::beginTag('div', ['class' => implode(' ', $classes), 'fractal-cms-core-list-line' => $model->id]);
-        echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'col-sm-3']);
-        echo Html::tag('div', 'Version : '.$model->version, ['class' => 'col-sm-2']);
-        echo Html::tag('div', $model->type, ['class' => 'col-sm-2']);
+        echo Html::tag('div', '#'.$model->id.' '.ucfirst($model->name), ['class' => 'flex-1 font-medium']);
+        echo Html::tag('div', 'Version : '.$model->version, ['class' => 'flex-1 font-medium']);
+        echo Html::tag('div', $model->type, ['class' => 'flex-1 font-medium']);
         if (empty($model->table) === false) {
-            echo Html::tag('div', ucfirst($model->table), ['class' => 'col-sm-3']);
+            echo Html::tag('div', ucfirst($model->table), ['class' => 'flex-1 font-medium']);
         } else {
-            echo Html::tag('div', 'requête SQL', ['class' => 'col-sm-3']);
+            echo Html::tag('div', 'requête SQL', ['class' => 'flex-1 font-medium']);
         }
-        echo Html::beginTag('div', ['class' => 'col-sm-2']);
-        echo Html::beginTag('div', ['class' => 'row align-items-center']);
+        echo Html::beginTag('div', ['class' => 'flex justify-end gap-3 sm:w-auto']);
         if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_UPDATE) === true)  {
-            echo Html::beginTag('a', ['href' => Url::to(['import-config/update', 'id' => $model->id]), 'class' => 'icon-link col', 'title' => 'Editer']);
+            echo Html::beginTag('a', ['href' => Url::to(['import-config/update', 'id' => $model->id]), 'class' => 'text-indigo-500 hover:text-indigo-700 transition icon-link', 'title' => 'Editer']);
             ?>
             <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21.2799 6.40005L11.7399 15.94C10.7899 16.89 7.96987 17.33 7.33987 16.7C6.70987 16.07 7.13987 13.25 8.08987 12.3L17.6399 2.75002C17.8754 2.49308 18.1605 2.28654 18.4781 2.14284C18.7956 1.99914 19.139 1.92124 19.4875 1.9139C19.8359 1.90657 20.1823 1.96991 20.5056 2.10012C20.8289 2.23033 21.1225 2.42473 21.3686 2.67153C21.6147 2.91833 21.8083 3.21243 21.9376 3.53609C22.0669 3.85976 22.1294 4.20626 22.1211 4.55471C22.1128 4.90316 22.0339 5.24635 21.8894 5.5635C21.7448 5.88065 21.5375 6.16524 21.2799 6.40005V6.40005Z" stroke="#5468ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -108,8 +111,7 @@ echo Html::endForm();
             <?php
             echo Html::endTag('a');
         }
-        if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_ACTIVATION) === true)  {
-            echo Html::beginTag('span', ['class' => 'icon-link col']);
+            echo Html::beginTag('span', ['class' => '']);
             if ((boolean)$model->active === true):
                 ?>
                 <svg width="25px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-labelledby="switchOffIconTitle" stroke="#198754" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" color="#198754"> <title id="switchOffIconTitle">Switch off</title> <path fill-rule="evenodd" clip-rule="evenodd" d="M7 14C5.89543 14 5 13.1046 5 12C5 10.8954 5.89543 10 7 10C8.10457 10 9 10.8954 9 12C9 13.1046 8.10457 14 7 14Z"/> <path d="M7 17C4.23858 17 2 14.7614 2 12V12C2 9.23858 4.23858 7 7 7L16 7C18.7614 7 21 9.23858 21 12V12C21 14.7614 18.7614 17 16 17L7 17Z"/> </svg>
@@ -121,11 +123,10 @@ echo Html::endForm();
             <?php
             endif;
             echo Html::endTag('span');
-        }
         ?>
         <?php
         if (Yii::$app->user->can(Constant::PERMISSION_MAIN_EXPORT.CoreConstant::PERMISSION_ACTION_DELETE) === true)  {
-            echo Html::beginTag('a', ['href' => Url::to(['api/import-config/delete', 'id' => $model->id]), 'class' => 'icon-link col user-button-delete', 'title' => 'Supprimer']);
+            echo Html::beginTag('a', ['href' => Url::to(['api/import-config/delete', 'id' => $model->id]), 'class' => 'icon-link text-red-500 hover:text-red-700 transition user-button-delete', 'title' => 'Supprimer']);
             ?>
             <svg width="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 6H20M16 6L15.7294 5.18807C15.4671 4.40125 15.3359 4.00784 15.0927 3.71698C14.8779 3.46013 14.6021 3.26132 14.2905 3.13878C13.9376 3 13.523 3 12.6936 3H11.3064C10.477 3 10.0624 3 9.70951 3.13878C9.39792 3.26132 9.12208 3.46013 8.90729 3.71698C8.66405 4.00784 8.53292 4.40125 8.27064 5.18807L8 6M18 6V16.2C18 17.8802 18 18.7202 17.673 19.362C17.3854 19.9265 16.9265 20.3854 16.362 20.673C15.7202 21 14.8802 21 13.2 21H10.8C9.11984 21 8.27976 21 7.63803 20.673C7.07354 20.3854 6.6146 19.9265 6.32698 19.362C6 18.7202 6 17.8802 6 16.2V6M14 10V17M10 10V17" stroke="#dc3545" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -133,10 +134,9 @@ echo Html::endForm();
             <?php
             echo Html::endTag('a');
         } else {
-            echo Html::tag('span', '', ['class' => 'col']);
+            echo Html::tag('span', '', ['class' => '']);
         }
 
-        echo Html::endTag('div');
         echo Html::endTag('div');
         echo Html::endTag('div');
     }
