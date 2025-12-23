@@ -12,13 +12,13 @@
  */
 
 ?>
-<div class="row mt-1 border border-danger">
-    <div class="col-sm-6">
+<div class="fc-row-inline">
+    <div class="sm:w-1/2">
         <?php
             echo 'colonne n° : '.$importJobLog['row'];
         ?>
     </div>
-    <div class="col-sm-6">
+    <div class="sm:w-1/2">
         <?php
         echo $importJobLog['message'];
         ?>

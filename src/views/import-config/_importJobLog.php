@@ -14,21 +14,21 @@
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\core\helpers\Html;
 ?>
-<div class="row mt-3 align-items-center">
-    <div class="col-sm-8">
+<div class="border rounded-md">
+    <div class="px-3 py-2 border-b">
         <h2>Résultat de l'import</h2>
     </div>
-</div>
-<div class="row mt-3 border border-primary">
-    <div class="col-sm-6 text-danger">
-        <?php
-        echo 'Lignes en erreurs : '.$importJob->errorRows;
-        ?>
-    </div>
-    <div class="col-sm-6 text-success">
-        <?php
-        echo 'Lignes réussis : '.$importJob->successRows;
-        ?>
+    <div class="p-3 space-y-2">
+        <div class="fc-danger">
+            <?php
+            echo 'Lignes en erreurs : '.$importJob->errorRows;
+            ?>
+        </div>
+        <div class="fc-success">
+            <?php
+            echo 'Lignes réussis : '.$importJob->successRows;
+            ?>
+        </div>
     </div>
 </div>
 <?php
@@ -40,7 +40,7 @@ use fractalCms\core\helpers\Html;
                 ]);
         }
     } elseif ($importJob->status === ImportJob::STATUS_SUCCESS) {
-        echo Html::tag('div', 'Import/export réalisé avec succès', ['class' => 'col-sm-12 text-success']);
+        echo Html::tag('div', 'Import/export réalisé avec succès', ['class' => 'fc-primary']);
     }
 
 ?>
