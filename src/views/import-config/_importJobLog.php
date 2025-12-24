@@ -14,7 +14,20 @@
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\core\helpers\Html;
 ?>
-<div class="border rounded-md">
+<?php
+if ($importJob->status === ImportJob::STATUS_FAILED && empty($importJob->logs) === false) {
+    foreach ($importJob->logs as $importJobLog) {
+        echo $this->render('_importJobLogLine',
+            [
+                'importJobLog' => $importJobLog
+            ]);
+    }
+} elseif ($importJob->status === ImportJob::STATUS_SUCCESS) {
+    echo Html::tag('div', 'Import/export réalisé avec succès', ['class' => 'fc-success mt-3']);
+}
+
+?>
+<div class="border rounded-md mt-3">
     <div class="px-3 py-2 border-b">
         <h2>Résultat de l'import</h2>
     </div>
@@ -31,16 +44,3 @@ use fractalCms\core\helpers\Html;
         </div>
     </div>
 </div>
-<?php
-    if ($importJob->status === ImportJob::STATUS_FAILED && empty($importJob->logs) === false) {
-        foreach ($importJob->logs as $importJobLog) {
-            echo $this->render('_importJobLogLine',
-                [
-                    'importJobLog' => $importJobLog
-                ]);
-        }
-    } elseif ($importJob->status === ImportJob::STATUS_SUCCESS) {
-        echo Html::tag('div', 'Import/export réalisé avec succès', ['class' => 'fc-primary']);
-    }
-
-?>

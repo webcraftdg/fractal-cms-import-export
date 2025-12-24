@@ -161,7 +161,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     {
         $importCount = ImportConfig::find()->count();
         return [
-            'nombre de configuration' => $importCount
+            'Nombre de configuration' => $importCount
         ];
     }
 
