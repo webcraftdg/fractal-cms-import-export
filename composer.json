@@ -1,6 +1,6 @@
 {
-    "name": "webcraftdg/yii2-advanced-import-export",
-    "description": "Import-Export module d'aide pour les import et export Excel et CVS",
+    "name": "webcraftdg/fractal-cms-import-export",
+    "description": "Import / Export engine for FractalCMS (CSV, XLSX, SQL, Row Transformers)",
     "keywords": [
         "import/export",
         "import",
@@ -10,22 +10,16 @@
         "module"
     ],
     "version": "v1.0.0",
-    "homepage": "https://github.com/webcraftdg/yii2-advanced-import-export",
+    "homepage": "https://github.com/webcraftdg/fractal-cms-import-export",
     "type": "library",
     "license": "MIT",
     "support": {
-        "issues": "https://github.com/webcraftdg/yii2-advanced-import-export/issues"
+        "issues": "https://github.com/webcraftdg/fractal-cms-import-export/issues"
     },
     "authors": [
         {
             "name": "David Ghyse",
             "email": "davidg@webcraftdg.fr"
-        }
-    ],
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://asset-packagist.org"
         }
     ],
     "require": {
@@ -36,17 +30,11 @@
         "ext-mbstring": "*",
         "ext-gd": "*",
         "ext-fileinfo": "*",
-        "vlucas/phpdotenv": "~5.0",
-        "yiisoft/yii2": "~2.0",
-        "yiisoft/yii2-redis": "~2.0",
-        "bower-asset/bootstrap": "~5.0",
-        "league/flysystem": "^3.25",
-        "webcraftdg/fractal-cms-core": "^2.0",
+        "yiisoft/yii2": "^2.0",
+        "webcraftdg/fractal-cms-core": "~v2.1.0",
         "phpoffice/phpspreadsheet": "^5.3"
     },
     "require-dev": {
-        "yiisoft/yii2-debug": "~2.0",
-        "yiisoft/yii2-gii": "~2.0",
         "codeception/codeception": "^5.3",
         "codeception/module-phpbrowser": "*",
         "codeception/module-asserts": "*",

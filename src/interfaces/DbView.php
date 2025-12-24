@@ -40,9 +40,15 @@ interface DbView
     public function exists(string $name) : bool;
 
     /**
-     * @param string $name
+     * @param string $tableTableName
      * @return array
      */
-    public function getColumns(string $name) : array;
+    public function getTableColumns(string $tableTableName) : array;
 
+    /**
+     * @param string $tableName
+     * @param string $columnName
+     * @return bool
+     */
+    public function columnExists(string $tableName, string $columnName) : bool;
 }

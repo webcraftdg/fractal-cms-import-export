@@ -17,7 +17,7 @@ interface Parameter
     /**
      * @return array
      */
-    public function getTables(): array;
+    public function getActiveModelTableNames(): array;
 
     /**
      * @param array $tables

@@ -1,0 +1,15 @@
+actor: UnitTester
+suite_namespace: Tests\Unit
+modules:
+    # enable helpers as array
+    enabled:
+        - Asserts
+        - Yii2:
+              configFile: 'tests/config/common.php'
+        - Db:
+            dsn: 'mysql:host=localhost;port=3306;dbname=fractalcms_test'
+            user: 'dghyse'
+            password: 'redcat'
+            dump: tests/Support/Data/fractal_cms_local_19122025.sql
+            cleanup: true # reload dump between tests
+            populate: true # load dump before all tests

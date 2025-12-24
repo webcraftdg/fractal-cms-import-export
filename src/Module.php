@@ -12,15 +12,29 @@
 namespace fractalCms\importExport;
 
 use Exception;
+use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
-use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\console\ImportExportController;
+use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\estimations\ExportLimiter;
+use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
+use fractalCms\importExport\services\ColumnTransformer as TransformService;
+use fractalCms\importExport\services\RowTransformer as RowTransformerService;
+use fractalCms\importExport\transformers\BooleanColumnTransformer;
+use fractalCms\importExport\transformers\DateColumnTransformer;
+use fractalCms\importExport\transformers\LowerColumnTransformer;
+use fractalCms\importExport\transformers\NumberColumnTransformer;
+use fractalCms\importExport\transformers\ReplaceColumnTransformer;
+use fractalCms\importExport\transformers\StrPadColumnTransformer;
+use fractalCms\importExport\transformers\TrimColumnTransformer;
+use fractalCms\importExport\transformers\UpperColumnTransformer;
 use Yii;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
+use yii\web\Application as WebApplication;
 use yii\helpers\Url;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
@@ -30,7 +44,11 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     public $version = 'v1.0.0';
     public string $name = 'importExport';
     public string $filePathImport = '@webroot/imports';
+    public int $maxRows = 20000;
+    public int $maxColumns = 80;
+    public int $maxEstimatedMb = 500;
     public array $pathsNamespacesModels = [];
+    public array $rowTransformers = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -42,18 +60,42 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
             ]);
+            Yii::$container->setDefinitions([
+                TransformService::class => function() {
+                    return new TransformService([
+                        new BooleanColumnTransformer(),
+                        new DateColumnTransformer(),
+                        new LowerColumnTransformer(),
+                        new NumberColumnTransformer(),
+                        new ReplaceColumnTransformer(),
+                        new TrimColumnTransformer(),
+                        new StrPadColumnTransformer(),
+                        new UpperColumnTransformer(),
+                    ]);
+                }
+            ]);
+            $this->registerRowTransformers();
             $app->setComponents([
                 'importDbParameters' => [
                     'class' => Parameter::class
                 ]
             ]);
+            $app->setComponents([
+                'exportLimiter' => [
+                    'class' => ExportLimiter::class,
+                    'maxRows' => $this->maxRows,
+                    'maxColumns' => $this->maxColumns,
+                    'maxEstimatedMb' => $this->maxEstimatedMb
+                ]
+            ]);
 
             if ($app instanceof ConsoleApplication) {
                 $this->configConsoleApp($app);
-            }
-            $filePath = Yii::getAlias($this->filePathImport);
-            if(file_exists($filePath) === false) {
-                mkdir($filePath);
+            } elseif ($app instanceof WebApplication) {
+                $filePath = Yii::getAlias($this->filePathImport);
+                if(file_exists($filePath) === false) {
+                    mkdir($filePath);
+                }
             }
         } catch (Exception $e){
             Yii::error($e->getMessage(), __METHOD__);
@@ -61,6 +103,14 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         }
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
+    protected function registerRowTransformers() : void
+    {
+        Yii::$container->set(RowTransformerService::class, new RowTransformerService($this->rowTransformers));
+    }
 
     /**
      * Config Console Application
@@ -81,6 +131,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $app->controllerMap['migrate']['migrationNamespaces'] = ['fractalCms\importExport\migrations'];
                 }
             }
+            $app->controllerMap[$this->commandNameSpace.'import-export'] = [
+                'class' => ImportExportController::class,
+            ];
         }catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -98,9 +151,18 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     }
 
 
+    /**
+     * [
+     *  'key' => 'value',
+     * ]
+     * @return array
+     */
     public function getInformations() : array
     {
-        return [];
+        $importCount = ImportConfig::find()->count();
+        return [
+            'Nombre de configuration' => $importCount
+        ];
     }
 
     /**
@@ -115,6 +177,10 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         ];
     }
 
+    /**
+     * @return array
+     * @throws Exception
+     */
     public function getMenu() : array
     {
         try {
@@ -139,6 +205,15 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
+
+                $importExport['children'][] = [
+                    'title' => 'Test import/export',
+                    'url' => Url::to(['/'.$this->contextId.'/import-config/test-import']),
+                    'optionsClass' => $optionsClass,
+                    'children' => [],
+                ];
+
+
             }
             $data = [];
             if (empty($importExport['children']) === false) {
@@ -163,12 +238,17 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         return [
             $coreId.'/configuration-des-imports-export/liste' => $contextId.'/import-config/index',
             $coreId.'/configuration-des-imports-export/creer' => $contextId.'/import-config/create',
+            $coreId.'/configuration-des-imports-export/test-import-export' => $contextId.'/import-config/test-import',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/exporter' => $contextId.'/import-config/export',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/editer' => $contextId.'/import-config/update',
             $coreId.'/configuration-des-imports-export/<id:([^/]+)>/supprimer' => $contextId.'/api/import-config/delete',
+            $coreId.'/api/import-config/transformers' => $contextId.'/api/import-config/get-transform-services',
             $coreId.'/api/import-config/<id:([^/]+)>' => $contextId.'/api/import-config/get',
-            $coreId.'/api/import-config/<id:([^/]+)>/columns' => $contextId.'/api/import-config/post-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/post-columns' => $contextId.'/api/import-config/post-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/get-columns' => $contextId.'/api/import-config/get-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/columns/<columnId:([^/]+)>/delete' => $contextId.'/api/import-config/delete-column',
             $coreId.'/api/import-config/<id:([^/]+)>/table-columns' => $contextId.'/api/import-config/get-table-columns',
+            $coreId.'/api/import-config/<id:([^/]+)>/table-columns/<name:([^/]+)>' => $contextId.'/api/import-config/get-table-columns',
             $coreId.'/api/db/tables' => $contextId.'/api/db/get-tables',
         ];
     }

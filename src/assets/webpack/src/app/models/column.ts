@@ -1,17 +1,21 @@
 import { ILogger, resolve} from 'aurelia';
 import {IValidationRules} from "@aurelia/validation";
 
-import {IImportConfigColumn} from "../interfaces/import-config";
+import {IImportConfigColumn, ITransformer} from "../interfaces/import-config";
 
 export class Column implements IImportConfigColumn
 {
     public id:string;
+    public importConfigId:number;
+    public search:string;
     public source:string;
     public target:string;
-    public type:string;
-    public nullable:boolean;
+    public format:string;
     public default?:any;
-    public transform?:any;
+    public order:number;
+    public tableColumns:IImportConfigColumn[];
+    public transformer?:ITransformer;
+    public transformerOptions?:any;
 
     constructor(
         private readonly logger: ILogger = resolve(ILogger),
@@ -21,6 +25,7 @@ export class Column implements IImportConfigColumn
         this.logger.trace('constructor');
         this.initValidationRules(this.validationRules);
     }
+
 
     /**
      * To json
@@ -32,10 +37,11 @@ export class Column implements IImportConfigColumn
             'id': this.id,
             'source': this.source,
             'target': this.target,
-            'type': this.type,
-            'nullable:': this.nullable,
+            'type': this.format,
+            'order': this.order,
             'default': this.default,
-            'transform': this.transform
+            'transformerOptions': this.transformerOptions,
+            'transformer': this.transformer.toJson()
         };
     }
     /**
@@ -70,9 +76,9 @@ export class Column implements IImportConfigColumn
                 return true
             })
             .withMessage('La Cible doit être une string')
-            .ensure('type')
+            .ensure('format')
             .required()
-            .withMessage('Le type est obligatoire')
+            .withMessage('Le format est obligatoire')
             .then()
             .satisfies((value: string, object) => {
                 if (!value || value.toString() == '' || typeof(value) !== 'string') {
@@ -80,7 +86,7 @@ export class Column implements IImportConfigColumn
                 }
                 return true
             })
-            .withMessage('Le type doit être une string')
+            .withMessage('Le format doit être une string')
             .ensure('default')
             .then()
             .satisfies((value: string, object) => {
@@ -89,6 +95,16 @@ export class Column implements IImportConfigColumn
                 }
                 return true
             })
-            .withMessage('Le default doit être une string');
+            .withMessage('Le default doit être une string')
+            .ensure('transformerOptions')
+            .required()
+            .then()
+            .satisfies((value: any, object) => {
+                if (!value && this.transformer) {
+                    return false;
+                }
+                return true
+            })
+            .withMessage('Les options sont obligatoires');
     }
 }

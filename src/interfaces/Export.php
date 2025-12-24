@@ -11,13 +11,16 @@
 namespace fractalCms\importExport\interfaces;
 
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportJob;
 
 interface Export
 {
 
     /**
      * @param ImportConfig $importConfig
-     * @return string | null
+     * @param ExportDataProvider $provider
+     * @param array $params
+     * @return ImportJob
      */
-    public static function run(ImportConfig $importConfig) : string | null;
+    public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []) : ImportJob;
 }

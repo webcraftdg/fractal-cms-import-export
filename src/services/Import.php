@@ -11,6 +11,7 @@
 
 namespace fractalCms\importExport\services;
 
+use fractalCms\importExport\interfaces\Import as ImportInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\imports\ImportXlsx;
@@ -18,7 +19,7 @@ use Yii;
 use Exception;
 use yii\base\NotSupportedException;
 
-class Import implements \fractalCms\importExport\interfaces\Import
+class Import implements ImportInterface
 {
 
     /**
@@ -26,22 +27,17 @@ class Import implements \fractalCms\importExport\interfaces\Import
      *
      * @param ImportConfig $importConfig
      * @param string $filePath
+     * @param bool $isTest
+     * @param $params
      * @return ImportJob
+     * @throws NotSupportedException
+     * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig, string $filePath): ImportJob
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
-            switch ($importConfig->exportFormat) {
-                case ImportConfig::FORMAT_EXCEL_X:
-                case ImportConfig::FORMAT_EXCEL:
-                case ImportConfig::FORMAT_CSV:
-                    $importJob = ImportXlsx::run($importConfig, $filePath);
-                    break;
-                default:
-                    throw new NotSupportedException('Import de ce type de fichier non supporté');
-            }
-            return $importJob;
+            return ImportXlsx::run($importConfig, $filePath, $isTest, $params);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

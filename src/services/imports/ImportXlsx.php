@@ -1,69 +1,155 @@
 <?php
-
+/**
+ * ImportXlsx.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\services
+ */
 namespace fractalCms\importExport\services\imports;
 
-use fractalCms\importExport\interfaces\Import;
-use fractalCms\importExport\models\ImportConfig;
-use Exception;
+use fractalCms\importExport\exceptions\ImportError;
+use fractalCms\importExport\exceptions\ImportErrorCollector;
+use fractalCms\importExport\exceptions\InsertResult;
+use fractalCms\importExport\interfaces\ImportFile;
+use fractalCms\importExport\interfaces\RowImportTransformer as RowTransformerInterface;
+use fractalCms\importExport\contexts\Import as ImportContext;
+use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\models\ImportJobLog;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Yii;
+use yii\db\ActiveQuery;
+use yii\helpers\Json;
 use yii\base\NotSupportedException;
 use yii\db\ActiveRecord;
-use yii\helpers\Json;
+use yii\db\Transaction;
+use yii\web\Application;
+use Exception;
+use Yii;
 
-class ImportXlsx implements Import
+class ImportXlsx implements ImportFile
 {
 
-    public static function run(ImportConfig $importConfig, string $filePath): ImportJob
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param string $filePath
+     * @param bool $isTest
+     * @return ImportJob
+     * @throws NotSupportedException
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
+     */
+    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
-            $importjob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
-            $importjob->importConfig = $importConfig->id;
-            $importjob->userId = Yii::$app->user->identity->getId();
-            $importjob->type = ImportJob::TYPE_IMPORT;
-            $importjob->filePath = $filePath;
-            $importjob->successRows = 0;
-            $importjob->errorRows = 0;
+            $errorCollector = new ImportErrorCollector();
+            $transformerColumnsService = Yii::$container->get(ColumnTransformerService::class);
+            $baseImportContext = new ImportContext(
+                config: $importConfig,
+                errors: $errorCollector,
+                stopOnError: $importConfig->stopOnError,
+                dryRun:$isTest,
+                rowNumber: -1,
+                params: $params
+            );
+            $rowTransformer = $importConfig->getRowTransformer();
+            $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
+            $importJob->importConfigId = $importConfig->id;
+            if (Yii::$app instanceof Application) {
+                $importJob->userId = Yii::$app->user->identity->getId();
+            }
+            $importJob->type = ImportJob::TYPE_IMPORT;
+            $importJob->filePath = $filePath;
+            $importJob->status = ImportJob::STATUS_RUNNING;
+            $importJob->successRows = 0;
+            $importJob->errorRows = 0;
             $spreadsheet = static::prepareSpreadSheet($filePath);
-            $mappingColumns = $importConfig->tmpColumns;
             if($spreadsheet instanceof Spreadsheet) {
                 $sheet = $spreadsheet->getActiveSheet();
                 $startRow = static::getStartRow();
                 $endRow = static::getEndRow($sheet);
-                $starCol = static::getStartColumn();
-                $endColumn = static::getEndColumn($importConfig);
-                $importjob->totalRows = $endRow;
-                $importjob->save();
-                $importjob->refresh();
+                $importJob->totalRows = $endRow;
+                $importJob->save();
+                $importJob->refresh();
+                $transaction = null;
+                if ((boolean)$importConfig->stopOnError === true || $baseImportContext->dryRun === true) {
+                    $transaction = Yii::$app->db->beginTransaction();
+                }
                 for($row = $startRow;  $row < ($endRow + 1); $row ++) {
-                    $indexJsonSource = 0;
-                    $attributes = [];
-                    for($col = $starCol; $col < ($endColumn + 1); $col += 1) {
-                        $mappingColumn = ($mappingColumns[$indexJsonSource]) ?? [];
-                        if (isset($mappingColumn['source']) === true) {
-                            $value = $sheet->getCell([$col, $row])->getValue();
-                            $attributes[$mappingColumn['source']] = $value;
-                        }
-                        $indexJsonSource += 1;
-                    }
+                    $attributes = static::prepareAttributes(
+                        $transformerColumnsService,
+                        $importConfig->getImportColumns(),
+                        $sheet,
+                        $row
+                    );
                     if (empty($attributes) === false) {
-                        $importJobLog = static::insert($importConfig, $attributes);
-                        $importJobLog->importJogId = $importjob->id;
-                        if ($importJobLog->message !== ImportJobLog::MESSAGE_SUCCESS) {
-                            $importjob->errorRows += 1;
+                        if ($rowTransformer instanceof RowTransformerInterface) {
+                            try {
+                                $result = $rowTransformer->transformRow(
+                                    $attributes,
+                                    $baseImportContext->withRowNumber($row)
+                                );
+                                if ($result->handled === true) {
+                                    $importJob->successRows++;
+                                    continue;
+                                }
+                                $attributes = $result->attributes ?? $attributes;
+                            } catch (Exception $e) {
+                                $error = new ImportError($row, '*', $e->getMessage());
+                                $errorCollector->add($error);
+                                $importJob->errorRows++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
+                                continue;
+                            }
+                        }
+                        if (empty($importConfig->table) === false) {
+                            $importResult = static::insertActiveRecord($importConfig, $attributes, $row);
                         } else {
-                            $importjob->successRows += 1;
+                            $importResult = static::insertSql($importConfig, $attributes, $row);
+                        }
+                        if ($importResult->success === false) {
+                            $importJob->errorRows += 1;
+                            /** @var ImportError $error */
+                            foreach ($importResult->errors as $error) {
+                                $errorCollector->add(
+                                    $error
+                                );
+                            }
+                        } else {
+                            $importJob->successRows += 1;
                         }
                     }
                 }
+                if ($errorCollector->hasErrors() === true) {
+                    $importJob->status = ImportJob::STATUS_FAILED;
+                } else {
+                    $importJob->status = ImportJob::STATUS_SUCCESS;
+                }
+                if ($transaction instanceof Transaction) {
+                    if ($baseImportContext->dryRun === true || $errorCollector->hasErrors() === true) {
+                        $transaction->rollBack();
+                    } else {
+                        $transaction->commit();
+                    }
+                }
             }
-            $importjob->save();
-            return $importjob;
+            $importJob->errorCollector = $errorCollector;
+            if ($importJob->errorRows < 50) {
+                $importJob->errors = Json::encode($errorCollector->toCsvRows());
+            }
+            $importJob->saveFileErrorCsv();
+            $importJob->save(false);
+            $importJob->refresh();
+            return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -71,51 +157,108 @@ class ImportXlsx implements Import
     }
 
     /**
-     * insert
+     * Prepare attributes
      *
+     * @param ColumnTransformerService $transformerService
+     * @param ActiveQuery $configColumnsQuery
+     * @param Worksheet $sheet
+     * @param int $rowNumber
+     * @return array
+     * @throws Exception
+     */
+    protected static function prepareAttributes(ColumnTransformerService $transformerService, ActiveQuery $configColumnsQuery, Worksheet $sheet, int $rowNumber) : array
+    {
+        try {
+            $attributes = [];
+            $startCol = static::getStartColumn();
+            /** @var ImportConfigColumn $column */
+            foreach ($configColumnsQuery->each()  as $column) {
+                $value = $sheet->getCell([$startCol, $rowNumber])->getValue();
+                if (
+                    $value !== null
+                    && $transformerService instanceof ColumnTransformerService
+                    && $column->transformer !== null
+                    && empty($column->transformer['name']) === false
+                ) {
+                    $value = $transformerService->apply(
+                        $column->transformer['name'],
+                        $value,
+                        $column->transformerOptions
+                    );
+                }
+                $attributes[$column->source]  = $value;
+                $startCol++;
+            }
+            return $attributes;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
      * @param ImportConfig $importConfig
      * @param array $attributes
-     * @return ImportJobLog
+     * @param int $rowNumber
+     * @return InsertResult
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function insert(ImportConfig $importConfig, array $attributes): ImportJobLog
+    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes, int $rowNumber): InsertResult
     {
         try {
-            $importJobLog = new ImportJobLog(['scenario' => ImportJobLog::SCENARIO_CREATE]);
-            $importJobLog->data = Json::encode($attributes);
-            $isSql = (empty($importConfig->sql) === false);
-            if ($isSql === false && empty($importConfig->table) === false) {
-                try {
-                    if (class_exists($importConfig->table) === true)  {
-                        /** @var ActiveRecord $model */
-                        $model = Yii::createObject($importConfig->table);
-                        $model->attributes = $attributes;
-                        if ($model->validate() === true) {
-                            $model->save();
-                            $importJobLog->message = ImportJobLog::MESSAGE_SUCCESS;
-                        } else {
-                            $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.Json::encode($model->errors);
+            $success = true;
+            $errors = [];
+            if (class_exists($importConfig->table) === true)  {
+                /** @var ActiveRecord $model */
+                $model = Yii::createObject($importConfig->table);
+                $model->attributes = $attributes;
+                if ($model->validate() === true) {
+                    $model->save();
+                } else {
+                    $success = false;
+                    foreach ($model->errors as $field => $validateErrors) {
+                        foreach ($validateErrors as $message) {
+                            $errors[] = new ImportError(
+                                rowNumber: $rowNumber,column: $field,message: $message,level: ImportError::LEVEL_VALIDATION_ERROR
+                            );
                         }
                     }
-                } catch (Exception $e) {
-                    Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.$e->getMessage();
                 }
-            } else {
-                try {
-                    Yii::$app->db->createCommand()->insert(
-                        $importConfig->name,
-                        $attributes
-                    )->execute();
-                    $importJobLog->message = ImportJobLog::MESSAGE_SUCCESS;
-                } catch (Exception $e) {
-                    Yii::error($e->getMessage(), __METHOD__);
-                    $importJobLog->message = ImportJobLog::MESSAGE_ERROR.' : '.$e->getMessage();
-                }
-
             }
-            return $importJobLog;
+            return new InsertResult($success, $errors);
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @param ImportConfig $importConfig
+     * @param array $attributes
+     * @param int $rowNumber
+     * @return InsertResult
+     * @throws \yii\db\Exception
+     */
+    public static function insertSql(ImportConfig $importConfig, array $attributes, int $rowNumber): InsertResult
+    {
+        try {
+            $success = true;
+            $errors = [];
+            try {
+                $viewName = $importConfig->getContextName();
+                Yii::$app->db->createCommand()->insert(
+                    $viewName,
+                    $attributes
+                )->execute();
+            } catch (Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+                $success = false;
+                $errors[] = new ImportError(
+                    rowNumber: $rowNumber,column: '*',message: $e->getMessage()
+                );
+            }
+            return new InsertResult($success, $errors);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -170,7 +313,7 @@ class ImportXlsx implements Import
     public static function getStartRow(): int
     {
         try {
-            return 1;
+            return 2;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -220,7 +363,7 @@ class ImportXlsx implements Import
     public static function getEndColumn(ImportConfig $importConfig): int
     {
         try {
-            return count($importConfig->tmpColumns);
+            return $importConfig->getImportColumns()->count();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

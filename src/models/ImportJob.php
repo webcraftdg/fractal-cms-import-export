@@ -10,9 +10,12 @@
  */
 namespace fractalCms\importExport\models;
 
-use Yii;
+use fractalCms\importExport\exceptions\ImportErrorCollector;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
+use Exception;
+use Yii;
+use yii\helpers\FileHelper;
 
 /**
  * This is the model class for table "importJobs".
@@ -27,12 +30,12 @@ use yii\db\Expression;
  * @property int|null $successRows
  * @property int|null $errorRows
  * @property string $status
- * @property resource|null $jsonConfig
+ * @property resource|null $errors
+ * @property string|null $errorFilePath
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
  *
  * @property ImportConfig $importConfig
- * @property ImportJobLog[] $importJobLogs
  */
 class ImportJob extends \yii\db\ActiveRecord
 {
@@ -52,6 +55,11 @@ class ImportJob extends \yii\db\ActiveRecord
      */
     const TYPE_IMPORT = 'import';
     const TYPE_EXPORT = 'export';
+
+    /**
+     * @var ImportErrorCollector|null
+     */
+    public ?ImportErrorCollector $errorCollector = null;
 
     /**
      * {@inheritdoc}
@@ -80,11 +88,11 @@ class ImportJob extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
+            'importConfigId', 'userId', 'filePath', 'errors', 'errorFilePath', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
+            'importConfigId', 'userId', 'filePath', 'errors', 'errorFilePath', 'dateCreate', 'dateUpdate', 'totalRows', 'successRows', 'errorRows', 'status', 'sql', 'type'
         ];
         return $scenarios;
     }
@@ -95,11 +103,11 @@ class ImportJob extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['importConfigId', 'userId', 'filePath', 'jsonConfig', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
+            [['importConfigId', 'userId', 'filePath', 'errors', 'errorFilePath', 'dateCreate', 'dateUpdate'], 'default', 'value' => null],
             [['errorRows'], 'default', 'value' => 0],
             [['importConfigId', 'userId', 'totalRows', 'successRows', 'errorRows'], 'integer', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['status'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['status', 'jsonConfig'], 'string'],
+            [['status', 'errors', 'errorFilePath',], 'string'],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['filePath'], 'string', 'max' => 255],
             [['type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
@@ -128,7 +136,7 @@ class ImportJob extends \yii\db\ActiveRecord
             'successRows' => 'Success Rows',
             'errorRows' => 'Error Rows',
             'status' => 'Status',
-            'jsonConfig' => 'Json Config',
+            'errors' => 'Json errors',
             'dateCreate' => 'Date Create',
             'dateUpdate' => 'Date Update',
         ];
@@ -145,17 +153,6 @@ class ImportJob extends \yii\db\ActiveRecord
     }
 
     /**
-     * Gets query for [[ImportJobLogs]].
-     *
-     * @return \yii\db\ActiveQuery
-     */
-    public function getImportJobLogs()
-    {
-        return $this->hasMany(ImportJobLog::class, ['importJogId' => 'id']);
-    }
-
-
-    /**
      * column status ENUM value labels
      * @return string[]
      */
@@ -169,6 +166,37 @@ class ImportJob extends \yii\db\ActiveRecord
         ];
     }
 
+    /**
+     * @return void
+     * @throws Exception
+     */
+    public function saveFileErrorCsv()
+    {
+        try {
+            $filename = 'import_rapport_error_importLogId_'.$this->id. date('Ymd_His') . '.csv';
+            $path = Yii::getAlias('@runtime') . '/import_file_errors';
+            $success = FileHelper::createDirectory($path);
+            if ($success === true) {
+                $pathFile =  Yii::getAlias('@runtime') . '/import_file_errors/'.$filename;
+                if($this->errorCollector instanceof ImportErrorCollector) {
+                    $csvRows = $this->errorCollector->toCsvRows();
+                    if (empty($csvRows) === false) {
+                        $headers = array_keys($csvRows[0]);
+                        $f = fopen($pathFile, 'w');
+                        fputcsv($f, $headers, ';');
+                        foreach ($csvRows as $row) {
+                            fputcsv($f, $row, ';');
+                        }
+                        fclose($f);
+                        $this->errorFilePath = '@runtime/import_file_errors/'.$filename;
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
     /**
      * @return string
      */

@@ -10,13 +10,26 @@
  */
 namespace fractalCms\importExport\models;
 
+use Exception;
+use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\interfaces\DbView as DbViewInterface;
+use fractalCms\importExport\interfaces\ExportDataProvider;
+use fractalCms\importExport\interfaces\RowExportTransformer;
+use fractalCms\importExport\providers\SqlExportData as SqlExportDataProvider;
+use fractalCms\importExport\providers\QueryExportData as QueryExportDataProvider;
+use fractalCms\importExport\estimations\ExportEstimator;
+use fractalCms\importExport\estimations\ExportLimiter;
+use fractalCms\importExport\exceptions\ImportError;
+use fractalCms\importExport\interfaces\RowImportTransformer;
+use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\Module;
-use fractalCms\importExport\services\DbView;
+use fractalCms\importExport\services\Export;
+use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
+use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
-use Exception;
-use Yii;
+use yii\db\Query;
 use yii\helpers\Json;
 use yii\web\UploadedFile;
 
@@ -27,39 +40,64 @@ use yii\web\UploadedFile;
  * @property string|null $name
  * @property int|null $version
  * @property int|null $active
- * @property string $exportFormat
+ * @property int $stopOnError
+ * @property string $sourceType
+ * @property string $type
+ * @property string $fileFormat
  * @property int|null $truncateTable
  * @property string $table
  * @property resource|null $sql
- * @property resource|null $jsonConfig
+ * @property resource|null $rowTransformer
+ * @property string|null $exportTarget
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
  *
  * @property ImportJob[] $importJobs
+ * @property ImportConfigColumn[] $importColumns;
  */
 class ImportConfig extends \yii\db\ActiveRecord
 {
 
     const SCENARIO_CREATE = 'create';
     const SCENARIO_UPDATE = 'update';
-    const SCENARIO_IMPORT_FILE = 'importFile';
+    const SCENARIO_IMPORT_JSON_FILE = 'importJsonFile';
     const SCENARIO_MANAGE_COLUMN = 'manageColumn';
-
+    const SCENARIO_IMPORT_EXPORT = 'importExport';
     const FORMAT_EXCEL = 'xls';
     const FORMAT_EXCEL_X = 'xlsx';
     const FORMAT_CSV = 'csv';
+    
+    const SOURCE_TYPE_SQL = 'sql';
+    const SOURCE_TYPE_TABLE = 'table';
+    const SOURCE_TYPE_EXTERN = 'extern';
+    
+    
+    const TYPE_IMPORT = 'import';
+    const TYPE_EXPORT = 'export';
+
+    const TARGET_SQL = 'sql';
+    const TARGET_VIEW = 'view';
 
     public $importFile;
+    public $importConfigId;
 
     public $tmpColumns = [];
 
     protected Parameter $parameter;
+    protected ExportLimiter $exportLimiter;
+    protected ?DbViewInterface $dbView = null;
 
     public function init()
     {
         parent::init();
         if (Yii::$app->has('importDbParameters') === true) {
             $this->parameter = Yii::$app->importDbParameters;
+        }
+        if (Yii::$app->has('exportLimiter') === true) {
+            $this->exportLimiter = Yii::$app->exportLimiter;
+        }
+        if (Yii::$container->has(DbView::class) === true) {
+            $this->dbView = Yii::$container->get(DbView::class);
         }
     }
 
@@ -89,33 +127,28 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
-        $scenarios[self::SCENARIO_IMPORT_FILE] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
+        $scenarios[self::SCENARIO_IMPORT_JSON_FILE] = [
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
-            'name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'active', 'importFile', 'truncateTable', 'table', 'tmpColumns', 'sql','exportFormat'
+            'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
+            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
+        ];
+        $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
+            'importFile', 'importConfigId'
         ];
         return $scenarios;
-    }
-
-
-    /**
-     * @inheritDoc
-     */
-    public function afterFind()
-    {
-        parent::afterFind();
-        if (empty($this->jsonConfig) === false && is_string($this->jsonConfig) === true) {
-            $this->tmpColumns = Json::decode($this->jsonConfig);
-        }
     }
 
     /**
@@ -124,48 +157,81 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'jsonConfig', 'dateCreate', 'dateUpdate', 'table', 'sql', 'exportFormat'], 'default', 'value' => null],
+            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
-            [['active', 'truncateTable'], 'default', 'value' => 0],
-            [['active', 'version', 'truncateTable'], 'integer'],
+            [['active', 'stopOnError', 'truncateTable'], 'default', 'value' => 0],
+            [['active', 'stopOnError', 'version', 'truncateTable'], 'integer'],
+            [['importConfigId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
+            [['sourceType', 'fileFormat'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['importFile'],
                 'required',
                 'message' => 'Veuillez télécharger un fichier',
-                'on' => [self::SCENARIO_IMPORT_FILE],
+                'on' => [self::SCENARIO_IMPORT_JSON_FILE],
             ],
-            [['importFile'], 'file',
+            [['importFile'],
+                'file',
                 'skipOnEmpty' => false,
                 'extensions' => ['json'],
                 'checkExtensionByMimeType' => false,
                 'maxFiles' => 1,
                 'message' => 'Le fichier doit être au format JSON',
-                'on' => [self::SCENARIO_IMPORT_FILE],
+                'on' => [self::SCENARIO_IMPORT_JSON_FILE],
             ],
-            [['version'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['importFile'] ,
+                'valideTypeImportTest',
+                'on' => [self::SCENARIO_IMPORT_EXPORT]
+            ],
+            [['importFile'],
+                'file',
+                'skipOnEmpty' => false,
+                'extensions' => ['xlsx', 'xls', 'csv'],
+                'checkExtensionByMimeType' => false,
+                'maxFiles' => 1,
+                'message' => 'Le fichier doit être au format Xlsx, Xls, CSV',
+                'on' => [self::SCENARIO_IMPORT_EXPORT],
+                'when' => function() {
+                    return $this->type === static::TYPE_IMPORT;
+                }
+            ],
+            [['version', 'type'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['importConfigId'], 'required', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
+            [['importConfigId'],
+                'exist',
+                'skipOnError' => true,
+                'targetClass' => ImportConfig::class,
+                'targetAttribute' => ['importConfigId' => 'id'],
+                'on' => [self::SCENARIO_IMPORT_EXPORT]],
+            [['importConfigId'], 'validateLimit', 'on' => [self::SCENARIO_IMPORT_EXPORT]],
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['type', 'jsonConfig', 'table', 'sql'], 'string'],
-            [['table'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return empty($this->sql) === true;
+            [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).'
+                , 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE, self::SCENARIO_IMPORT_JSON_FILE]],
+            [['type', 'table', 'sql', 'rowTransformer',], 'string'],
+            [['table'] , 'required', 'message' => 'La table doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->sourceType === self::SOURCE_TYPE_TABLE;
             }],
-            [['sql'] , 'required', 'message' => 'La table ou le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return empty($this->table) === true;
+            [['sql'] , 'required', 'message' => 'Le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
-            [['sql'], 'validateSql','message' => 'Le SQL doit être conforme (uniquement verb "SELECT")', 'on' => [self::SCENARIO_IMPORT_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
-            [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['sql'], 'validateSql','message' => 'Le SQL doit être conforme (uniquement verb "SELECT")', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
+            [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'string', 'max' => 150],
-            [['exportFormat'], 'string', 'max' => 10],
-            ['exportFormat', 'in', 'range' => array_keys(self::optsFormats())],
+            [['fileFormat'], 'string', 'max' => 10],
+            [['rowTransformer'], 'string', 'max' => 15],
+            ['fileFormat', 'in', 'range' => array_keys(self::optsFormats())],
+            ['exportTarget', 'in', 'range' => array_keys(self::optsTargets())],
+            ['sourceType', 'in', 'range' => array_keys(self::optsSourceTypes())],
+            [['exportTarget'] , 'required', 'message' => 'La cible de l\'export doit-être valorisé avec un valeur SQL', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->sourceType === self::SOURCE_TYPE_SQL;
+            }],
             [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
         ];
     }
 
     /**
-     * Validate attributes
-     *
      * @param $attribute
      * @param $params
      * @return bool
+     * @throws Exception
      */
     public function validateTable($attribute, $params) : bool
     {
@@ -173,7 +239,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             $table = $this->table;
             $dbTables = [];
             if ($this->parameter instanceof Parameter) {
-                $dbTables = $this->parameter->getTables();
+                $dbTables = $this->parameter->getActiveModelTableNames();
             }
             $success = in_array($table, array_keys($dbTables));
             if( $success === false) {
@@ -253,11 +319,86 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * Build db view
-     *
-     * @return void
+     * @param $attribute
+     * @param $params
+     * @return bool
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
      */
-    public function buildDbView(DbView $dbView) : void
+    public function validateLimit($attribute, $params) : bool
+    {
+        try {
+            $importConfig = ImportConfig::findOne($this->importConfigId);
+            $success = true;
+            $message = null;
+            if ($importConfig !== null) {
+                $limitModel = $importConfig->getLimits();
+                $limitModel->name = $importConfig->name;
+                $message = $this->exportLimiter->assertAllowed($limitModel);
+            }
+            if(empty($message) === false) {
+                $this->addError('importConfigId', $message);
+                $success = false;
+            }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
+     * @param $attribute
+     * @param $params
+     * @return bool
+     * @throws Exception
+     */
+    public function valideTypeImportTest($attribute, $params) : bool
+    {
+        try {
+            $importConfig = ImportConfig::findOne($this->importConfigId);
+            $success = true;
+            if ($importConfig !== null) {
+                $this->type = $importConfig->type;
+                if ($this->type === ImportConfig::TYPE_IMPORT && $this->importFile === null) {
+                    $this->addError('importFile', 'Le fichier est obligatoire en mode "import"');
+                    $success = false;
+                }
+            }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+
+    /**
+     * @return LimiterModel
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
+     */
+    public function getLimits() : LimiterModel
+    {
+        try {
+            $limiter = Yii::createObject(LimiterModel::class);
+            $limiter->scenario = LimiterModel::SCENARIO_CREATE;
+            $limiter->rows = ExportEstimator::estimateRows($this);
+            $limiter->format = ($this->fileFormat) ?? self::FORMAT_CSV;
+            $limiter->columns = ExportEstimator::estimateColumns($this);
+            $limiter->estimatedMb = ExportEstimator::estimateSizeMb($limiter->rows, $limiter->columns);
+            return $limiter;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+    /**
+     * @param DbViewInterface $dbView
+     * @return void
+     * @throws Exception
+     */
+    public function buildDbView(DbViewInterface $dbView) : void
     {
         try {
             if (empty($this->sql) === false) {
@@ -271,23 +412,42 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
+     * @param DbViewInterface $dbView
+     * @return array
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\base\NotSupportedException
+     * @throws \yii\db\Exception
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function buildInitColumns(DbViewInterface $dbView) : array
+    {
+        try {
+            $columns = $this->getContextColumns($dbView);
+            return $this->manageColumns($columns);
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
      * Get context columns
      *
-     * @param DbView $dbView
+     * @param DbViewInterface $dbView
      * @return array
      * @throws \yii\base\NotSupportedException
      */
-    public function getContextColumns(DbView $dbView) : array
+    public function getContextColumns(DbViewInterface $dbView) : array
     {
         try {
             $values = [];
             $name = $this->getContextName();
-            $columns =  $dbView->getColumns($name);
+            $columns =  $dbView->getTableColumns($name);
             /**
              * @var string $id
-             * @var JsonColumnModel $params
+             * @var ColumnModel $params
              */
-            foreach ($columns as $id => $params) {
+            foreach ($columns as $params) {
                 $values[] = $params->toArray();
             }
             return $values;
@@ -297,42 +457,55 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
+
     /**
-     * @param DbView $dbView
-     * @return void
-     * @throws \yii\base\NotSupportedException
+     * @param int $batchSize
+     * @return ExportDataProvider|null
+     * @throws Exception
      */
-    public function buildJson(DbView $dbView) : void
+    public function getImportExportQueryProvider(int $batchSize = 1000) : ExportDataProvider | null
     {
         try {
-            if (empty($this->jsonConfig) === true) {
-               $columns = $this->getContextColumns($dbView);
-               if (empty($columns) === false) {
-                   $this->jsonConfig = Json::encode($columns);
-               }
+            $provider = null;
+            if ($this->sourceType === self::SOURCE_TYPE_TABLE) {
+                $cols = $this->buildConfigColumns();
+                $statementName = $this->getContextName();
+                $query = new Query();
+                $query->select($cols);
+                $query->from($statementName);
+                $provider = new QueryExportDataProvider(query: $query, batchSize: $batchSize);
+            } elseif($this->sourceType === self::SOURCE_TYPE_SQL) {
+                $provider = new SqlExportDataProvider(command: Yii::$app->db->createCommand($this->sql));
             }
+            return  $provider;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
         }
     }
 
+
     /**
+     * Build column config list
+     *
+     * @param bool $isSource
      * @return array
-     * @throws \yii\db\Exception
+     * @throws Exception
      */
-    public function getQueryRows() :array
+    public function buildConfigColumns(bool $isSource = true) : array
     {
         try {
-            $sql = $this->sql;
-            if(empty($sql) === true) {
-                $cols = array_map(function($config) {
-                    return $config['source'];
-                }, $this->tmpColumns);
-                $table = $this->getContextName();
-                $sql = "SELECT " . implode(',', $cols) . " FROM " . $table;
+            $cols = [];
+            $query = $this->getImportColumns();
+            /** @var ImportConfigColumn $importColumn */
+            foreach ($query->each() as $importColumn) {
+                $col = $importColumn->source;
+                if ($isSource === false) {
+                    $col = $importColumn->target;
+                }
+                $cols[] = $col;
             }
-            return Yii::$app->db->createCommand($sql)->queryAll();
+            return $cols;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -348,10 +521,10 @@ class ImportConfig extends \yii\db\ActiveRecord
             'id' => 'ID',
             'name' => 'Name',
             'active' => 'Active',
+            'stopOnError' => 'stopOnError',
             'version' => 'Version',
             'type' => 'Type',
             'importFile' => 'Import fichier',
-            'jsonConfig' => 'Json Config',
             'dateCreate' => 'Date Create',
             'dateUpdate' => 'Date Update',
         ];
@@ -367,6 +540,41 @@ class ImportConfig extends \yii\db\ActiveRecord
             self::FORMAT_EXCEL_X => 'Xlsx',
             self::FORMAT_EXCEL => 'Xls',
             self::FORMAT_CSV => 'csv',
+        ];
+    }
+
+    /**
+     * @return string[]
+     */
+    public static function optsSourceTypes()
+    {
+        return [
+            self::SOURCE_TYPE_EXTERN => 'Externe',
+            self::SOURCE_TYPE_TABLE => 'Table',
+            self::SOURCE_TYPE_SQL => 'SQL',
+        ];
+    }
+
+    /**
+     * Tarfet enum
+     *
+     * @return string[]
+     */
+    public static function optsTargets()
+    {
+        return [
+            self::TARGET_SQL => 'SQL',
+            self::TARGET_VIEW => 'VIEW',
+        ];
+    }
+    /**
+     * @return string[]
+     */
+    public static function optsTypes()
+    {
+        return [
+            self::TYPE_IMPORT => 'Import',
+            self::TYPE_EXPORT => 'Export',
         ];
     }
 
@@ -388,18 +596,31 @@ class ImportConfig extends \yii\db\ActiveRecord
                 if ($valid === false) {
                     $this->addError('importFile', 'Le fichier n\'est un JSON Valide');
                 } else {
+                    $transaction = Yii::$app->db->beginTransaction();
                     $jsonData = Json::decode($contentJson);
                     $columns = ($jsonData['columns']) ?? [];
                     unset($jsonData['columns']);
                     $this->attributes = $jsonData;
                     $this->truncateTable = (int)$this->truncateTable;
                     $this->version = $this->checkVersion($this->name, $this->version);
-                    $this->jsonConfig = Json::encode($columns);
                     if ($this->validate() === true) {
                         $this->save();
                         $this->refresh();
+                        $errorsColumns = $this->manageColumns($columns);
+                        if (empty($errorsColumns) === true) {
+                            $transaction->commit();
+                        } else {
+                            $transaction->rollBack();
+                            /** @var ImportError $errorsColumn */
+                            foreach ($errorsColumns as $errorsColumn) {
+                                $this->addError('tmpColumns', $errorsColumn->message);
+                                break;
+                            }
+                            $valid = false;
+                        }
                     } else {
                         $valid = false;
+                        $transaction->rollBack();
                     }
                 }
                 unlink($finalPathFile);
@@ -410,6 +631,113 @@ class ImportConfig extends \yii\db\ActiveRecord
             throw  $e;
         }
     }
+
+
+    /**
+     * @param array $columns
+     * @return array
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\db\Exception
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function manageColumns(array $columns) : array
+    {
+        try {
+            $index = 0;
+            $prevIndex= -1;
+            $errors = [];
+            foreach ($columns as $orderColumn => $column) {
+                $importColumn = null;
+                if (isset($column['id']) === true) {
+                    /** @var ImportConfigColumn $importColumn */
+                    $importColumn = ImportConfigColumn::findOne($column['id']);
+                }
+                if ($importColumn === null) {
+                    $importColumn = Yii::createObject(ImportConfigColumn::class);
+                    $importColumn->scenario = ImportConfigColumn::SCENARIO_CREATE;
+                    $importColumn->importConfigId = $this->id;
+                } else {
+                    $importColumn->scenario = ImportConfigColumn::SCENARIO_UPDATE;
+                    $importColumn->transformer = null;
+                    $importColumn->transformerOptions = null;
+                }
+                $importColumn->tmpTransformer = ($column['transformer']) ?? null;
+                $importColumn->tmpTransformerOptions = ($column['transformerOptions']) ?? null;
+                unset($column['transformer']);
+                unset($column['transformerOptions']);
+                $importColumn->attributes = $column;
+                if (empty($importColumn->order) === true) {
+                    $order = ($prevIndex > -1) ? ($prevIndex + 0.5) : $index;
+                    $importColumn->order = $order;
+                } else {
+                    $prevIndex = $importColumn->order;
+                }
+                if ($importColumn->validate() === true) {
+                    $importColumn->save();
+                } else {
+                    foreach ($importColumn->errors as $field => $error) {
+                        $errors[] = new ImportError(
+                            rowNumber: $orderColumn,
+                            column: $field,
+                            message: 'Colonne : '.$importColumn->source.':'.$importColumn->getFirstError($field),
+                            level: ImportError::LEVEL_VALIDATION_ERROR
+                        );
+                    }
+                }
+
+                if ($this->dbView instanceof DbViewInterface) {
+                    $tableName = $this->getContextName();
+                    $columnExist = $this->dbView->columnExists($tableName, $importColumn->source);
+                    if ($columnExist === false && empty($this->rowTransformer) === true) {
+                        $errors[] = new ImportError(
+                            rowNumber: $orderColumn,
+                            column: $importColumn->source,
+                            message: 'Colonne : '.$importColumn->source.': Colonne externe RowTransfomer obligatoire',
+                            level: ImportError::LEVEL_ERROR
+                        );
+                    }
+                }
+                $index++;
+            }
+            if (empty($errors) === true) {
+                $this->reorderColumns();
+            }
+            return $errors;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * @return ImportJob|null
+     * @throws \yii\db\Exception
+     */
+    public function manageImportExport() : ImportJob | null
+    {
+        try {
+            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
+            $importJob = null;
+            $targetModel = ImportConfig::findOne(['id' => $this->importConfigId]);
+            if($targetModel !== null) {
+                if ($this->importFile instanceof UploadedFile && $targetModel->type === static::TYPE_IMPORT) {
+                    $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
+                    $this->importFile->saveAs($finalPathFile);
+                    $importJob = Import::run($targetModel, $finalPathFile, true);
+                    unlink($finalPathFile);
+                } elseif ($targetModel->type === static::TYPE_EXPORT) {
+                    $importJob = Export::run($targetModel);
+                }
+            } else {
+                $this->addError('importFile', 'Merci de télécharger un fichier');
+            }
+            return $importJob;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
 
     /**
      * Check available version
@@ -443,11 +771,11 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function getContextName() :string
     {
         try {
-            $name = $this->name.'_'.$this->version;
-            if(empty($this->table) === false) {
+            $name = strtolower($this->name.'_v'.$this->version);
+            if($this->sourceType === self::SOURCE_TYPE_TABLE && empty($this->table) === false) {
                 $name = $this->table;
                 if ($this->parameter instanceof Parameter) {
-                    $dbTables = $this->parameter->getTables();
+                    $dbTables = $this->parameter->getActiveModelTableNames();
                     $name = (isset($dbTables[$this->table]) === true) ? $dbTables[$this->table] : $this->table;
                 }
             }
@@ -459,20 +787,6 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
-     * @inheritDoc
-     */
-    public function fields()
-    {
-        $data =  parent::fields();
-        if (empty($this->jsonConfig) === false && is_string($this->jsonConfig) === true) {
-            $data['tmpColumns'] = function () {
-                return Json::decode($this->jsonConfig);
-            };
-        }
-        return $data;
-    }
-
-    /**
      * Gets query for [[ImportJobs]].
      *
      * @return \yii\db\ActiveQuery
@@ -480,5 +794,75 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function getImportJobs()
     {
         return $this->hasMany(ImportJob::class, ['importConfigId' => 'id']);
+    }
+
+    /**
+     * Gets query for [[ImportColumns]].
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getImportColumns()
+    {
+        return $this->hasMany(ImportConfigColumn::class, ['importConfigId' => 'id'])
+            ->orderBy([ImportConfigColumn::tableName().'.[[order]]' => SORT_ASC]);
+    }
+
+    /**
+     * Gets query for [[ImportColumns]] with search.
+     *
+     * @return \yii\db\ActiveQuery
+     */
+    public function getImportColumnsWithSearch(string $search = null)
+    {
+        $query = $this->getImportColumns();
+        if (empty($search) === false) {
+            $query->andWhere(['like', ImportConfigColumn::tableName().'.[[source]]', $search]);
+        }
+        return $query;
+    }
+
+    /**
+     * @return RowImportTransformer|RowExportTransformer|null
+     * @throws \yii\base\InvalidConfigException
+     * @throws \yii\di\NotInstantiableException
+     */
+    public function getRowTransformer() : RowImportTransformer | RowExportTransformer | null
+    {
+        try {
+            $rowTransformer = null;
+            $rowTransformerService = (
+            Yii::$container->has(RowTransformerService::class)
+            ) ? Yii::$container->get(RowTransformerService::class) : null;
+            if ($rowTransformerService !== null && $this->rowTransformer !== null) {
+                $rowTransformer = $rowTransformerService->create($this->type, $this->rowTransformer);
+            }
+            return $rowTransformer;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+    /**
+     * Reorder columns
+     *
+     * @return void
+     * @throws \yii\db\Exception
+     */
+    public function reorderColumns() : void
+    {
+        try {
+            $query = $this->getImportColumns();
+            /**
+             * @var int $index
+             * @var ImportConfigColumn $column
+             */
+            foreach ($query->each() as $index => $column) {
+                $column->order = $index;
+                $column->save(false, ['order']);
+            }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
     }
 }
