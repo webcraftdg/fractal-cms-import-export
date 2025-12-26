@@ -1,8 +1,12 @@
 CHANGELOG
 =========
 
+Release v1.0.1 26/12/2025 <davidg@webcraftdg.fr>
+----------------------------------------------
 
-Release v1.0.0 24/11/2025 <davidg@webcraftdg.fr>
+* Update docs
+
+Release v1.0.0 24/12/2025 <davidg@webcraftdg.fr>
 ----------------------------------------------
 
 * add migration
