@@ -1,6 +1,6 @@
 # Configuration
 
-## GEstion de la configuration des imports ou exports
+## Gestion de la configuration des imports ou exports
 
 ### Interface
 
@@ -90,9 +90,24 @@ En cliquant sur le bouton "Créer manuellement", un formulaire de création sera
 
 #### Une fois le formulaire rempli et validé 
 
-selon le type de la source les colonnes seront automatiquement générées ('table', 'sql') ou créer manuellement.
+Selon le type de la source les colonnes seront automatiquement générées ('table', 'sql')  ou doivent-être créées manuellement.
 Dans tous les cas les colonnes peuvent être modifiées.
 
 ![Formulaire de création colonne](images/form-creer-list-colonnes.png)
+
+Chaque colonne peuvent-être paramétrées individuellement, les transformeurs peuvent-être utilisés afin
+de convertir la donnée vers le format voulu pour l'import ou l'export
+
+## L'interface de test
+
+![Interface de test](images/interface-test.png)
+
+Cette interface permet de tester les configurations d'import et d'export.
+
+Les imports testé sont encadrés par une transaction SQL afin qu'aucune données ne soient enregistré.
+
+L'interface affichera les erreurs.
+
+Les exports seront réalisé avec une limite de mémoire calculée. les gros exports Xslx ne seront pas exécutés.
 
 [<- Précédent](concept.md) | [Suivant ->](transformer.md)

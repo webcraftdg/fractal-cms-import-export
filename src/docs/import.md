@@ -18,3 +18,5 @@ dans l’application.
 - Conversion de formats
 
 Le transformer permet de **garder le Provider générique**.
+
+[<- Précédent](transformer.md) | [Suivant ->](export.md)

@@ -15,13 +15,16 @@ au pipeline global.
 
 ![Formulaire de création transformation](images/form-creer-list-transformer-colonne.png)
 
+Les transformers de colonne sont appliqués avant le RowTransformer.
+
 ## RowImportTransformer
 
-Les RowTransformer doivent réspecter une Interface RowImportTransformer 
+Les RowTransformer doivent respecter une Interface RowImportTransformer 
 
 ```php
+use fractalCms\importExport\interfaces\RowImportTransformer as RowImportTransformerInterface;
 
-final class AgentRowTransformer implements RowImportTransformerInterface
+final class ImportRowTransformer implements RowImportTransformerInterface
 {
 
 
@@ -54,8 +57,30 @@ final class AgentRowTransformer implements RowImportTransformerInterface
 }
 ```
 
+Afin de pouvoir l'utiliser, le RowImportTransformer doit être ajouté dans la configuration de l'application
 
 
+```php
+'fractal-cms-export' => [
+        'class' =>  \fractalCms\importExport\Module::class,
+        'pathsNamespacesModels' => [
+            '@app/models' => 'app\\models\\', /*path des models active record de votre application*/
+        ],
+        /*Ajout de transformer de ligne (RowTransformer)*/
+        'rowTransformers' => [
+        /* Pour les configurations import*/
+            'import' => [
+                'nom-1' => [
+                    'class' => ImportRowTransformer::class,
+                    'label' => 'Nom 1 (Import)',
+                ],
+            ]
+    ],
+```
+
+![form ligne transformateur](images/form_tranform_import_ligne.png)
+
+il suffit de le sélectionner dans le formulaire pour que toutes les lignes soient traitées par le transformer.
 ### Rôle
 
 - Transformer une ligne issue d’un Provider
@@ -79,10 +104,12 @@ Un `RowImportTransformer` doit :
 
 ## RowExportTransformer
 
-Les RowTransformer doivent réspecter une Interface RowExportTransformer
+Les RowExportTransformer doivent réspecter une Interface RowExportTransformer
 
 ```php
-final class AgentExportRowTransformer implements RowExportTransformerInterface
+use fractalCms\importExport\interfaces\RowExportTransformer as RowExportTransformerInterface;
+
+final class ExportRowTransformer implements RowExportTransformerInterface
 {
 
 
@@ -116,6 +143,38 @@ final class AgentExportRowTransformer implements RowExportTransformerInterface
     }
 }
 ```
+
+Paramétrage dans le configuration de l'application hôte
+
+```php
+'fractal-cms-export' => [
+        'class' =>  \fractalCms\importExport\Module::class,
+        'pathsNamespacesModels' => [
+            '@app/models' => 'app\\models\\', /*path des models active record de votre application*/
+        ],
+        /*Ajout de transformer de ligne (RowTransformer)*/
+        'rowTransformers' => [
+        /* Pour les configurations import*/
+            'import' => [
+                'nom-1' => [
+                    'class' => ImportRowTransformer::class,
+                    'label' => 'Nom 1 (Import)',
+                ],
+            ],
+        /* Pour les configurations export*/
+            'export' => [
+                'nom-1' => [
+                    'class' => ExportRowTransformer::class,
+                    'label' => 'Nom 1 (export)',
+                ],
+            ],
+
+        ],
+    ],
+```
+il suffit ensuite de le sélectionner dans le formulaire pour que toutes les lignes soient traitées par le transformer.
+
+![export transform](images/form_import_transform.png)
 
 ### Rôle
 
