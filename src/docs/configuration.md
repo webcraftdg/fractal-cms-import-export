@@ -90,10 +90,13 @@ En cliquant sur le bouton "Créer manuellement", un formulaire de création sera
 
 #### Une fois le formulaire rempli et validé 
 
-Selon le type de la source les colonnes seront automatiquement générées ('table', 'sql') ou créer manuellement.
+Selon le type de la source les colonnes seront automatiquement générées ('table', 'sql')  ou doivent-être créées manuellement.
 Dans tous les cas les colonnes peuvent être modifiées.
 
 ![Formulaire de création colonne](images/form-creer-list-colonnes.png)
+
+Chaque colonne peuvent-être paramétrées individuellement, les transformeurs peuvent-être utilisés afin
+de convertir la donnée vers le format voulu pour l'import ou l'export
 
 ## L'interface de test
 
