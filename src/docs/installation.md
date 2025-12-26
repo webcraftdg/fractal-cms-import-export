@@ -29,8 +29,14 @@ composer require webcraftdg\fractal-import-export
 
 ### Init database
 
-``
+```bash
 php yii.php migrate
-``
+```
+
+### Mise à jour des droits
+
+```bash
+php yii.php fractalCms:rbac/index
+```
 
 [<- Précédent](introduction.md) | [Suivant ->](concept.md)
