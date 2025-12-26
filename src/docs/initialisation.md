@@ -31,18 +31,18 @@ php yii.php fractalCms:rbac/index
             /* Pour les configurations import*/
                 'import' => [
                     'nom' => [
-                        'class' => Votre class qui implémente l'interface RowTransformer,
+                        'class' => Votre classe de transformation métier qui implémente l'interface RowTransformer,
                         'label' => 'Nom ',
                     ],
                 ],
             /* Pour les configurations export*/
                 'export' => [
                     'nom-1' => [
-                        'class' => Votre class qui implémente l'interface RowTransformer,
+                        'class' => Votre classe de transformation métier  qui implémente l'interface RowTransformer,
                         'label' => 'Nom 1 (export)',
                     ],
                     'nom-2' => [
-                        'class' => Votre class qui implémente l'interface RowTransformer,
+                        'class' => Votre classe de transformation métier  qui implémente l'interface RowTransformer,
                         'label' => 'Nom 2 (export)'
                     ]
                 ],
