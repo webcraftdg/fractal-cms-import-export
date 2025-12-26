@@ -15,6 +15,8 @@ au pipeline global.
 
 ![Formulaire de création transformation](images/form-creer-list-transformer-colonne.png)
 
+Les transformers de colonne sont appliqués avant le RowTransformer.
+
 ## RowImportTransformer
 
 Les RowTransformer doivent réspecter une Interface RowImportTransformer 

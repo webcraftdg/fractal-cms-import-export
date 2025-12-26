@@ -26,5 +26,5 @@ brancher des flux de données sans modifier le cœur du système.
 - [Import](./src/docs/import.md)
 - [Export](./src/docs/export.md)
 - [Transformers](./src/docs/transformer.md)
-- [Exemples](./src/docs/exemples.md)
+- [Commande](./src/docs/command.md)
 - [Qualité & limites](./src/docs/quality.md)

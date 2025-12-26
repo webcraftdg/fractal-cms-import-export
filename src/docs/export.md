@@ -18,4 +18,4 @@ et à les écrire vers une destination.
 
 Le transformer permet d’adapter les données **sans modifier la source**.
 
-[<- Précédent](import.md) | [Suivant ->](quality.md)
+[<- Précédent](import.md) | [Suivant ->](command.md)
