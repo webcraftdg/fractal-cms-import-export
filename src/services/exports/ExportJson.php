@@ -63,8 +63,8 @@ class ExportJson implements Export
             $metas = [
                 '_type' => 'meta',
                 'name' => $importConfig->name,
-                'dateCreate' => $importConfig->dateCreate,
-                'generated_at' => date('Y-m-d H:i:s')
+                'dateCreate' => date('c', strtotime($importConfig->dateCreate)),
+                'generated_at' => date('c')
             ];
             $baseExportContext->writeRow('json', $metas);
             $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);

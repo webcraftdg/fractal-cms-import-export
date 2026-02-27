@@ -1,6 +1,6 @@
 <?php
 /**
- * ExportXlsx.php
+ * ExportXml.php
  *
  * PHP Version 8.2+
  *
@@ -10,23 +10,24 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\interfaces\ExportDataProvider;
-use fractalCms\importExport\interfaces\Export as ExportInterface;
-use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
-use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\models\ImportConfigColumn;
-use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use fractalCms\importExport\contexts\Export as ExportContext;
-use fractalCms\importExport\writers\XlsxWriter;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use fractalCms\importExport\interfaces\ExportDataProvider;
+use fractalCms\importExport\interfaces\Export;
+use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
+use fractalCms\importExport\services\ColumnTransformer;
+use fractalCms\importExport\services\Export as ExportService;
+use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportJob;
 use Exception;
+use fractalCms\importExport\writers\XmlWriter;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportXlsx implements ExportInterface
+class ExportXml implements Export
 {
+
     /**
      * @param ImportConfig $importConfig
      * @param ExportDataProvider $provider
@@ -37,14 +38,14 @@ class ExportXlsx implements ExportInterface
     public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []): ImportJob
     {
         try {
-            $transformerService = Yii::$container->get(ColumnTransformerService::class);
+            $transformerService = Yii::$container->get(TransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
-            $filename = 'export_' . date('Ymd_His') . '.xlsx';
-            $path = Yii::getAlias('@runtime') . '/' . $filename;
+            $filename = 'export_' . date('Ymd_His') . '.xml';
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
-            $spreadsheet = new Spreadsheet();
-            $writer = new XlsxWriter($spreadsheet);
+            $path = Yii::getAlias('@runtime') . '/' . $filename;
+
+            $writer = new XmlWriter($importConfig, $path);
             $baseExportContext = new ExportContext(
                 config: $importConfig,
                 dryRun: false,
@@ -53,26 +54,16 @@ class ExportXlsx implements ExportInterface
                 params: $params
             );
 
-            $sheet = $spreadsheet->getActiveSheet();
             $configColumns = [];
-
-            // Headers
-            $colIndex = 1;
-            $row = 1;
-            /** @var ImportConfigColumn $col */
+            /** @var ImportConfigColumn $column */
             foreach ($importConfig->getImportColumns()->each() as $column) {
-                $sheet->getColumnDimensionByColumn($colIndex)->setWidth(strlen($column->target));
-                $sheet->setCellValue([$colIndex, $row], $column->target);
-                $configColumns[$column->source] = $column;
-                $colIndex++;
+                $configColumns[] = $column;
             }
-            $importJob = ExportService::prepareImportJob($importConfig);
-
-            // Data
-            $rowIndex = 2;
+            $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             try {
                 $totalCount = $provider->count();
-                foreach ($provider->getIterator() as $row) {
+                foreach ($provider->getIterator() as $rowIndex => $row) {
+                    //ColumnTransformer
                     $row = static::prepareRow(
                         transformerService: $transformerService,
                         configColumns: $configColumns,
@@ -81,23 +72,21 @@ class ExportXlsx implements ExportInterface
                     $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
                     try {
                         if ($rowTransformer instanceof RowTransformerInterface) {
+
                             $result = $rowTransformer->transformRow(
                                 $row,
                                 $baseExportContext
                             );
-                            if( $result->handled === true) {
+                            if ($result->handled === true) {
                                 $importJob->successRows++;
-                                $rowIndex++;
                                 continue;
                             }
                         }
                         $row = $result->attributes ?? $row;
-                        $baseExportContext->writeRow($sheet->getTitle(), $row, $rowIndex);
+                        $baseExportContext->writeRow('xml', $row, $rowIndex);
                         $importJob->successRows++;
-                        $rowIndex++;
                     } catch (Exception $e) {
                         $importJob->errorRows++;
-                        $rowIndex++;
                         if ($importConfig->stopOnError) {
                             break;
                         }
@@ -110,9 +99,9 @@ class ExportXlsx implements ExportInterface
                 $status = ImportJob::STATUS_FAILED;
             }
             $importJob->totalRows = $totalCount;
-            $baseExportContext->finalize($path);
-            $importJob->filePath = '@runtime/'.$filename;
             $importJob->status = $status;
+            $importJob->filePath = '@runtime/'.$filename;
+            $baseExportContext->finalize($path);
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {
@@ -122,23 +111,23 @@ class ExportXlsx implements ExportInterface
     }
 
     /**
-     * @param ColumnTransformerService $transformerService
+     * @param TransformerService $transformerService
      * @param array $configColumns
-     * @param array $row
+     * @param $row
      * @return array
      * @throws Exception
      */
-    protected static function prepareRow(ColumnTransformerService $transformerService, array $configColumns, array $row) : array
+    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : array
     {
         try {
-            /** @var ImportConfigColumn $column */
-            foreach ($configColumns  as $column) {
+            /** @var  ImportConfigColumn $column */
+            foreach ($configColumns as $column) {
                 $value = $row[$column->source] ?? null;
                 if (
                     $value !== null
-                    && $transformerService instanceof ColumnTransformerService
+                    && $transformerService instanceof TransformerService
                     && $column->transformer !== null
-                    && empty($column->transformer['name']) === false
+                    && isset($column->transformer['name']) === true
                 ) {
                     $value = $transformerService->apply(
                         $column->transformer['name'],
@@ -146,9 +135,9 @@ class ExportXlsx implements ExportInterface
                         $column->transformerOptions
                     );
                 }
-                $row[$column->source]  = $value;
+                $row[$column->source] = $value;
             }
-            return $row;
+            return  $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
