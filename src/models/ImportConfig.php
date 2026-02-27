@@ -66,7 +66,9 @@ class ImportConfig extends \yii\db\ActiveRecord
     const FORMAT_EXCEL = 'xls';
     const FORMAT_EXCEL_X = 'xlsx';
     const FORMAT_CSV = 'csv';
-    
+    const FORMAT_XML = 'xml';
+    const FORMAT_JSON = 'json';
+
     const SOURCE_TYPE_SQL = 'sql';
     const SOURCE_TYPE_TABLE = 'table';
     const SOURCE_TYPE_EXTERN = 'extern';
@@ -537,9 +539,11 @@ class ImportConfig extends \yii\db\ActiveRecord
     public static function optsFormats()
     {
         return [
+            self::FORMAT_CSV => 'Csv',
+            self::FORMAT_JSON => 'Json',
             self::FORMAT_EXCEL_X => 'Xlsx',
             self::FORMAT_EXCEL => 'Xls',
-            self::FORMAT_CSV => 'csv',
+            self::FORMAT_XML => 'Xml',
         ];
     }
 

@@ -18,6 +18,7 @@ use fractalCms\importExport\services\exports\ExportCsv;
 use fractalCms\importExport\services\exports\ExportXlsx;
 use Yii;
 use Exception;
+use fractalCms\importExport\services\exports\ExportJson;
 use yii\web\Application;
 
 class Export
@@ -38,6 +39,9 @@ class Export
                 case ImportConfig::FORMAT_EXCEL_X:
                 case ImportConfig::FORMAT_EXCEL:
                     $importJob = ExportXlsx::run($importConfig, $provider, $params);
+                    break;
+                case ImportConfig::FORMAT_JSON :
+                    $importJob = ExportJson::run($importConfig, $provider, $params); 
                     break;
                 default:
                     $importJob = ExportCsv::run($importConfig, $provider, $params);
