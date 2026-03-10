@@ -21,12 +21,12 @@ use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerServi
 use fractalCms\importExport\contexts\Export as ExportContext;
 use fractalCms\importExport\writers\XlsxWriter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use fractalCms\importExport\transformers\ColumnsTransform;
 use Exception;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportXlsx implements ExportInterface
+class ExportXlsx extends ColumnsTransform implements ExportInterface
 {
     /**
      * @param ImportConfig $importConfig
@@ -41,6 +41,9 @@ class ExportXlsx implements ExportInterface
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
+            $filename = 'export_' . date('Ymd_His') . '.xlsx';
+            $path = Yii::getAlias('@runtime') . '/' . $filename;
+            FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $spreadsheet = new Spreadsheet();
             $writer = new XlsxWriter($spreadsheet);
             $baseExportContext = new ExportContext(
@@ -108,48 +111,11 @@ class ExportXlsx implements ExportInterface
                 $status = ImportJob::STATUS_FAILED;
             }
             $importJob->totalRows = $totalCount;
-            $filename = 'export_' . date('Ymd_His') . '.xlsx';
-            $path = Yii::getAlias('@runtime') . '/' . $filename;
-            FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $baseExportContext->finalize($path);
             $importJob->filePath = '@runtime/'.$filename;
             $importJob->status = $status;
             $importJob->save();
             return $importJob;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * @param ColumnTransformerService $transformerService
-     * @param array $configColumns
-     * @param array $row
-     * @return array
-     * @throws Exception
-     */
-    protected static function prepareRow(ColumnTransformerService $transformerService, array $configColumns, array $row) : array
-    {
-        try {
-            /** @var ImportConfigColumn $column */
-            foreach ($configColumns  as $column) {
-                $value = $row[$column->source] ?? null;
-                if (
-                    $value !== null
-                    && $transformerService instanceof ColumnTransformerService
-                    && $column->transformer !== null
-                    && empty($column->transformer['name']) === false
-                ) {
-                    $value = $transformerService->apply(
-                        $column->transformer['name'],
-                        $value,
-                        $column->transformerOptions
-                    );
-                }
-                $row[$column->source]  = $value;
-            }
-            return $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

@@ -1,6 +1,6 @@
 <?php
 /**
- * ExportCsv.php
+ * ExportJson.php
  *
  * PHP Version 8.2+
  *
@@ -19,13 +19,13 @@ use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerServi
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\writers\CsvWriter;
 use fractalCms\importExport\transformers\ColumnsTransform;
 use Exception;
+use fractalCms\importExport\writers\JsonWriter;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportCsv extends ColumnsTransform implements Export
+class ExportJson extends ColumnsTransform implements Export
 {
 
     /**
@@ -41,12 +41,12 @@ class ExportCsv extends ColumnsTransform implements Export
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
-            $filename = 'export_' . date('Ymd_His') . '.csv';
+            $filename = 'export_' . date('Ymd_His') . '.json';
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $f = fopen($path, 'w');
 
-            $writer = new CsvWriter($f);
+            $writer = new JsonWriter($f);
             $baseExportContext = new ExportContext(
                 config: $importConfig,
                 dryRun: false,
@@ -55,14 +55,18 @@ class ExportCsv extends ColumnsTransform implements Export
                 params: $params
             );
 
-            $headers = [];
             $configColumns = [];
             /** @var ImportConfigColumn $column */
             foreach ($importConfig->getImportColumns()->each() as $column) {
-                $headers[] = $column->target;
                 $configColumns[] = $column;
             }
-            $baseExportContext->writeRow('csv', $headers);
+            $metas = [
+                '_type' => 'meta',
+                'name' => $importConfig->name,
+                'dateCreate' => date('c', strtotime($importConfig->dateCreate)),
+                'generated_at' => date('c')
+            ];
+            $baseExportContext->writeRow('json', $metas);
             $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             try {
                 $totalCount = $provider->count();
@@ -82,12 +86,13 @@ class ExportCsv extends ColumnsTransform implements Export
                                 $baseExportContext
                             );
                             if ($result->handled === true) {
+                                // Le traitement de la row est terminé, on passe directement à la suivante
                                 $importJob->successRows++;
                                 continue;
                             }
                         }
                         $row = $result->attributes ?? $row;
-                        $baseExportContext->writeRow('csv', $row, $rowIndex);
+                        $baseExportContext->writeRow('json', $row, $rowIndex);
                         $importJob->successRows++;
                     } catch (Exception $e) {
                         $importJob->errorRows++;

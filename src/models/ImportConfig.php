@@ -66,7 +66,9 @@ class ImportConfig extends \yii\db\ActiveRecord
     const FORMAT_EXCEL = 'xls';
     const FORMAT_EXCEL_X = 'xlsx';
     const FORMAT_CSV = 'csv';
-    
+    const FORMAT_XML = 'xml';
+    const FORMAT_JSON = 'json';
+
     const SOURCE_TYPE_SQL = 'sql';
     const SOURCE_TYPE_TABLE = 'table';
     const SOURCE_TYPE_EXTERN = 'extern';
@@ -537,9 +539,10 @@ class ImportConfig extends \yii\db\ActiveRecord
     public static function optsFormats()
     {
         return [
+            self::FORMAT_CSV => 'Csv',
+            self::FORMAT_JSON => 'Json',
             self::FORMAT_EXCEL_X => 'Xlsx',
-            self::FORMAT_EXCEL => 'Xls',
-            self::FORMAT_CSV => 'csv',
+            self::FORMAT_XML => 'Xml',
         ];
     }
 
@@ -860,6 +863,32 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $column->order = $index;
                 $column->save(false, ['order']);
             }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * 
+     * @param array $row
+     * @param boolean $targetToSource
+     * 
+     * @return array
+     * @throws \yii\db\Exception 
+     */
+    public function revertColumnNames($row, $targetToSource = true) : array
+    {
+          try {
+            $result = [];
+            /** @var ImportConfigColumn $column */
+            foreach($this->getImportColumns()->each() as $column) {
+                $from = ($targetToSource === true) ? $column->target : $column->source;
+                $to = ($targetToSource === true) ? $column->source : $column->target;
+                $value = $row[$from] ?? null;
+                $result[$to] = $value;
+            }
+            return $result;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
