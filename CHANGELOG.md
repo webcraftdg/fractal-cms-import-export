@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+
+Release v1.0.2 10/03/2026 <davidg@webcraftdg.fr>
+----------------------------------------------
+
+* Add export XML & NDJSON
+
+
 Release v1.0.1 26/12/2025 <davidg@webcraftdg.fr>
 ----------------------------------------------
 
