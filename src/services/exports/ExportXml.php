@@ -1,6 +1,6 @@
 <?php
 /**
- * ExportCsv.php
+ * ExportXml.php
  *
  * PHP Version 8.2+
  *
@@ -19,13 +19,13 @@ use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerServi
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\writers\CsvWriter;
 use fractalCms\importExport\transformers\ColumnsTransform;
+use fractalCms\importExport\writers\XmlWriter;
 use Exception;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportCsv extends ColumnsTransform implements Export
+class ExportXml extends ColumnsTransform implements Export
 {
 
     /**
@@ -41,12 +41,11 @@ class ExportCsv extends ColumnsTransform implements Export
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
-            $filename = 'export_' . date('Ymd_His') . '.csv';
+            $filename = 'export_' . date('Ymd_His') . '.xml';
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $path = Yii::getAlias('@runtime') . '/' . $filename;
-            $f = fopen($path, 'w');
 
-            $writer = new CsvWriter($f);
+            $writer = new XmlWriter($importConfig, $path);
             $baseExportContext = new ExportContext(
                 config: $importConfig,
                 dryRun: false,
@@ -55,18 +54,16 @@ class ExportCsv extends ColumnsTransform implements Export
                 params: $params
             );
 
-            $headers = [];
             $configColumns = [];
             /** @var ImportConfigColumn $column */
             foreach ($importConfig->getImportColumns()->each() as $column) {
-                $headers[] = $column->target;
                 $configColumns[] = $column;
             }
-            $baseExportContext->writeRow('csv', $headers);
             $importJob = ExportService::prepareImportJob($importConfig,  $totalCount);
             try {
                 $totalCount = $provider->count();
                 foreach ($provider->getIterator() as $rowIndex => $row) {
+
                     //ColumnTransformer
                     $row = static::prepareRow(
                         transformerService: $transformerService,
@@ -86,8 +83,9 @@ class ExportCsv extends ColumnsTransform implements Export
                                 continue;
                             }
                         }
+
                         $row = $result->attributes ?? $row;
-                        $baseExportContext->writeRow('csv', $row, $rowIndex);
+                        $baseExportContext->writeRow('xml', $row, $rowIndex);
                         $importJob->successRows++;
                     } catch (Exception $e) {
                         $importJob->errorRows++;
@@ -104,8 +102,8 @@ class ExportCsv extends ColumnsTransform implements Export
             }
             $importJob->totalRows = $totalCount;
             $importJob->status = $status;
-            fclose($f);
             $importJob->filePath = '@runtime/'.$filename;
+            $baseExportContext->finalize($path);
             $importJob->save();
             return $importJob;
         } catch (Exception $e)  {
