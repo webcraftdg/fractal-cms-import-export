@@ -14,18 +14,18 @@ use fractalCms\importExport\contexts\Export as ExportContext;
 use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
-use fractalCms\importExport\services\ColumnTransformer;
 use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\transformers\ColumnsTransform;
 use Exception;
 use fractalCms\importExport\writers\JsonWriter;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportJson implements Export
+class ExportJson extends ColumnsTransform implements Export
 {
 
     /**
@@ -38,7 +38,7 @@ class ExportJson implements Export
     public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []): ImportJob
     {
         try {
-            $transformerService = Yii::$container->get(TransformerService::class);
+            $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
             $filename = 'export_' . date('Ymd_His') . '.json';
@@ -86,6 +86,7 @@ class ExportJson implements Export
                                 $baseExportContext
                             );
                             if ($result->handled === true) {
+                                // Le traitement de la row est terminé, on passe directement à la suivante
                                 $importJob->successRows++;
                                 continue;
                             }
@@ -112,40 +113,6 @@ class ExportJson implements Export
             $importJob->filePath = '@runtime/'.$filename;
             $importJob->save();
             return $importJob;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * @param TransformerService $transformerService
-     * @param array $configColumns
-     * @param $row
-     * @return array
-     * @throws Exception
-     */
-    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : array
-    {
-        try {
-            /** @var  ImportConfigColumn $column */
-            foreach ($configColumns as $column) {
-                $value = $row[$column->source] ?? null;
-                if (
-                    $value !== null
-                    && $transformerService instanceof TransformerService
-                    && $column->transformer !== null
-                    && isset($column->transformer['name']) === true
-                ) {
-                    $value = $transformerService->apply(
-                        $column->transformer['name'],
-                        $value,
-                        $column->transformerOptions
-                    );
-                }
-                $row[$column->source] = $value;
-            }
-            return  $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

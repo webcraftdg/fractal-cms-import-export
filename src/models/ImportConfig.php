@@ -542,7 +542,6 @@ class ImportConfig extends \yii\db\ActiveRecord
             self::FORMAT_CSV => 'Csv',
             self::FORMAT_JSON => 'Json',
             self::FORMAT_EXCEL_X => 'Xlsx',
-            self::FORMAT_EXCEL => 'Xls',
             self::FORMAT_XML => 'Xml',
         ];
     }
@@ -864,6 +863,32 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $column->order = $index;
                 $column->save(false, ['order']);
             }
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * 
+     * @param array $row
+     * @param boolean $targetToSource
+     * 
+     * @return array
+     * @throws \yii\db\Exception 
+     */
+    public function revertColumnNames($row, $targetToSource = true) : array
+    {
+          try {
+            $result = [];
+            /** @var ImportConfigColumn $column */
+            foreach($this->getImportColumns()->each() as $column) {
+                $from = ($targetToSource === true) ? $column->target : $column->source;
+                $to = ($targetToSource === true) ? $column->source : $column->target;
+                $value = $row[$from] ?? null;
+                $result[$to] = $value;
+            }
+            return $result;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

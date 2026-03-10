@@ -14,18 +14,18 @@ use fractalCms\importExport\contexts\Export as ExportContext;
 use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export;
 use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
-use fractalCms\importExport\services\ColumnTransformer;
 use fractalCms\importExport\services\Export as ExportService;
-use fractalCms\importExport\services\ColumnTransformer as TransformerService;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\writers\CsvWriter;
+use fractalCms\importExport\transformers\ColumnsTransform;
 use Exception;
 use Yii;
 use yii\helpers\FileHelper;
 
-class ExportCsv implements Export
+class ExportCsv extends ColumnsTransform implements Export
 {
 
     /**
@@ -38,7 +38,7 @@ class ExportCsv implements Export
     public static function run(ImportConfig $importConfig, ExportDataProvider $provider, array $params = []): ImportJob
     {
         try {
-            $transformerService = Yii::$container->get(TransformerService::class);
+            $transformerService = Yii::$container->get(ColumnTransformerService::class);
             $rowTransformer = $importConfig->getRowTransformer();
             $totalCount = 0;
             $filename = 'export_' . date('Ymd_His') . '.csv';
@@ -108,40 +108,6 @@ class ExportCsv implements Export
             $importJob->filePath = '@runtime/'.$filename;
             $importJob->save();
             return $importJob;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * @param TransformerService $transformerService
-     * @param array $configColumns
-     * @param $row
-     * @return array
-     * @throws Exception
-     */
-    protected static function prepareRow(ColumnTransformer $transformerService, array $configColumns, $row) : array
-    {
-        try {
-            /** @var  ImportConfigColumn $column */
-            foreach ($configColumns as $column) {
-                $value = $row[$column->source] ?? null;
-                if (
-                    $value !== null
-                    && $transformerService instanceof TransformerService
-                    && $column->transformer !== null
-                    && isset($column->transformer['name']) === true
-                ) {
-                    $value = $transformerService->apply(
-                        $column->transformer['name'],
-                        $value,
-                        $column->transformerOptions
-                    );
-                }
-                $row[$column->source] = $value;
-            }
-            return  $row;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
