@@ -22,7 +22,7 @@ use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use fractalCms\importExport\services\RowTransformer as RowTransformerService;
+use fractalCms\importExport\services\RowProcessor as RowProcessorService;
 use fractalCms\importExport\transformers\BooleanColumnTransformer;
 use fractalCms\importExport\transformers\DateColumnTransformer;
 use fractalCms\importExport\transformers\LowerColumnTransformer;
@@ -74,7 +74,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     ]);
                 }
             ]);
-            $this->registerRowTransformers();
+            $this->registerRowProcessors();
             $app->setComponents([
                 'importDbParameters' => [
                     'class' => Parameter::class
@@ -107,9 +107,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
      * @return void
      * @throws Exception
      */
-    protected function registerRowTransformers() : void
+    protected function registerRowProcessors() : void
     {
-        Yii::$container->set(RowTransformerService::class, new RowTransformerService($this->rowTransformers));
+        Yii::$container->set(RowProcessorService::class, new RowProcessorService($this->rowTransformers));
     }
 
     /**

@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
+use fractalCms\importExport\exceptions\InsertResult;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 

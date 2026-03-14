@@ -13,7 +13,7 @@ namespace fractalCms\importExport\services\exports;
 use fractalCms\importExport\contexts\Export as ExportContext;
 use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export;
-use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
+use fractalCms\importExport\interfaces\RowExportProcessor as RowExportProcessor;
 use fractalCms\importExport\services\Export as ExportService;
 use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use fractalCms\importExport\models\ImportConfigColumn;
@@ -79,7 +79,7 @@ class ExportJson extends ColumnsTransform implements Export
                     );
                     $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
                     try {
-                        if ($rowTransformer instanceof RowTransformerInterface) {
+                        if ($rowTransformer instanceof RowExportProcessor) {
 
                             $result = $rowTransformer->transformRow(
                                 $row,

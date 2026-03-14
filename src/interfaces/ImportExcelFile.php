@@ -1,6 +1,6 @@
 <?php
 /**
- * Import.php
+ * ImportExcelFile.php
  *
  * PHP Version 8.2+
  *
@@ -10,30 +10,12 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-use fractalCms\importExport\exceptions\InsertResult;
 use fractalCms\importExport\models\ImportConfig;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-interface ImportFile extends Import
+interface ImportExcelFile extends Import
 {
-
-    /**
-     * @param ImportConfig $importConfig
-     * @param array $attributes
-     * @param int $rowNumber
-     * @return InsertResult
-     */
-    public static function insertActiveRecord(ImportConfig $importConfig, array $attributes, int $rowNumber) : InsertResult;
-
-    /**
-     * @param ImportConfig $importConfig
-     * @param array $attributes
-     * @param int $rowNumber
-     * @return InsertResult
-     */
-    public static function insertSql(ImportConfig $importConfig, array $attributes, int $rowNumber) : InsertResult;
-
 
     /**
      * @param string $filePath

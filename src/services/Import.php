@@ -14,10 +14,13 @@ namespace fractalCms\importExport\services;
 use fractalCms\importExport\interfaces\Import as ImportInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\imports\ImportXlsx;
-use Yii;
-use Exception;
+use fractalCms\importExport\services\imports\factories\ImportInserter;
+use fractalCms\importExport\services\imports\factories\ImportReader;
+use fractalCms\importExport\services\imports\mappers\ConfigImport;
 use yii\base\NotSupportedException;
+use Exception;
+use fractalCms\importExport\services\imports\ImportProcessor;
+use Yii;
 
 class Import implements ImportInterface
 {
@@ -37,7 +40,15 @@ class Import implements ImportInterface
     public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
-            return ImportXlsx::run($importConfig, $filePath, $isTest, $params);
+            $readerFactory = new ImportReader();
+            $reader = $readerFactory->create($importConfig->fileFormat);
+
+            $inserterFactory = new ImportInserter();
+            $inserter = $inserterFactory->create($importConfig->sourceType);
+            $mapper = new ConfigImport();
+            $processor = new ImportProcessor();
+            return $processor->run($reader, $mapper, $inserter, $importConfig, $filePath, $isTest, $params);
+
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

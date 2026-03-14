@@ -1,6 +1,6 @@
 <?php
 /**
- * RowImportTransformer.php
+ * RowExportProcessor.php
  *
  * PHP Version 8.2+
  *
@@ -13,7 +13,7 @@ namespace fractalCms\importExport\interfaces;
 use fractalCms\importExport\exceptions\RowTransformerResult;
 use fractalCms\importExport\contexts\Export as ExportContext;
 
-interface RowExportTransformer
+interface RowExportProcessor
 {
 
     /**
@@ -26,5 +26,5 @@ interface RowExportTransformer
      * @param ExportContext $context
      * @return RowTransformerResult
      */
-    public function transformRow(array $row, ExportContext $context): RowTransformerResult;
+    public function process(array $row, ExportContext $context): RowTransformerResult;
 }

@@ -12,7 +12,7 @@ namespace fractalCms\importExport\services\exports;
 
 use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\Export as ExportInterface;
-use fractalCms\importExport\interfaces\RowExportTransformer as RowTransformerInterface;
+use fractalCms\importExport\interfaces\RowExportProcessor as RowExportProcessor;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
@@ -81,7 +81,7 @@ class ExportXlsx extends ColumnsTransform implements ExportInterface
                     );
                     $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
                     try {
-                        if ($rowTransformer instanceof RowTransformerInterface) {
+                        if ($rowTransformer instanceof RowExportProcessor) {
                             $result = $rowTransformer->transformRow(
                                 $row,
                                 $baseExportContext

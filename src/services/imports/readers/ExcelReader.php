@@ -1,0 +1,228 @@
+<?php
+/**
+ * ExcelReader.php
+ *
+ * PHP Version 8.2+
+ *
+ * @author David Ghyse <davidg@webcraftdg.fr>
+ * @version XXX
+ * @package fractalCms\importExport\services
+ */
+namespace fractalCms\importExport\services\imports\readers;
+
+use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use yii\db\ActiveQuery;
+use yii\base\NotSupportedException;
+use Exception;
+use fractalCms\importExport\interfaces\importReader;
+use fractalCms\importExport\interfaces\SpreadsheetImportReader;
+use Yii;
+
+class ExcelReader implements importReader, SpreadsheetImportReader
+{
+
+
+    private Spreadsheet $spreadsheet;
+    private Worksheet $sheet;
+    private $maxColumns = 0;
+    private $headers = [];
+    private $batchSize = 100;
+
+    /**
+     * open
+     *
+     * @param  string $filePath
+     * @param  array  $options
+     *
+     * @return void
+     */
+    public function open(string $filePath, array $options = []): void
+    {
+        try {
+            $this->spreadsheet = $this->prepareSpreadSheet($filePath);
+            if ($this->spreadsheet instanceof Spreadsheet) {
+                $this->sheet = $this->spreadsheet->getActiveSheet();
+            }
+            $this->maxColumns = ($options['maxColumns']) ?? 0;
+            $this->headers = $this->getHeaders();
+
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * read
+     *
+     * @return iterable
+     */
+    public function read(): iterable
+    {
+         try {
+    
+            $batch = [];
+            $indexBatch = 0;
+            for($i = $this->getStartRow();$i < $this->getEndRow($this->sheet); $i ++) {
+                $batch[] = $this->getRowValues($i);
+                if ($indexBatch >= $this->batchSize) {
+                    yield $batch;
+                    $batch = [];
+                }
+                $indexBatch ++;
+            }
+            
+            if ($batch !== []) {
+                yield $batch;
+            }
+
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * get Headers
+     *
+     * @return array
+     */
+    public function getHeaders(): array
+    {
+        try {
+            $headers = [];
+            if ($this->sheet instanceof Worksheet) {
+                for($i = $this->getStartColumn();$i < $this->maxColumns; $i++) {
+                    $headers[] = $this->sheet->getCell([$i, 1])->getValue();
+                }
+            }
+            return $headers;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
+    /**
+     * getRowValues
+     *
+     * @param int $rowNumber
+     * @return array
+     * @throws Exception
+     */
+    protected function getRowValues($rowNumber) : array
+    {
+        try {
+            $row = [];
+            $startCol = $this->getStartColumn();
+            $endCol = $this->maxColumns - 1;
+            $indexHeader = 0;
+            /** @var ImportConfigColumn $column */
+            for ($i = $startCol; $i < $endCol; $i ++) {
+                $value = $this->sheet->getCell([$i, $rowNumber])->getValue();
+                $row[$this->headers[$indexHeader]]  = $value;
+                $indexHeader ++;
+            }
+            return $row;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+
+    /**
+     * Prepare
+     *
+     * @param string $filePath
+     * @return Spreadsheet
+     * @throws NotSupportedException
+     */
+    public static function prepareSpreadSheet(string $filePath): Spreadsheet
+    {
+        try {
+            $spreadsheet = null;
+            if (file_exists($filePath) === true) {
+                $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                switch ($extension) {
+                    case 'xlsx':
+                    case 'xls':
+                        $spreadsheet = IOFactory::load($filePath);
+                        break;
+                    case 'csv':
+                    case 'txt':
+                        $reader = new Csv();
+                        $reader->setDelimiter(';');
+                        $reader->setEnclosure('');
+                        $reader->setInputEncoding('CP1252');
+                        $reader->setSheetIndex(0);
+                        $reader->setReadDataOnly(true);
+                        $spreadsheet = $reader->load($filePath);
+                        break;
+                    default:
+                        throw new NotSupportedException("Extension non supportée : " . $extension);
+                }
+            }
+            return $spreadsheet;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * Get start row
+     *
+     * @return int
+     * @throws Exception
+     */
+    public function getStartRow(): int
+    {
+        try {
+            return 2;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * get end row
+     *
+     * @param Worksheet $worksheet
+     * @return int
+     * @throws Exception
+     */
+    public function getEndRow(Worksheet $worksheet): int
+    {
+        try {
+            return $worksheet->getHighestRow();
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * Get start column
+     *
+     * @return int
+     * @throws Exception
+     */
+    public function getStartColumn(): int
+    {
+        try {
+            return 1;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+}

@@ -20,12 +20,15 @@ use fractalCms\importExport\providers\QueryExportData as QueryExportDataProvider
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\exceptions\ImportError;
+use fractalCms\importExport\interfaces\RowExportProcessor;
+use fractalCms\importExport\interfaces\RowImportProcessor;
 use fractalCms\importExport\interfaces\RowImportTransformer;
 use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\Module;
 use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
+use fractalCms\importExport\services\RowProcessor;
 use Yii;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
@@ -825,21 +828,22 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     /**
+     * getRowProcessor
+     * 
      * @return RowImportTransformer|RowExportTransformer|null
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\di\NotInstantiableException
      */
-    public function getRowTransformer() : RowImportTransformer | RowExportTransformer | null
+    public function getRowProcessor() : RowImportProcessor | RowExportProcessor | null
     {
         try {
-            $rowTransformer = null;
-            $rowTransformerService = (
-            Yii::$container->has(RowTransformerService::class)
-            ) ? Yii::$container->get(RowTransformerService::class) : null;
-            if ($rowTransformerService !== null && $this->rowTransformer !== null) {
-                $rowTransformer = $rowTransformerService->create($this->type, $this->rowTransformer);
+            $rowProcessor = null;
+            $rowProcessorService = (Yii::$container->has(RowProcessor::class)
+            ) ? Yii::$container->get(RowProcessor::class) : null;
+            if ($rowProcessorService !== null && $this->rowTransformer !== null) {
+                $rowProcessor = $rowProcessorService->create($this->type, $this->rowTransformer);
             }
-            return $rowTransformer;
+            return $rowProcessor;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

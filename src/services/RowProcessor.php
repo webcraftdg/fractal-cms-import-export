@@ -1,6 +1,6 @@
 <?php
 /**
- * RowTransformer.php
+ * RowProcessor.php
  *
  * PHP Version 8.2+
  *
@@ -16,7 +16,7 @@ use fractalCms\importExport\models\ImportConfig;
 use Yii;
 use yii\web\NotFoundHttpException;
 
-class RowTransformer
+class RowProcessor
 {
     /** @var array $rowTransformers */
     private array $rowTransformers = [];
