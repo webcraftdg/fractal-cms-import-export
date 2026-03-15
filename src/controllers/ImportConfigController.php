@@ -20,7 +20,7 @@ use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\RowTransformer as RowTransformerService;
+use fractalCms\importExport\services\RowProcessor as RowProcessorService;
 use Yii;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
@@ -31,7 +31,7 @@ class ImportConfigController extends BaseController
 
     protected DbViewInterface $dbView;
     protected Parameter $parameter;
-    public RowTransformerService $rowTransformersService;
+    public RowProcessorService $rowProcessorService;
 
     /**
      * @inheritDoc
@@ -43,8 +43,8 @@ class ImportConfigController extends BaseController
        if (Yii::$app->has('importDbParameters') === true) {
            $this->parameter = Yii::$app->importDbParameters;
        }
-       if (Yii::$container->has(RowTransformerService::class) === true) {
-           $this->rowTransformersService = Yii::$container->get(RowTransformerService::class);
+       if (Yii::$container->has(RowProcessorService::class) === true) {
+           $this->rowProcessorService = Yii::$container->get(RowProcessorService::class);
        }
    }
 
@@ -226,13 +226,13 @@ class ImportConfigController extends BaseController
                     }
                 }
             }
-            $rowTransformers = ($this->rowTransformersService instanceof RowTransformerService) ?
-                $this->rowTransformersService->getToList($model->type) : [];
+            $rowProcessors = ($this->rowProcessorService instanceof RowProcessorService) ?
+                $this->rowProcessorService->getToList($model->type) : [];
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => $rowTransformers,
+                    'rowProcessors' => $rowProcessors,
                 ]);
             }
             return $response;

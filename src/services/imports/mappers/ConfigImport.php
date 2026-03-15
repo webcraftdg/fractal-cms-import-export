@@ -10,13 +10,13 @@
  */
 namespace fractalCms\importExport\services\imports\mappers;
 
-use fractalCms\importExport\interfaces\ImportMapper;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\ColumnTransformer;
+use fractalCms\importExport\interfaces\DataMapper;
 use Exception;
 use Yii;
 
-class ConfigImport implements ImportMapper {
+class ConfigImport implements DataMapper {
 
 
     /**

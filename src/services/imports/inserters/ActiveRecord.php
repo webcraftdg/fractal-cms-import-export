@@ -17,7 +17,8 @@ use fractalCms\importExport\exceptions\ImportError;
 use Exception;
 use Yii;
 
-class ActiveRecord implements ImportInserter {
+class ActiveRecord implements ImportInserter 
+{
     
 
     /**

@@ -17,7 +17,8 @@ use fractalCms\importExport\exceptions\ImportError;
 use Exception;
 use Yii;
 
-class Sql implements ImportInserter {
+class Sql implements ImportInserter 
+{
     
     
 
@@ -32,7 +33,7 @@ class Sql implements ImportInserter {
      */
     public function insert(ImportConfig $config, array $attributes, int|string $rowNumber): InsertResult
     {
-         try {
+        try {
             return $this->insertSql($config, $attributes, $rowNumber);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

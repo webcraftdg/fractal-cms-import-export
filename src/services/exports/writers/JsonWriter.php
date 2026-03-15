@@ -1,6 +1,6 @@
 <?php
 /**
- * CsvWriter.php
+ * JsonWriter.php
  *
  * PHP Version 8.2+
  *
@@ -8,13 +8,14 @@
  * @version XXX
  * @package fractalCms\importExport\services\writers
  */
-namespace fractalCms\importExport\writers;
+namespace fractalCms\importExport\services\exports\writers;
 
 use fractalCms\importExport\interfaces\ExportWriter;
+use yii\helpers\Json;
 use Exception;
 use Yii;
 
-class CsvWriter implements ExportWriter
+class JsonWriter implements ExportWriter
 {
     /**
      * @var resource | false
@@ -39,7 +40,7 @@ class CsvWriter implements ExportWriter
     public function write(WriteTarget $target, array $row): void
     {
         try {
-            fputcsv($this->f, $row, ';');
+            fputs($this->f, Json::encode($row)."\n");
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

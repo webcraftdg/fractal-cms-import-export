@@ -1,6 +1,6 @@
 <?php
 /**
- * ImportReader.php
+ * DataReader.php
  *
  * PHP Version 8.2+
  *
@@ -10,18 +10,19 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-interface ImportReader 
+use fractalCms\importExport\models\ImportConfig;
+
+interface DataReader 
 {
 
     /**
-     * Open
+     * open
      *
-     * @param  string $filePath
-     * @param  array  $options
+     * @param  array        $options
      *
      * @return void
-     */    
-    public function open(string $filePath, array $options = []): void;
+     */
+    public function open(array $options): void;
     /**
      *  read
      *

@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-use fractalCms\importExport\exceptions\RowTransformerResult;
+use fractalCms\importExport\exceptions\RowProcessorResult;
 use fractalCms\importExport\contexts\Export as ExportContext;
 
 interface RowExportProcessor
@@ -24,7 +24,7 @@ interface RowExportProcessor
     /**
      * @param array $row
      * @param ExportContext $context
-     * @return RowTransformerResult
+     * @return RowProcessorResult
      */
-    public function process(array $row, ExportContext $context): RowTransformerResult;
+    public function process(array $row, ExportContext $context): RowProcessorResult;
 }

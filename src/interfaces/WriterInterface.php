@@ -1,6 +1,6 @@
 <?php
 /**
- * ExportWriter.php
+ * WriterInterface.php
  *
  * PHP Version 8.2+
  *
@@ -10,14 +10,30 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-use fractalCms\importExport\writers\WriteTarget;
+use fractalCms\importExport\services\exports\writers\WriteTarget;
 
-interface ExportWriter
+interface WriterInterface
 {
+    /**
+     * open
+     *
+     * @param  array] $params
+     *
+     * @return void
+     */
+    public function open(array $params): void;
+
     /**
      * @param WriteTarget $target
      * @param array $row
      * @return void
      */
     public function write(WriteTarget $target, array $row): void;
+
+    /**
+     * close
+     *
+     * @return void
+     */
+    public function close(): void;
 }

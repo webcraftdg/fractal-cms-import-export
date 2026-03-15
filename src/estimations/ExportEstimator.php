@@ -10,12 +10,10 @@
  */
 namespace fractalCms\importExport\estimations;
 
-use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\Export;
 use Yii;
 use Exception;
-use yii\db\Query;
+use fractalCms\importExport\interfaces\CountableDataReader;
 
 class ExportEstimator
 {
@@ -28,10 +26,10 @@ class ExportEstimator
     public static function estimateRows(ImportConfig $config): int
     {
         try {
-            $provider = $config->getImportExportQueryProvider();
+            $dataReader = $config->getDataReader();
             $count = -1;
-            if ($provider instanceof ExportDataProvider) {
-                $count = $provider->count();
+            if ($dataReader instanceof CountableDataReader) {
+                $count = $dataReader->count();
             }
             return $count;
         } catch (Exception $e)  {

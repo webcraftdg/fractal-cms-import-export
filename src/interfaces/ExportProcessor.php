@@ -1,6 +1,6 @@
 <?php
 /**
- * ImportProcessor.php
+ * ExportProcessor.php
  *
  * PHP Version 8.2+
  *
@@ -12,29 +12,26 @@ namespace fractalCms\importExport\interfaces;
 
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\interfaces\ImportReader;
-use fractalCms\importExport\interfaces\ImportInserter;
 
-interface ImportProcessor
+interface ExportProcessor
 {
-    
     /**
      * run
      *
-     * @param  ImportReader   $reader
+     * @param  CountableDataReader   $reader
      * @param  DataMapper   $mapper
-     * @param  ImportInserter $inserter
-     * @param  ImportConfig   $config
-     * @param  string         $filePath
-     * @param  bool           $isTest
-     * @param  array          $params
+     * @param  ExportWriter $writer
+     * @param  ImportConfig $config
+     * @param  string       $filePath
+     * @param  bool         $isTest
+     * @param  array        $params
      *
      * @return ImportJob
      */
     public function run( 
-        ImportReader $reader,
+        CountableDataReader $reader,
         DataMapper $mapper,
-        ImportInserter $inserter,
+        WriterInterface $writer,
         ImportConfig $config,
         string $filePath,
         bool $isTest = false,

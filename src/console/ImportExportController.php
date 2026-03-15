@@ -11,7 +11,6 @@
 namespace fractalCms\importExport\console;
 
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Import;
 use yii\console\Controller;

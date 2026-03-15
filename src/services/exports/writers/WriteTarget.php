@@ -8,7 +8,7 @@
  * @version XXX
  * @package fractalCms\importExport\services\writers
  */
-namespace fractalCms\importExport\writers;
+namespace fractalCms\importExport\services\exports\writers;
 
 class WriteTarget
 {

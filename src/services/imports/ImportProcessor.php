@@ -15,11 +15,13 @@ use fractalCms\importExport\interfaces\ImportProcessor as ImportProcessorInterfa
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\contexts\Import as ImportContext;
-use fractalCms\importExport\interfaces\ImportMapper;
 use fractalCms\importExport\interfaces\ImportInserter;
 use fractalCms\importExport\interfaces\ImportReader;
 use fractalCms\importExport\exceptions\ImportError;
 use fractalCms\importExport\interfaces\RowImportProcessor;
+use fractalCms\importExport\interfaces\DataMapper;
+use yii\db\Transaction;
+use yii\helpers\Json;
 use yii\web\Application as WebApplication;
 use Exception;
 use Yii;
@@ -28,9 +30,23 @@ final class ImportProcessor implements ImportProcessorInterface
 {
 
 
+
+    /**
+     * run
+     *
+     * @param  ImportReader   $reader
+     * @param  ImportMapper   $mapper
+     * @param  ImportInserter $inserter
+     * @param  ImportConfig   $importConfig
+     * @param  string         $filePath
+     * @param  bool           $isTest
+     * @param  array          $params
+     *
+     * @return ImportJob
+     */
     public function run(
         ImportReader $reader,
-        ImportMapper $mapper,
+        DataMapper $mapper,
         ImportInserter $inserter,
         ImportConfig $importConfig,
         string $filePath,
@@ -127,6 +143,7 @@ final class ImportProcessor implements ImportProcessorInterface
             $importJob->saveFileErrorCsv();
             $importJob->save(false);
             $importJob->refresh();
+            $reader->close();
             return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

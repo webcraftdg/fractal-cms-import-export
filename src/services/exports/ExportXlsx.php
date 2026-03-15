@@ -39,7 +39,7 @@ class ExportXlsx extends ColumnsTransform implements ExportInterface
     {
         try {
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
-            $rowTransformer = $importConfig->getRowTransformer();
+            $rowProcessor = $importConfig->getRowProcessor();
             $totalCount = 0;
             $filename = 'export_' . date('Ymd_His') . '.xlsx';
             $path = Yii::getAlias('@runtime') . '/' . $filename;
@@ -81,8 +81,8 @@ class ExportXlsx extends ColumnsTransform implements ExportInterface
                     );
                     $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
                     try {
-                        if ($rowTransformer instanceof RowExportProcessor) {
-                            $result = $rowTransformer->transformRow(
+                        if ($rowProcessor instanceof RowExportProcessor) {
+                            $result = $rowProcessor->process(
                                 $row,
                                 $baseExportContext
                             );

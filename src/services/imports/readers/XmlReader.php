@@ -1,6 +1,6 @@
 <?php
 /**
- * ExcelReader.php
+ * XmlReader.php
  *
  * PHP Version 8.2+
  *
@@ -11,6 +11,8 @@
 namespace fractalCms\importExport\services\imports\readers;
 
 use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -18,16 +20,12 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use yii\base\NotSupportedException;
 use Exception;
 use fractalCms\importExport\interfaces\importReader;
-use fractalCms\importExport\interfaces\SpreadsheetImportReader;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use Yii;
 
-class ExcelReader implements importReader, SpreadsheetImportReader
+class XmlReader implements importReader
 {
 
 
-    private Spreadsheet $spreadsheet;
-    private Worksheet $sheet;
     private $maxColumns = 0;
     private $headers = [];
     private $batchSize = 100;
@@ -47,11 +45,12 @@ class ExcelReader implements importReader, SpreadsheetImportReader
             if ($this->spreadsheet instanceof Spreadsheet) {
                 $this->sheet = $this->spreadsheet->getActiveSheet();
             }
-            if (isset($options['maxColumns']) === true) {
+            if (isset($options['macComulns']) === true) {
                 $this->maxColumns = ($options['maxColumns']);;
             } elseif($this->sheet instanceof Worksheet) {
-                $this->maxColumns = Coordinate::columnIndexFromString($this->sheet->getHighestColumn());
+                 $this->maxColumns = $this->sheet->getHighestColumn();
             }
+            $this->maxColumns = ($options['maxColumns']) ?? 0;
             $this->headers = $this->getHeaders();
 
         } catch (Exception $e)  {
@@ -71,9 +70,7 @@ class ExcelReader implements importReader, SpreadsheetImportReader
     
             $batch = [];
             $indexBatch = 0;
-            $startRow = $this->getStartRow();
-            $endRow = $this->getEndRow($this->sheet);
-            for($i = $startRow;$i <= $endRow; $i ++) {
+            for($i = $this->getStartRow();$i <= $this->getEndRow($this->sheet); $i ++) {
                 $batch[] = $this->getRowValues($i);
                 $indexBatch ++;
                 if ($indexBatch >= $this->batchSize) {
@@ -87,24 +84,6 @@ class ExcelReader implements importReader, SpreadsheetImportReader
                 yield $batch;
             }
 
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * close
-     *
-     * @return void
-     */
-    public function close(): void
-    {
-        try {
-            if ($this->spreadsheet instanceof Spreadsheet) {
-                $this->spreadsheet->disconnectWorksheets();
-                unset($this->spreadsheet);
-            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -150,7 +129,8 @@ class ExcelReader implements importReader, SpreadsheetImportReader
             /** @var ImportConfigColumn $column */
             for ($i = $startCol; $i <= $endCol; $i ++) {
                 $value = $this->sheet->getCell([$i, $rowNumber])->getValue();
-                $row[$this->headers[$indexHeader]]  = $value;
+                $header = $this->headers[$indexHeader] ?? 'column_'.$indexHeader;
+                $row[$header] = $value;
                 $indexHeader ++;
             }
             return $row;

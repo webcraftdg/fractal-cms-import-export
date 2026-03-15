@@ -39,7 +39,7 @@ class ExportJson extends ColumnsTransform implements Export
     {
         try {
             $transformerService = Yii::$container->get(ColumnTransformerService::class);
-            $rowTransformer = $importConfig->getRowTransformer();
+            $rowProcessor = $importConfig->getRowProcessor();
             $totalCount = 0;
             $filename = 'export_' . date('Ymd_His') . '.json';
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
@@ -79,9 +79,9 @@ class ExportJson extends ColumnsTransform implements Export
                     );
                     $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
                     try {
-                        if ($rowTransformer instanceof RowExportProcessor) {
+                        if ($rowProcessor instanceof RowExportProcessor) {
 
-                            $result = $rowTransformer->transformRow(
+                            $result = $rowProcessor->process(
                                 $row,
                                 $baseExportContext
                             );

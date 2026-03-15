@@ -1,6 +1,6 @@
 <?php
 /**
- * RowTransformerResult.php
+ * RowProcessorResult.php
  *
  * PHP Version 8.2+
  *
@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\exceptions;
 
-final class RowTransformerResult
+final class RowProcessorResult
 {
     /**
      * Contructeur

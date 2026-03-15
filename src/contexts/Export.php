@@ -10,10 +10,10 @@
  */
 namespace fractalCms\importExport\contexts;
 
-use fractalCms\importExport\interfaces\ExportWriter;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
-use fractalCms\importExport\writers\WriteTarget;
+use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\services\exports\writers\WriteTarget;
 use Yii;
 
 final class Export extends AbstractContext
@@ -33,7 +33,7 @@ final class Export extends AbstractContext
         ImportConfig $config,
         bool $dryRun,
         int $rowNumber,
-        private ExportWriter $writer,
+        private WriterInterface $writer,
         array $params = []
     ) {
         parent::__construct(

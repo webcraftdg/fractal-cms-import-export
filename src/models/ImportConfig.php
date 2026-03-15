@@ -10,31 +10,31 @@
  */
 namespace fractalCms\importExport\models;
 
-use Exception;
 use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\interfaces\ExportDataProvider;
 use fractalCms\importExport\interfaces\RowExportTransformer;
-use fractalCms\importExport\providers\SqlExportData as SqlExportDataProvider;
-use fractalCms\importExport\providers\QueryExportData as QueryExportDataProvider;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\exceptions\ImportError;
+use fractalCms\importExport\interfaces\DataReader;
 use fractalCms\importExport\interfaces\RowExportProcessor;
 use fractalCms\importExport\interfaces\RowImportProcessor;
 use fractalCms\importExport\interfaces\RowImportTransformer;
-use fractalCms\importExport\services\RowTransformer as RowTransformerService;
 use fractalCms\importExport\Module;
 use fractalCms\importExport\services\Export;
+use fractalCms\importExport\services\exports\readers\QueryDataReader;
+use fractalCms\importExport\services\exports\readers\SqlDataReader;
 use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\RowProcessor;
-use Yii;
+use yii\web\Application;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\db\Query;
 use yii\helpers\Json;
 use yii\web\UploadedFile;
+use Exception;
+use Yii;
 
 /**
  * This is the model class for table "importConfigs".
@@ -50,7 +50,7 @@ use yii\web\UploadedFile;
  * @property int|null $truncateTable
  * @property string $table
  * @property resource|null $sql
- * @property resource|null $rowTransformer
+ * @property resource|null $rowProcessor
  * @property string|null $exportTarget
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
@@ -133,22 +133,22 @@ class ImportConfig extends \yii\db\ActiveRecord
         $scenarios = parent::scenarios();
         $scenarios[self::SCENARIO_CREATE] = [
             'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
-            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
+            'sql', 'rowProcessor', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_UPDATE] = [
             'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
-            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
+            'sql', 'rowProcessor', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_IMPORT_JSON_FILE] = [
             'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
-            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
+            'sql', 'rowProcessor', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
 
         $scenarios[self::SCENARIO_MANAGE_COLUMN] = [
             'name', 'version', 'dateCreate', 'dateUpdate', 'active', 'stopOnError', 'importFile', 'truncateTable', 'table', 'tmpColumns',
-            'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'
+            'sql', 'rowProcessor', 'fileFormat', 'exportTarget', 'type', 'sourceType'
         ];
         $scenarios[self::SCENARIO_IMPORT_EXPORT] = [
             'importFile', 'importConfigId'
@@ -162,7 +162,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'rowTransformer', 'fileFormat', 'exportTarget', 'type', 'sourceType'], 'default', 'value' => null],
+            [['name', 'version', 'dateCreate', 'dateUpdate', 'table', 'sql', 'rowProcessor', 'fileFormat', 'exportTarget', 'type', 'sourceType'], 'default', 'value' => null],
             [['dateCreate', 'dateUpdate'], 'safe'],
             [['active', 'stopOnError', 'truncateTable'], 'default', 'value' => 0],
             [['active', 'stopOnError', 'version', 'truncateTable'], 'integer'],
@@ -210,7 +210,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['name'], 'required', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).'
                 , 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE, self::SCENARIO_IMPORT_JSON_FILE]],
-            [['type', 'table', 'sql', 'rowTransformer',], 'string'],
+            [['type', 'table', 'sql', 'rowProcessor',], 'string'],
             [['table'] , 'required', 'message' => 'La table doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
                 return $this->sourceType === self::SOURCE_TYPE_TABLE;
             }],
@@ -221,7 +221,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['table'], 'validateTable','message' => 'La table doit être présente dans votre base de données', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name'], 'string', 'max' => 150],
             [['fileFormat'], 'string', 'max' => 10],
-            [['rowTransformer'], 'string', 'max' => 15],
+            [['rowProcessor'], 'string', 'max' => 15],
             ['fileFormat', 'in', 'range' => array_keys(self::optsFormats())],
             ['exportTarget', 'in', 'range' => array_keys(self::optsTargets())],
             ['sourceType', 'in', 'range' => array_keys(self::optsSourceTypes())],
@@ -465,24 +465,26 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     /**
      * @param int $batchSize
-     * @return ExportDataProvider|null
+     * @return DataReader|null
      * @throws Exception
      */
-    public function getImportExportQueryProvider(int $batchSize = 1000) : ExportDataProvider | null
+    public function getDataReader(int $batchSize = 1000) : DataReader | null
     {
         try {
-            $provider = null;
+            $prodataReadervider = null;
             if ($this->sourceType === self::SOURCE_TYPE_TABLE) {
                 $cols = $this->buildConfigColumns();
                 $statementName = $this->getContextName();
                 $query = new Query();
                 $query->select($cols);
                 $query->from($statementName);
-                $provider = new QueryExportDataProvider(query: $query, batchSize: $batchSize);
+                $dataReader = new QueryDataReader();
+                $dataReader->open(['query' => $query, 'batchSize' => $batchSize]);
             } elseif($this->sourceType === self::SOURCE_TYPE_SQL) {
-                $provider = new SqlExportDataProvider(command: Yii::$app->db->createCommand($this->sql));
+                $dataReader = new SqlDataReader();
+                $dataReader->open(['command' => Yii::$app->db->createCommand($this->sql)]);
             }
-            return  $provider;
+            return  $dataReader;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -694,7 +696,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                 if ($this->dbView instanceof DbViewInterface) {
                     $tableName = $this->getContextName();
                     $columnExist = $this->dbView->columnExists($tableName, $importColumn->source);
-                    if ($columnExist === false && empty($this->rowTransformer) === true) {
+                    if ($columnExist === false && empty($this->rowProcessor) === true) {
                         $errors[] = new ImportError(
                             rowNumber: $orderColumn,
                             column: $importColumn->source,
@@ -792,6 +794,27 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
+     /**
+     * @param int $rowsCount
+     * @return ImportJob
+     * @throws Exception
+     */
+    public function createImportJob(int $rowsCount = 0) : ImportJob
+    {
+        try {
+            $importJob = new ImportJob(['scenario' => ImportJob::SCENARIO_CREATE]);
+            $importJob->importConfigId = $this->id;
+            $importJob->userId = (Yii::$app instanceof Application && Yii::$app->user->identity !== null) ? Yii::$app->user->identity->getId() : null;
+            $importJob->type = ImportJob::TYPE_EXPORT;
+            $importJob->status = ImportJob::STATUS_RUNNING;
+            $importJob->totalRows = $rowsCount;
+            return $importJob;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
     /**
      * Gets query for [[ImportJobs]].
      *
@@ -818,7 +841,7 @@ class ImportConfig extends \yii\db\ActiveRecord
      *
      * @return \yii\db\ActiveQuery
      */
-    public function getImportColumnsWithSearch(string $search = null)
+    public function getImportColumnsWithSearch(string $search)
     {
         $query = $this->getImportColumns();
         if (empty($search) === false) {
@@ -840,8 +863,8 @@ class ImportConfig extends \yii\db\ActiveRecord
             $rowProcessor = null;
             $rowProcessorService = (Yii::$container->has(RowProcessor::class)
             ) ? Yii::$container->get(RowProcessor::class) : null;
-            if ($rowProcessorService !== null && $this->rowTransformer !== null) {
-                $rowProcessor = $rowProcessorService->create($this->type, $this->rowTransformer);
+            if ($rowProcessorService !== null && $this->rowProcessor !== null) {
+                $rowProcessor = $rowProcessorService->create($this->type, $this->rowProcessor);
             }
             return $rowProcessor;
         } catch (Exception $e)  {

@@ -10,7 +10,7 @@
  * @var $this yii\web\View
  * @var ImportConfig $model
  * @var array $tables
- * @var array $rowTransformers
+ * @var array $rowProcessors
  */
 
 use fractalCms\importExport\models\ImportConfig;
@@ -114,13 +114,13 @@ use fractalCms\core\helpers\Html;
     </div>
 </div>
 <?php if ($model->isNewRecord === false): ?>
-    <?php if (empty($rowTransformers) === false):?>
+    <?php if (empty($rowProcessors) === false):?>
         <div class="fc-row">
             <div class="fc-form-group">
                 <?php
-                echo Html::activeLabel($model, 'rowTransformer', ['label' => 'Transformeur de données de la ligne', 'class' => 'fc-form-label']);
-                echo Html::activeDropDownList($model, 'rowTransformer', $rowTransformers, [
-                    'prompt' => 'Sélectionner un transformer', 'class' => 'fc-form-input',
+                echo Html::activeLabel($model, 'rowProcessor', ['label' => 'Convertisseur métier', 'class' => 'fc-form-label']);
+                echo Html::activeDropDownList($model, 'rowProcessor', $rowProcessors, [
+                    'prompt' => 'Sélectionner un convertisseur', 'class' => 'fc-form-input',
                 ]);
                 ?>
             </div>

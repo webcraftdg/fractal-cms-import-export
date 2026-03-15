@@ -8,7 +8,7 @@
  * @version XXX
  * @package fractalCms\importExport\services\writers
  */
-namespace fractalCms\importExport\writers;
+namespace fractalCms\importExport\services\exports\writers;
 
 use fractalCms\importExport\interfaces\ExportWriter;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -34,9 +34,9 @@ class XlsxWriter implements ExportWriter
     /**
      * @param Spreadsheet $spreadsheet
      */
-    public function __construct(Spreadsheet $spreadsheet)
+    public function __construct()
     {
-        $this->spreadsheet = $spreadsheet;
+        $this->spreadsheet = new Spreadsheet();
     }
 
     /**
