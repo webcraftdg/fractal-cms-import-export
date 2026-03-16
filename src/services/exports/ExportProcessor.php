@@ -10,12 +10,10 @@
  */
 namespace fractalCms\importExport\services\exports;
 
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\interfaces\CountableDataReader;
 use fractalCms\importExport\interfaces\DataMapper;
 use fractalCms\importExport\interfaces\ExportProcessor as InterfacesExportProcessor;
-use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\contexts\Export as ExportContext;
 use Exception;
 use fractalCms\importExport\interfaces\RowExportProcessor;
@@ -26,8 +24,7 @@ class ExportProcessor implements InterfacesExportProcessor
     public function run(
         CountableDataReader $reader,
         DataMapper $mapper,
-        WriterInterface $writer,
-        ImportConfig $config,
+        ExportContext $context,
         string $filePath,
         bool $isTest = false,
         array $params = []
@@ -35,35 +32,22 @@ class ExportProcessor implements InterfacesExportProcessor
     {
         try {
             $totalCount = 0;
-            $baseExportContext = new ExportContext(
-                config: $config,
-                dryRun: false,
-                rowNumber: -1,
-                writer: $writer,
-                params: $params
-            );
-            $rowProcessor = $config->getRowProcessor();
-            $headers = [];
-            $configColumns = [];
-            /** @var ImportConfigColumn $column */
-            foreach ($config->getImportColumns()->each() as $column) {
-                $headers[] = $column->target;
-                $configColumns[] = $column;
-            }
-            $baseExportContext->writeRow('csv', $headers);
-            $importJob = $config->createImportJob($totalCount);
+            $rowProcessor = $context->config->getRowProcessor();
+            $importJob = $context->config->createImportJob($totalCount);
+            $context->writer->open($context->writerContext);
+            $context->writePreambleOne($context->writerContext->preamble, 1, 1);
             try {
                 $totalCount = $reader->count();
                 foreach ($reader->read() as $rowIndex => $row) {
                     //ColumnTransformer
-                    $row = $mapper->map($row, $config, $rowIndex);
-                    $baseExportContext = $baseExportContext->withRowNumber($rowIndex);
+                    $row = $mapper->map($row, $context->config, $rowIndex);
+                    $context = $context->withRowNumber($rowIndex);
                     try {
                         if ($rowProcessor instanceof RowExportProcessor) {
 
                             $result = $rowProcessor->process(
                                 $row,
-                                $baseExportContext
+                                $context
                             );
                             if ($result->handled === true) {
                                 $importJob->successRows++;
@@ -73,12 +57,12 @@ class ExportProcessor implements InterfacesExportProcessor
                         $row = $result->attributes ?? $row;
                     } catch (Exception $e) {
                         $importJob->errorRows++;
-                        if ($config->stopOnError) {
+                        if ($context->config->stopOnError) {
                             break;
                         }
                         continue;
                     }
-                    $baseExportContext->writeRow('csv', $row, $rowIndex);
+                    $context->writeRow($row, $rowIndex);
                     $importJob->successRows++;
                 }
                 $status = ImportJob::STATUS_SUCCESS;
@@ -88,9 +72,9 @@ class ExportProcessor implements InterfacesExportProcessor
             }
             $importJob->totalRows = $totalCount;
             $importJob->status = $status;
-            $importJob->filePath = $filePath;
+            $importJob->filePath = $context->writerContext->relativePath;
             $importJob->save();
-            $writer->close();
+            $context->finalize($context->writerContext);
             return $importJob;
 
         } catch (Exception $e)  {

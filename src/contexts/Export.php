@@ -11,18 +11,23 @@
 namespace fractalCms\importExport\contexts;
 
 use fractalCms\importExport\models\ImportConfig;
-use Exception;
 use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\services\exports\writers\WriteTarget;
+use fractalCms\importExport\contexts\Writer as WriterContext;
+use yii\helpers\Json;
+use Exception;
 use Yii;
 
 final class Export extends AbstractContext
 {
 
     /**
+     * $writtenHeaders
+     *
      * @var array
      */
-    private array $writtenHeaders = [];
+    private array $writtenPreamble = [];
+
     /**
      * @param ImportConfig $config
      * @param bool $dryRun
@@ -30,16 +35,20 @@ final class Export extends AbstractContext
      * @param array $params
      */
     public function __construct(
-        ImportConfig $config,
-        bool $dryRun,
-        int $rowNumber,
-        private WriterInterface $writer,
-        array $params = []
+        public ImportConfig $config,
+        public bool $dryRun,
+        public bool $hasPreamble,
+        public int $rowNumber,
+        public WriterInterface $writer,
+        public Writer $writerContext,
+        public string $sectionName,
+        public array $params = []
     ) {
         parent::__construct(
             config: $config,
             stopOnError: false, // inutile à l’export
             dryRun: $dryRun,
+            hasPreamble:$hasPreamble,
             rowNumber: $rowNumber,
             params: $params
         );
@@ -55,7 +64,6 @@ final class Export extends AbstractContext
      * @return void
      */
     public function writeRow(
-        string $sheet,
         array $row,
         int $startRow = 1,
         int $startCol = 1,
@@ -63,7 +71,7 @@ final class Export extends AbstractContext
     ): void {
         $this->writer->write(
             new WriteTarget(
-                sheet: $sheet,
+                sheet: $this->sectionName,
                 rowNumber: $startRow,
                 colNumber: $startCol,
                 style: $style
@@ -73,7 +81,7 @@ final class Export extends AbstractContext
     }
 
     /**
-     * @param string $sheet
+     * @param string $sheetName
      * @param array $headers
      * @param int $rowNumber
      * @param int $colOffset
@@ -81,22 +89,21 @@ final class Export extends AbstractContext
      * @return void
      * @throws Exception
      */
-    public function writeHeaderOne(string $sheet, array $headers, int $rowNumber, int $colOffset, ?string $style = null): void
+    public function writePreambleOne(array $headers, int $rowNumber, int $colOffset, ?string $style = null): void
     {
         try {
-            $key = crc32($sheet . ':' . $rowNumber . ':' . $colOffset);
+            $key = crc32($this->sectionName . ':' . $rowNumber . ':' . $colOffset);
 
-            if (isset($this->writtenHeaders[$key])) {
+            if (isset($this->writtenPreamble[$key])) {
                 return;
             }
             $this->writeRow(
-                sheet: $sheet,
                 row: $headers,
                 startRow: $rowNumber,
                 startCol: $colOffset,
                 style: $style
             );
-            $this->writtenHeaders[$key] = true;
+            $this->writtenPreamble[$key] = true;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -108,8 +115,8 @@ final class Export extends AbstractContext
      * @param string $filePath
      * @return void*
      */
-    public function finalize(string $filePath): void
+    public function finalize(WriterContext $writerContext): void
     {
-        $this->writer->save($filePath);
+        $this->writer->close($writerContext);
     }
 }

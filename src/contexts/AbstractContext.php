@@ -11,21 +11,26 @@
 namespace fractalCms\importExport\contexts;
 
 use Exception;
+use fractalCms\importExport\models\ImportConfig;
 use Yii;
 
 class AbstractContext
 {
     /**
-     * @param object $config
-     * @param bool $stopOnError
-     * @param bool $dryRun
-     * @param int $rowNumber
-     * @param array $params
+     * _construct
+     *
+     * @param  \fractalCms\importExport\models\ImportConfig $config
+     * @param  bool                                         $stopOnError
+     * @param  bool                                         $dryRun
+     * @param  bool                                         $hasPreamble
+     * @param  int                                          $rowNumber
+     * @param  array                                        $params
      */
     public function __construct(
-        public readonly object $config,
-        public readonly bool $stopOnError,
-        public readonly bool $dryRun,
+        public ImportConfig $config,
+        public bool $stopOnError,
+        public bool $dryRun,
+        public bool $hasPreamble,
         public int $rowNumber,
         protected array $params = []
     ) {}

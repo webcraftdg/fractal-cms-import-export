@@ -11,15 +11,12 @@
 namespace fractalCms\importExport\contexts;
 
 use fractalCms\importExport\exceptions\ImportErrorCollector;
+use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\models\ImportConfig;
 
-final class Import extends AbstractContext
+final class Writer
 {
 
-    /**
-     * @var ImportErrorCollector
-     */
-    public readonly ImportErrorCollector $errors;
 
     /**
      * @param ImportConfig $config
@@ -30,22 +27,11 @@ final class Import extends AbstractContext
      * @param array $params
      */
     public function __construct(
-        ImportConfig $config,
-        ImportErrorCollector $errors,
-        bool $stopOnError,
-        bool $dryRun,
-        int $rowNumber,
-        array $params = []
+        public string $absolutePath,
+        public string $relativePath,
+        public array $preamble = [],
+        public array $params = []
     ) {
-        parent::__construct(
-            config: $config,
-            stopOnError: $stopOnError,
-            dryRun: $dryRun,
-            hasPreamble:false,
-            rowNumber: $rowNumber,
-            params: $params
-        );
 
-        $this->errors = $errors;
     }
 }

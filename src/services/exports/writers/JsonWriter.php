@@ -10,24 +10,40 @@
  */
 namespace fractalCms\importExport\services\exports\writers;
 
-use fractalCms\importExport\interfaces\ExportWriter;
+use fractalCms\importExport\contexts\Writer as WriterContext;
+use fractalCms\importExport\interfaces\WriterInterface;
 use yii\helpers\Json;
+use InvalidArgumentException;
 use Exception;
 use Yii;
 
-class JsonWriter implements ExportWriter
+class JsonWriter implements WriterInterface
 {
     /**
      * @var resource | false
      */
     private  $f;
 
+
     /**
-     * @param resource $f
+     * open
+     *
+     * @param  array $params
+     *
+     * @return void
      */
-    public function __construct($f)
+    public function open(WriterContext $writerContext): void
     {
-        $this->f = $f;
+        try {
+            $path = $writerContext->absolutePath ?? null;
+            if ($path === null) {
+                throw new InvalidArgumentException('JsonWriter params "path" not found');
+            }
+            $this->f = fopen($path, 'w');
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
     }
 
 
@@ -41,6 +57,21 @@ class JsonWriter implements ExportWriter
     {
         try {
             fputs($this->f, Json::encode($row)."\n");
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * close
+     *
+     * @return void
+     */
+    public function close(WriterContext $writerContext): void
+    {
+        try {
+            fclose($this->f);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

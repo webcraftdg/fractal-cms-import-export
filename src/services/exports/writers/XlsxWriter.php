@@ -10,14 +10,16 @@
  */
 namespace fractalCms\importExport\services\exports\writers;
 
-use fractalCms\importExport\interfaces\ExportWriter;
+use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\contexts\Writer as WriterContext;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use Exception;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use InvalidArgumentException;
+use Exception;
 use Yii;
 
-class XlsxWriter implements ExportWriter
+class XlsxWriter implements WriterInterface
 {
     /**
      * @var array
@@ -27,6 +29,12 @@ class XlsxWriter implements ExportWriter
      * @var Spreadsheet
      */
     private Spreadsheet $spreadsheet;
+    /**
+     * $filePath
+     *
+     * @var string
+     */
+    private string $filePath;
 
     /** @var array<string, Worksheet> */
     private array $sheetsByTitle = [];
@@ -48,6 +56,27 @@ class XlsxWriter implements ExportWriter
         return $this->sheetCursors[$sheet] ??= 1;
     }
 
+
+    /**
+     * open
+     *
+     * @param  array $params
+     *
+     * @return void
+     */
+    public function open(WriterContext $context): void
+    {
+        try {
+            $path = ($context->absolutePath) ?? null;
+            if ($path === null) {
+                throw new InvalidArgumentException('CsvWriter params "path" not found');
+            }
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
     /**
      * @param WriteTarget $target
      * @param array $row
@@ -60,7 +89,7 @@ class XlsxWriter implements ExportWriter
             /** @var Worksheet $sheet */
             $sheet = $this->getOrCreateSheet($target->sheet);
 
-            $rowIndex = $target->rowNumber;
+            $rowIndex = $this->nextRow($target->sheet);
             $colIndex = $target->colNumber;
 
             foreach ($row as $value) {
@@ -114,9 +143,9 @@ class XlsxWriter implements ExportWriter
      * @param string $filePath
      * @return void
      */
-    public function save(string $filePath): void
+    public function close(WriterContext $writeContext): void
     {
         $writer = new Xlsx($this->spreadsheet);
-        $writer->save($filePath);
+        $writer->save($writeContext->absolutePath);
     }
 }

@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
+use fractalCms\importExport\contexts\Export;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 
@@ -31,8 +32,7 @@ interface ExportProcessor
     public function run( 
         CountableDataReader $reader,
         DataMapper $mapper,
-        WriterInterface $writer,
-        ImportConfig $config,
+        Export $exportcontext,
         string $filePath,
         bool $isTest = false,
         array $params = []

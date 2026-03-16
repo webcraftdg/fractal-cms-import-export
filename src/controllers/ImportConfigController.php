@@ -174,7 +174,7 @@ class ImportConfigController extends BaseController
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => [],
+                    'rowProcessors' => [],
                 ]);
             }
             return $response;
@@ -252,6 +252,7 @@ class ImportConfigController extends BaseController
         try {
             $request = Yii::$app->request;
             $modelQuery = ImportConfig::find()->andWhere(['not', ['sourceType' => ImportConfig::SOURCE_TYPE_EXTERN]]);
+            /** @var ImportConfig $model */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
             $importJob = Yii::createObject(ImportJob::class);

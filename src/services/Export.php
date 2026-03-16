@@ -18,10 +18,13 @@ use fractalCms\importExport\services\exports\ExportCsv;
 use fractalCms\importExport\services\exports\ExportXlsx;
 use yii\helpers\FileHelper;
 use Exception;
+use fractalCms\importExport\contexts\Export as ContextsExport;
+use fractalCms\importExport\contexts\Writer as WriterContext;
 use fractalCms\importExport\services\exports\ExportProcessor;
 use fractalCms\importExport\services\exports\writers\CsvWriter;
 use fractalCms\importExport\services\imports\mappers\ConfigImport;
 use Yii;
+use yii\helpers\ArrayHelper;
 
 class Export
 {
@@ -36,19 +39,35 @@ class Export
     public static function run(ImportConfig $importConfig, int $batchSize = 1000, array $params = []): ImportJob
     {
         try {
-            $filename = 'export_' . date('Ymd_His') . '.csv';
+            $filename = $importConfig->getExportFileName();
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             $dataReader = $importConfig->getDataReader($batchSize);
+            $writer = $importConfig->createWriter();
             $mapper = new ConfigImport();
             $processor = new ExportProcessor();
-            switch ($importConfig->fileFormat) {
-                case ImportConfig::FORMAT_CSV: 
-                    $writer = new CsvWriter();
-                    $writer->open(['path' => $path]);
-                    break;
-            }
-            return $processor->run($dataReader, $mapper, $writer, $importConfig, $filename, false, $params);
+            $baseExportContext = new ContextsExport(
+                config: $importConfig,
+                dryRun: false,
+                hasPreamble:false,
+                rowNumber: -1,
+                writer: $writer,
+                writerContext: new WriterContext(
+                    absolutePath:$path,
+                    relativePath:'@runtime/'.$filename,
+                    preamble: $importConfig->getExportPreamble()
+                ),
+                sectionName:'export',
+                params: $params
+            );
+            return $processor->run(
+                $dataReader,
+                $mapper,
+                $baseExportContext,
+                $filename,
+                false,
+                $params
+            );
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

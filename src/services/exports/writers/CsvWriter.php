@@ -12,6 +12,7 @@ namespace fractalCms\importExport\services\exports\writers;
 
 use fractalCms\importExport\interfaces\WriterInterface;
 use Exception;
+use fractalCms\importExport\contexts\Writer as WriterContext;
 use InvalidArgumentException;
 use Yii;
 
@@ -29,10 +30,10 @@ class CsvWriter implements WriterInterface
      *
      * @return void
      */
-    public function open(array $params): void
+    public function open(WriterContext $writerContext): void
     {
         try {
-            $path = ($params['path']) ?? null;
+            $path = $writerContext->absolutePath ?? null;
             if ($path === null) {
                 throw new InvalidArgumentException('CsvWriter params "path" not found');
             }
@@ -64,7 +65,7 @@ class CsvWriter implements WriterInterface
      *
      * @return void
      */
-    public function close(): void
+    public function close(WriterContext $writerContext): void
     {
         try {
             fclose($this->f);

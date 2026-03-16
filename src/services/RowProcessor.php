@@ -10,11 +10,10 @@
  */
 namespace fractalCms\importExport\services;
 
-use fractalCms\importExport\interfaces\RowImportTransformer as RowTransformInterface;
-use Exception;
 use fractalCms\importExport\models\ImportConfig;
-use Yii;
 use yii\web\NotFoundHttpException;
+use Exception;
+use Yii;
 
 class RowProcessor
 {

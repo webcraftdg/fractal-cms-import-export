@@ -34,6 +34,12 @@ use yii\db\Query;
 use yii\helpers\Json;
 use yii\web\UploadedFile;
 use Exception;
+use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\services\exports\writers\CsvWriter;
+use fractalCms\importExport\services\exports\writers\JsonWriter;
+use fractalCms\importExport\services\exports\writers\XlsxWriter;
+use fractalCms\importExport\services\exports\writers\XmlWriter;
+use InvalidArgumentException;
 use Yii;
 
 /**
@@ -471,7 +477,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function getDataReader(int $batchSize = 1000) : DataReader | null
     {
         try {
-            $prodataReadervider = null;
+            $dataReader = null;
             if ($this->sourceType === self::SOURCE_TYPE_TABLE) {
                 $cols = $this->buildConfigColumns();
                 $statementName = $this->getContextName();
@@ -485,6 +491,102 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $dataReader->open(['command' => Yii::$app->db->createCommand($this->sql)]);
             }
             return  $dataReader;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
+     * createWriter
+     *
+     * @return WriterInterface
+     */
+    public function createWriter() : WriterInterface
+    {
+        try {
+            switch ($this->fileFormat) {
+                case ImportConfig::FORMAT_CSV: 
+                    $writer = new CsvWriter();
+                    break;
+                case ImportConfig::FORMAT_EXCEL:
+                case ImportConfig::FORMAT_EXCEL_X: 
+                    $writer = new XlsxWriter();
+                    break;
+                case ImportConfig::FORMAT_JSON:
+                    $writer = new JsonWriter();
+                    break;
+                case ImportConfig::FORMAT_XML:
+                    $writer = new XmlWriter($this);
+                    break;
+                default: 
+                    throw new InvalidArgumentException('ImportConfig : createWriter, format not found');    
+            }
+            return $writer;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
+     * getExportFileName
+     *
+     * @return string
+     */
+    public function getExportFileName() : string
+    {
+        try {
+            $fileName = 'export_' . date('Ymd_His');
+            switch ($this->fileFormat) {
+                case ImportConfig::FORMAT_CSV: 
+                    $fileName =  $fileName . '.csv';
+                    break;
+                case ImportConfig::FORMAT_EXCEL:
+                case ImportConfig::FORMAT_EXCEL_X: 
+                    $fileName =  $fileName . '.xlsx';
+                    break;
+                case ImportConfig::FORMAT_JSON:
+                    $fileName =  $fileName . '.json';
+                    break;
+                case ImportConfig::FORMAT_XML:
+                    $fileName =  $fileName . '.xml';
+                    break;
+                default: 
+                    throw new InvalidArgumentException('ImportConfig : getExportFileName, format not found');    
+            }
+            return $fileName;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+    /**
+     * getExportPreamble
+     *
+     * @return array
+     */
+      public function getExportPreamble() : array
+    {
+        try {
+            $preamble = [];
+            switch ($this->fileFormat) {
+                case ImportConfig::FORMAT_CSV: 
+                case ImportConfig::FORMAT_EXCEL:
+                case ImportConfig::FORMAT_EXCEL_X:
+                    $preamble = $this->buildConfigColumns(false);
+                    break;
+                case ImportConfig::FORMAT_JSON:
+                    $preamble =  [
+                        '_type' => 'meta',
+                        'name' => $this->name,
+                        'dateCreate' => date('c', strtotime($this->dateCreate)),
+                        'generated_at' => date('c')
+                    ];
+                    break;
+            }
+            return $preamble;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;

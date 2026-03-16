@@ -10,6 +10,7 @@
  */
 namespace fractalCms\importExport\interfaces;
 
+use fractalCms\importExport\contexts\Writer as WriterContext;
 use fractalCms\importExport\services\exports\writers\WriteTarget;
 
 interface WriterInterface
@@ -21,7 +22,7 @@ interface WriterInterface
      *
      * @return void
      */
-    public function open(array $params): void;
+    public function open(WriterContext $writerContext): void;
 
     /**
      * @param WriteTarget $target
@@ -35,5 +36,5 @@ interface WriterInterface
      *
      * @return void
      */
-    public function close(): void;
+    public function close(WriterContext $writerContext): void;
 }
