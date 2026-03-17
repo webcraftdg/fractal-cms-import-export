@@ -16,10 +16,10 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\imports\factories\ImportInserter;
 use fractalCms\importExport\services\imports\factories\ImportReader;
-use fractalCms\importExport\services\imports\mappers\ConfigImport;
+use fractalCms\importExport\services\imports\ImportProcessor;
+use fractalCms\importExport\mappers\Column;
 use yii\base\NotSupportedException;
 use Exception;
-use fractalCms\importExport\services\imports\ImportProcessor;
 use Yii;
 
 class Import implements ImportInterface
@@ -45,7 +45,7 @@ class Import implements ImportInterface
 
             $inserterFactory = new ImportInserter();
             $inserter = $inserterFactory->create($importConfig->sourceType);
-            $mapper = new ConfigImport();
+            $mapper = new Column();
             $processor = new ImportProcessor();
             return $processor->run($reader, $mapper, $inserter, $importConfig, $filePath, $isTest, $params);
 

@@ -1,14 +1,14 @@
 <?php
 /**
- * ConfigImport.php
+ * Column.php
  *
  * PHP Version 8.2+
  *
  * @author David Ghyse <davidg@webcraftdg.fr>
  * @version XXX
- * @package fractalCms\importExport\services
+ * @package fractalCms\importExport\mappers
  */
-namespace fractalCms\importExport\services\imports\mappers;
+namespace fractalCms\importExport\mappers;
 
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\ColumnTransformer;
@@ -16,7 +16,7 @@ use fractalCms\importExport\interfaces\DataMapper;
 use Exception;
 use Yii;
 
-class ConfigImport implements DataMapper {
+class Column implements DataMapper {
 
 
     /**
@@ -34,8 +34,7 @@ class ConfigImport implements DataMapper {
             $attributes = [];
             $transformerService = Yii::$container->get(ColumnTransformer::class);
             foreach ($rawRecord  as $field => $value) {
-                $column = $config->getImportColumns()->andWhere(['source' => $field])->one();
-
+                $column = $config->findColumnByName($field);
                 if (
                     $value !== null
                     && $column !== null

@@ -98,6 +98,8 @@ class ImportConfig extends \yii\db\ActiveRecord
     protected ExportLimiter $exportLimiter;
     protected ?DbViewInterface $dbView = null;
 
+    private array $columnsByNames = [];
+
     public function init()
     {
         parent::init();
@@ -237,6 +239,39 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
         ];
     }
+
+
+    /**
+     * @inheritDoc
+     */
+    public function afterFind()
+    {
+         try {
+                foreach($this->importColumns as $dbColumn) {
+                    $this->columnsByNames[$dbColumn->source] = $dbColumn;
+                    $this->columnsByNames[$dbColumn->target] = $dbColumn;
+                }
+              return parent::afterFind();
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
+
+    /**
+     * findColumnByName
+     *
+     * @param  string                  $search
+     *
+     * @return ImportConfigColumn|null
+     */
+    public function findColumnByName(string $search) : ?ImportConfigColumn
+    {
+        return ($this->columnsByNames[$search]) ?? null;
+    }
+
+    
 
     /**
      * @param $attribute
@@ -514,7 +549,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                     $writer = new XlsxWriter();
                     break;
                 case ImportConfig::FORMAT_JSON:
-                    $writer = new JsonWriter();
+                    $writer = new JsonWriter($this);
                     break;
                 case ImportConfig::FORMAT_XML:
                     $writer = new XmlWriter($this);
@@ -576,14 +611,6 @@ class ImportConfig extends \yii\db\ActiveRecord
                 case ImportConfig::FORMAT_EXCEL:
                 case ImportConfig::FORMAT_EXCEL_X:
                     $preamble = $this->buildConfigColumns(false);
-                    break;
-                case ImportConfig::FORMAT_JSON:
-                    $preamble =  [
-                        '_type' => 'meta',
-                        'name' => $this->name,
-                        'dateCreate' => date('c', strtotime($this->dateCreate)),
-                        'generated_at' => date('c')
-                    ];
                     break;
             }
             return $preamble;

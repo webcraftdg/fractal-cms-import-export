@@ -15,8 +15,8 @@ use fractalCms\importExport\interfaces\CountableDataReader;
 use fractalCms\importExport\interfaces\DataMapper;
 use fractalCms\importExport\interfaces\ExportProcessor as InterfacesExportProcessor;
 use fractalCms\importExport\contexts\Export as ExportContext;
-use Exception;
 use fractalCms\importExport\interfaces\RowExportProcessor;
+use Exception;
 use Yii;
 
 class ExportProcessor implements InterfacesExportProcessor
@@ -35,7 +35,7 @@ class ExportProcessor implements InterfacesExportProcessor
             $rowProcessor = $context->config->getRowProcessor();
             $importJob = $context->config->createImportJob($totalCount);
             $context->writer->open($context->writerContext);
-            $context->writePreambleOne($context->writerContext->preamble, 1, 1);
+            $context->writePreambleOne($context->writerContext->preamble, $context->rowOffset, $context->colOffset);
             try {
                 $totalCount = $reader->count();
                 foreach ($reader->read() as $rowIndex => $row) {

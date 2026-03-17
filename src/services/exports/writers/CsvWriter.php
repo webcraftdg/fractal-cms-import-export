@@ -11,9 +11,9 @@
 namespace fractalCms\importExport\services\exports\writers;
 
 use fractalCms\importExport\interfaces\WriterInterface;
-use Exception;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use InvalidArgumentException;
+use Exception;
 use Yii;
 
 class CsvWriter implements WriterInterface

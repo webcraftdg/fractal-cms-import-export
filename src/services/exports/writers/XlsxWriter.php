@@ -53,7 +53,7 @@ class XlsxWriter implements WriterInterface
      */
     public function nextRow(string $sheet): int
     {
-        return $this->sheetCursors[$sheet] ??= 1;
+        return $this->sheetCursors[$sheet] ??= -1;
     }
 
 
@@ -90,6 +90,7 @@ class XlsxWriter implements WriterInterface
             $sheet = $this->getOrCreateSheet($target->sheet);
 
             $rowIndex = $this->nextRow($target->sheet);
+            $rowIndex = ($rowIndex <=0 )? $target->rowNumber : $rowIndex;
             $colIndex = $target->colNumber;
 
             foreach ($row as $value) {

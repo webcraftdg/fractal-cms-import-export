@@ -13,9 +13,11 @@ namespace fractalCms\importExport\services\exports\writers;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\formatters\Record;
+use fractalCms\importExport\interfaces\RecordFormatter;
+use InvalidArgumentException;
 use XMLWriter as GlobalXMLWriter;
 use Exception;
-use InvalidArgumentException;
 use Yii;
 
 class XmlWriter implements WriterInterface
@@ -25,10 +27,24 @@ class XmlWriter implements WriterInterface
      */
     private GlobalXMLWriter $xmlWriter;
     private ImportConfig $config;
+    private RecordFormatter $recordFormatter;
     /**
      * @var resource | false
      */
     private  $f;
+
+     /**
+     * __construct
+     *
+     * @param  ImportConfig $importConfig
+     */
+    public function __construct(ImportConfig $importConfig)
+    {
+        $xmlWriter = new GlobalXMLWriter();
+        $this->xmlWriter = $xmlWriter;
+        $this->config = $importConfig;
+        $this->recordFormatter = new Record();
+    }
 
      /**
      * open
@@ -50,27 +66,14 @@ class XmlWriter implements WriterInterface
             $this->xmlWriter->writeAttribute('name', $this->config->name);
             $this->xmlWriter->writeAttribute('dateCreate', date('c', strtotime($this->config->dateCreate)));
             $this->xmlWriter->writeAttribute('generated_at', date('c'));
-            $this->xmlWriter->startElement('rows');
             $this->xmlWriter->setIndent(true);          // Active l'indentation
+            $this->xmlWriter->startElement('records');
             $this->xmlWriter->setIndentString('  ');
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
         }
     }
-
-    /**
-     * __construct
-     *
-     * @param  ImportConfig $importConfig
-     */
-    public function __construct(ImportConfig $importConfig)
-    {
-        $xmlWriter = new GlobalXMLWriter();
-        $this->xmlWriter = $xmlWriter;
-        $this->config = $importConfig;
-    }
-
 
     /**
      * @param WriteTarget $target
@@ -82,10 +85,16 @@ class XmlWriter implements WriterInterface
     {
         try {
             if (empty($row) === false) {
-                $this->xmlWriter->startElement('row');
-                foreach ($row as $field => $value) {
-                // $value1 = trim($value);
-                    $this->xmlWriter->writeElement($field, $value);
+                $row = $this->recordFormatter->format($row, $this->config);
+                $this->xmlWriter->startElement('fields');
+                foreach ($row as $field => $item) {
+                    $this->xmlWriter->startElement('field');
+                    $this->xmlWriter->writeAttribute('columnId', ($item['columnId']) ?? 'notfound');
+                    $this->xmlWriter->writeAttribute('name', ($item['name']) ?? $field);
+                    $this->xmlWriter->writeAttribute('label', $field);
+                    $value = ($item['value']) ?? '';
+                    $this->xmlWriter->text($value);
+                    $this->xmlWriter->endElement();
                 }
                 $this->xmlWriter->endElement();
             }
@@ -95,7 +104,7 @@ class XmlWriter implements WriterInterface
         }
     }
 
-      /**
+    /**
      * close
      *
      * @return void

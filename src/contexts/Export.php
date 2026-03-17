@@ -42,6 +42,8 @@ final class Export extends AbstractContext
         public WriterInterface $writer,
         public Writer $writerContext,
         public string $sectionName,
+        public int $rowOffset = 1,
+        public int $colOffset = 1,
         public array $params = []
     ) {
         parent::__construct(
@@ -65,15 +67,13 @@ final class Export extends AbstractContext
      */
     public function writeRow(
         array $row,
-        int $startRow = 1,
-        int $startCol = 1,
         ?string $style = null
     ): void {
         $this->writer->write(
             new WriteTarget(
                 sheet: $this->sectionName,
-                rowNumber: $startRow,
-                colNumber: $startCol,
+                rowNumber: $this->rowOffset,
+                colNumber: $this->colOffset,
                 style: $style
             ),
             $row
@@ -89,18 +89,16 @@ final class Export extends AbstractContext
      * @return void
      * @throws Exception
      */
-    public function writePreambleOne(array $headers, int $rowNumber, int $colOffset, ?string $style = null): void
+    public function writePreambleOne(array $headers, ?string $style = null): void
     {
         try {
-            $key = crc32($this->sectionName . ':' . $rowNumber . ':' . $colOffset);
+            $key = crc32($this->sectionName . ':' . $this->rowOffset . ':' . $this->colOffset);
 
             if (isset($this->writtenPreamble[$key])) {
                 return;
             }
             $this->writeRow(
                 row: $headers,
-                startRow: $rowNumber,
-                startCol: $colOffset,
                 style: $style
             );
             $this->writtenPreamble[$key] = true;
