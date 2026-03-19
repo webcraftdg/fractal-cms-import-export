@@ -93,15 +93,17 @@ final class Export extends AbstractContext
     {
         try {
             $key = crc32($this->sectionName . ':' . $this->rowOffset . ':' . $this->colOffset);
-
             if (isset($this->writtenPreamble[$key])) {
                 return;
             }
-            $this->writeRow(
-                row: $headers,
-                style: $style
-            );
-            $this->writtenPreamble[$key] = true;
+            if(empty($headers) === false) {
+                $this->writeRow(
+                    row: $headers,
+                    style: $style
+                );
+                $this->writtenPreamble[$key] = true;        
+            }
+        
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

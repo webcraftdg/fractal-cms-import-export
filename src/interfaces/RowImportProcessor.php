@@ -22,9 +22,13 @@ interface RowImportProcessor
     public function getName() : string;
 
     /**
-     * @param array $row
-     * @param ImportContext $context
+     * process
+     *
+     * @param  array              $row
+     * @param  ImportContext      $context
+     * @param  array              $params
+     *
      * @return RowProcessorResult
      */
-    public function process(array $row, ImportContext $context): RowProcessorResult;
+    public function process(array $row, ImportContext $context, array $params = []): RowProcessorResult;
 }

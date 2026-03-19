@@ -94,24 +94,6 @@ class ExcelReader implements importReader, SpreadsheetImportReader
     }
 
     /**
-     * close
-     *
-     * @return void
-     */
-    public function close(): void
-    {
-        try {
-            if ($this->spreadsheet instanceof Spreadsheet) {
-                $this->spreadsheet->disconnectWorksheets();
-                unset($this->spreadsheet);
-            }
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
      * get Headers
      *
      * @return array
@@ -243,6 +225,24 @@ class ExcelReader implements importReader, SpreadsheetImportReader
     {
         try {
             return 1;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * close
+     *
+     * @return void
+     */
+    public function close(): void
+    {
+        try {
+            if ($this->spreadsheet instanceof Spreadsheet) {
+                $this->spreadsheet->disconnectWorksheets();
+                unset($this->spreadsheet);
+            }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

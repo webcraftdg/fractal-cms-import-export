@@ -56,9 +56,20 @@ class ActiveRecord implements ImportInserter
             if (class_exists($importConfig->table) === true)  {
                 /** @var ActiveRecord $model */
                 $model = Yii::createObject($importConfig->table);
-                $model->attributes = $attributes;
+                foreach($attributes as $attribute => $value){
+                    if ($model->hasAttribue($attribute) === true) {
+                        $model->$attribute = $value;
+                    }
+                }
                 if ($model->validate() === true) {
-                    $model->save();
+                    try {
+                        $model->save();
+                    } catch(Exception $e) {
+                        Yii::error($e->getMessage(), __METHOD__);
+                        $errors[] = new ImportError(
+                            rowNumber: $rowNumber,column: 'Save model',message: $e->getMessage(),level: ImportError::LEVEL_VALIDATION_ERROR
+                        );
+                    }
                 } else {
                     $success = false;
                     foreach ($model->errors as $field => $validateErrors) {

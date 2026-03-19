@@ -9,6 +9,6 @@
 
 - Le module ne fournit pas de logique métier
 - Les erreurs doivent être gérées au niveau intégrateur
-- Les performances dépendent principalement des Providers
+- Les performances dépendent principalement des DataReaders
 
   [<- Précédent](introduction.md)

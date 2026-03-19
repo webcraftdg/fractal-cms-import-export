@@ -41,7 +41,7 @@ use fractalCms\core\helpers\Html;
             echo Html::activeLabel($model, 'name', ['label' => 'Nom', 'class' => 'fc-form-label']);
             echo Html::activeTextInput($model, 'name', ['placeholder' => 'Nom', 'class' => 'fc-form-input']);
             if ($model->hasErrors('name') === true) {
-                echo Html::tag('div', $model->errors['name'][0], ['class' => 'text-danger']);
+                echo Html::tag('div', $model->errors['name'][0], ['class' => 'error-message']);
             }
             ?>
     </div>
@@ -94,6 +94,8 @@ use fractalCms\core\helpers\Html;
             echo Html::activeDropDownList($model, 'exportTarget', ImportConfig::optsTargets(), [
                 'prompt' => 'Sélectionner une cible (pour une requête SQL)', 'class' => 'fc-form-input',
             ]);
+            echo Html::tag('div', 'Veuillez, en cas d\'une configuration pour l\'export, indiquer la source des données (SQL => la requête est utilisée, VIEW => Les données contruitent dans la View seront utilsées)', 
+            ['class' => 'text-orange-500 text-xs italic']);
             ?>
         </div>
     </div>
@@ -107,7 +109,7 @@ use fractalCms\core\helpers\Html;
                 'rows' => 7,
             ]);
             if ($model->hasErrors('sql') === true) {
-                echo Html::tag('div', $model->errors['sql'][0], ['class' => 'text-danger']);
+                echo Html::tag('div', $model->errors['sql'][0], ['class' => 'error-message']);
             }
             ?>
         </div>

@@ -46,8 +46,9 @@ class ExportProcessor implements InterfacesExportProcessor
                         if ($rowProcessor instanceof RowExportProcessor) {
 
                             $result = $rowProcessor->process(
-                                $row,
-                                $context
+                                row: $row,
+                                context: $context,
+                                params:$params
                             );
                             if ($result->handled === true) {
                                 $importJob->successRows++;

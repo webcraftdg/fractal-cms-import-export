@@ -17,8 +17,8 @@ use Yii;
 
 class RowProcessor
 {
-    /** @var array $rowTransformers */
-    private array $rowTransformers = [];
+    /** @var array $rowProcessors */
+    private array $rowProcessors = [];
 
     /**
      * @param array $config
@@ -27,8 +27,8 @@ class RowProcessor
     public function __construct(array $config)
     {
         try {
-            $this->rowTransformers['import'] = $config['import'] ?? [];
-            $this->rowTransformers['export'] = $config['export'] ?? [];
+            $this->rowProcessors['import'] = $config['import'] ?? [];
+            $this->rowProcessors['export'] = $config['export'] ?? [];
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -60,10 +60,10 @@ class RowProcessor
      * @return array
      * @throws Exception
      */
-    public function getRowTransformers(): array
+    public function getRowProcessors(): array
     {
         try {
-            return $this->rowTransformers;
+            return $this->rowProcessors;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -75,7 +75,7 @@ class RowProcessor
      */
     public function getImportList(): array
     {
-        return $this->format($this->rowTransformers['import']);
+        return $this->format($this->rowProcessors['import']);
     }
 
     /**
@@ -83,7 +83,7 @@ class RowProcessor
      */
     public function getExportList(): array
     {
-        return $this->format($this->rowTransformers['export']);
+        return $this->format($this->rowProcessors['export']);
     }
 
     private function format(array $items): array
@@ -105,8 +105,8 @@ class RowProcessor
     {
         try {
             $item = $type === 'import'
-                ? $this->rowTransformers['import'][$key] ?? null
-                : $this->rowTransformers['export'][$key] ?? null;
+                ? $this->rowProcessors['import'][$key] ?? null
+                : $this->rowProcessors['export'][$key] ?? null;
 
             if ($item === null) {
                 throw new NotFoundHttpException('Transformer '.$key.' not found');

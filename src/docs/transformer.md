@@ -104,7 +104,7 @@ Un `RowImportTransformer` doit :
 
 ## RowExportTransformer
 
-Les RowExportTransformer doivent réspecter une Interface RowExportTransformer
+Les RowExportTransformer doivent respecter une Interface RowExportTransformer
 
 ```php
 use fractalCms\importExport\interfaces\RowExportTransformer as RowExportTransformerInterface;

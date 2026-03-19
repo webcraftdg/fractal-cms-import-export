@@ -15,7 +15,7 @@
             />
             <div class="fc-row-inline">
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.sourceErrors">
-                    <label class="fc-form-label" for.bind="'source-'+model.id" id="labelSource">Colonne Source</label>
+                    <label class="fc-form-label" for.bind="'source-'+model.id" id="labelSource">Nom de la colonne en entré</label>
                     <div class="form-control p-0"   class.bind="model.sourceErrors.length ? 'error' : ''">
                         <input
                                 type="text"
@@ -47,7 +47,7 @@
                     <p class="fc-error" repeat.for="error of model.sourceErrors" id.bind="'model.sourceErrors'+model.id">${error.result.message}</p>
                 </div>
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.targetErrors">
-                    <label class="fc-form-label" for.bind="'target-'+model.id" id="labelTarget">Colonne cible</label>
+                    <label class="fc-form-label" for.bind="'target-'+model.id" id="labelTarget">Nom de la colonne en sortie</label>
                     <input
                             class="fc-form-input"
                             id.bind="'target-'+model.id"

@@ -10,8 +10,6 @@
  */
 namespace fractalCms\importExport\interfaces;
 
-use fractalCms\importExport\models\ImportConfig;
-
 interface DataReader 
 {
 

@@ -197,10 +197,10 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['importFile'],
                 'file',
                 'skipOnEmpty' => false,
-                'extensions' => ['xlsx', 'xls', 'csv'],
+                'extensions' => ['xlsx', 'xls', 'csv', 'xml', 'json'],
                 'checkExtensionByMimeType' => false,
                 'maxFiles' => 1,
-                'message' => 'Le fichier doit être au format Xlsx, Xls, CSV',
+                'message' => 'Le fichier doit être au format Xlsx, Xls, CSV, XML, JSON',
                 'on' => [self::SCENARIO_IMPORT_EXPORT],
                 'when' => function() {
                     return $this->type === static::TYPE_IMPORT;
@@ -829,7 +829,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                         $errors[] = new ImportError(
                             rowNumber: $orderColumn,
                             column: $importColumn->source,
-                            message: 'Colonne : '.$importColumn->source.': Colonne externe RowTransfomer obligatoire',
+                            message: 'Colonne : '.$importColumn->source.': Pour une Colonne le convertisseur métier est obligatoire',
                             level: ImportError::LEVEL_ERROR
                         );
                     }

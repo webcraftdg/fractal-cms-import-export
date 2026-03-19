@@ -14,6 +14,7 @@ use Exception;
 use fractalCms\importExport\interfaces\importReader as InterfacesImportReader;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\imports\readers\ExcelReader;
+use fractalCms\importExport\services\imports\readers\XmlReader;
 use InvalidArgumentException;
 use Yii;
 
@@ -35,6 +36,9 @@ class ImportReader {
                 case ImportConfig::FORMAT_CSV: 
                     return new ExcelReader();
                     break;
+                case ImportConfig::FORMAT_XML: 
+                    return new XmlReader();
+                    break;    
                 default: 
                     throw new InvalidArgumentException('Error Import Format : '.$format);
                     break;

@@ -10,25 +10,19 @@
  */
 namespace fractalCms\importExport\services\imports\readers;
 
-use fractalCms\importExport\models\ImportConfigColumn;
-use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\ColumnTransformer as ColumnTransformerService;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Reader\Csv;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use yii\base\NotSupportedException;
+
+use fractalCms\importExport\interfaces\ImportReader;
+use XMLReader as GlobalXMLReader;
 use Exception;
-use fractalCms\importExport\interfaces\importReader;
 use Yii;
 
-class XmlReader implements importReader
+class XmlReader implements ImportReader
 {
 
 
-    private $maxColumns = 0;
-    private $headers = [];
-    private $batchSize = 100;
+    
+    private GlobalXMLReader $xmlReader;
+    private $batchSize = 500;
 
     /**
      * open
@@ -41,17 +35,9 @@ class XmlReader implements importReader
     public function open(string $filePath, array $options = []): void
     {
         try {
-            $this->spreadsheet = $this->prepareSpreadSheet($filePath);
-            if ($this->spreadsheet instanceof Spreadsheet) {
-                $this->sheet = $this->spreadsheet->getActiveSheet();
-            }
-            if (isset($options['macComulns']) === true) {
-                $this->maxColumns = ($options['maxColumns']);;
-            } elseif($this->sheet instanceof Worksheet) {
-                 $this->maxColumns = $this->sheet->getHighestColumn();
-            }
-            $this->maxColumns = ($options['maxColumns']) ?? 0;
-            $this->headers = $this->getHeaders();
+            $this->xmlReader = new GlobalXMLReader();
+            $this->xmlReader->open($filePath);
+            $this->batchSize = ($options['batchSize']) ?? $this->batchSize;
 
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
@@ -70,14 +56,21 @@ class XmlReader implements importReader
     
             $batch = [];
             $indexBatch = 0;
-            for($i = $this->getStartRow();$i <= $this->getEndRow($this->sheet); $i ++) {
-                $batch[] = $this->getRowValues($i);
-                $indexBatch ++;
-                if ($indexBatch >= $this->batchSize) {
-                    yield $batch;
-                    $batch = [];
-                    $indexBatch = 0;
-                }
+    
+            while ($this->xmlReader->read() === true) {
+                    if (
+                        $this->xmlReader->nodeType === GlobalXMLReader::ELEMENT
+                        && $this->xmlReader->name === 'fields'
+                    ) {
+                        $batch[] = $this->getRowValues();
+                        $indexBatch ++;
+                        if ($indexBatch >= $this->batchSize) {
+                            yield $batch;
+                            $batch = [];
+                            $indexBatch = 0;
+                        }
+                    }
+              
             }
             
             if (empty($batch) === false) {
@@ -91,47 +84,33 @@ class XmlReader implements importReader
     }
 
     /**
-     * get Headers
+     * get row values
      *
-     * @return array
+     * @return void
      */
-    public function getHeaders(): array
-    {
-        try {
-            $headers = [];
-            if ($this->sheet instanceof Worksheet) {
-                for($i = $this->getStartColumn();$i <= $this->maxColumns; $i++) {
-                    $headers[] = $this->sheet->getCell([$i, 1])->getValue();
-                }
-            }
-            return $headers;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-
-    /**
-     * getRowValues
-     *
-     * @param int $rowNumber
-     * @return array
-     * @throws Exception
-     */
-    protected function getRowValues($rowNumber) : array
+    public function getRowValues()
     {
         try {
             $row = [];
-            $startCol = $this->getStartColumn();
-            $endCol = $this->maxColumns;
-            $indexHeader = 0;
-            /** @var ImportConfigColumn $column */
-            for ($i = $startCol; $i <= $endCol; $i ++) {
-                $value = $this->sheet->getCell([$i, $rowNumber])->getValue();
-                $header = $this->headers[$indexHeader] ?? 'column_'.$indexHeader;
-                $row[$header] = $value;
-                $indexHeader ++;
+            $depth = $this->xmlReader->depth;
+
+            while ($this->xmlReader->read()) {
+                // fin du record
+                if ($this->xmlReader->nodeType === GlobalXMLReader::END_ELEMENT 
+                    && $this->xmlReader->name === 'fields' 
+                    && $this->xmlReader->depth === $depth) {
+                    break;
+                }
+
+                if ($this->xmlReader->nodeType === GlobalXMLReader::ELEMENT && $this->xmlReader->name === 'field') {
+                    $name = $this->xmlReader->getAttribute('label');
+                    if ($name === null || $name === '') {
+                        continue;
+                    }
+
+                    $value = $this->readFieldValue();
+                    $row[$name] = $value;
+                }
             }
             return $row;
         } catch (Exception $e)  {
@@ -140,40 +119,30 @@ class XmlReader implements importReader
         }
     }
 
-
     /**
-     * Prepare
+     * read field value
      *
-     * @param string $filePath
-     * @return Spreadsheet
-     * @throws NotSupportedException
+     * @return string
      */
-    public static function prepareSpreadSheet(string $filePath): Spreadsheet
+    private function readFieldValue(): string
     {
-        try {
-            $spreadsheet = null;
-            if (file_exists($filePath) === true) {
-                $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                switch ($extension) {
-                    case 'xlsx':
-                    case 'xls':
-                        $spreadsheet = IOFactory::load($filePath);
-                        break;
-                    case 'csv':
-                    case 'txt':
-                        $reader = new Csv();
-                        $reader->setDelimiter(';');
-                        $reader->setEnclosure('');
-                        $reader->setInputEncoding('CP1252');
-                        $reader->setSheetIndex(0);
-                        $reader->setReadDataOnly(true);
-                        $spreadsheet = $reader->load($filePath);
-                        break;
-                    default:
-                        throw new NotSupportedException("Extension non supportée : " . $extension);
+
+     try {
+            $value = '';
+
+            while ($this->xmlReader->read()) {
+                if ($this->xmlReader->nodeType === GlobalXMLReader::TEXT || $this->xmlReader->nodeType === GlobalXMLReader::CDATA) {
+                    $value .= $this->xmlReader->value;
+                }
+                if (
+                    $this->xmlReader->nodeType === GlobalXMLReader::END_ELEMENT
+                    && $this->xmlReader->name === 'field'
+                ) {
+                    break;
                 }
             }
-            return $spreadsheet;
+
+            return $value; 
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -181,48 +150,14 @@ class XmlReader implements importReader
     }
 
     /**
-     * Get start row
+     * close
      *
-     * @return int
-     * @throws Exception
+     * @return void
      */
-    public function getStartRow(): int
+    public function close(): void
     {
         try {
-            return 2;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * get end row
-     *
-     * @param Worksheet $worksheet
-     * @return int
-     * @throws Exception
-     */
-    public function getEndRow(Worksheet $worksheet): int
-    {
-        try {
-            return $worksheet->getHighestRow();
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * Get start column
-     *
-     * @return int
-     * @throws Exception
-     */
-    public function getStartColumn(): int
-    {
-        try {
-            return 1;
+            $this->xmlReader->close();
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

@@ -22,9 +22,13 @@ interface RowExportProcessor
     public function getName() : string;
 
     /**
-     * @param array $row
-     * @param ExportContext $context
+     * process
+     *
+     * @param  array              $row
+     * @param  ExportContext      $context
+     * @param  array              $params
+     *
      * @return RowProcessorResult
      */
-    public function process(array $row, ExportContext $context): RowProcessorResult;
+    public function process(array $row, ExportContext $context, array $params = []): RowProcessorResult;
 }

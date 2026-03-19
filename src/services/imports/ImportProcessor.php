@@ -89,8 +89,9 @@ final class ImportProcessor implements ImportProcessorInterface
                     if ($rowProcessor instanceof RowImportProcessor) {
                         try {
                             $result = $rowProcessor->process(
-                                $row,
-                                $baseImportContext->withRowNumber($indexRow)
+                                row:$row,
+                                context:$baseImportContext->withRowNumber($indexRow),
+                                params:$params
                             );
                             if ($result->handled === true) {
                                 $importJob->successRows++;
