@@ -15,7 +15,9 @@
             />
             <div class="fc-row-inline">
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.sourceErrors">
-                    <label class="fc-form-label" for.bind="'source-'+model.id" id="labelSource">Nom de la colonne en entré</label>
+                    <label if.bind="type=='import'" class="fc-form-label" for.bind="'source-'+model.id" id="labelSource">Colonne source du fichier</label>
+                    <label else class="fc-form-label" for.bind="'source-'+model.id" id="labelSource">Champ source</label>
+                
                     <div class="form-control p-0"   class.bind="model.sourceErrors.length ? 'error' : ''">
                         <input
                                 type="text"
@@ -30,7 +32,7 @@
                                 aria-invalid.bind="model.sourceErrors.length ? 'true' : 'false'"
                                 required
                         />
-                        <select
+                        <select 
                                 if.bind="tableColumns.length > 0"
 
                                 class="fc-form-input mt-2 columns"
@@ -47,7 +49,8 @@
                     <p class="fc-error" repeat.for="error of model.sourceErrors" id.bind="'model.sourceErrors'+model.id">${error.result.message}</p>
                 </div>
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.targetErrors">
-                    <label class="fc-form-label" for.bind="'target-'+model.id" id="labelTarget">Nom de la colonne en sortie</label>
+                    <label if.bind="type=='import'" class="fc-form-label" for.bind="'target-'+model.id" id="labelTarget">Champ cible en base</label>
+                    <label  else class="fc-form-label" for.bind="'target-'+model.id" id="labelTarget">Colonne du fichier exporté</label>
                     <input
                             class="fc-form-input"
                             id.bind="'target-'+model.id"
@@ -66,7 +69,7 @@
             </div>
             <div class="fc-row-inline">
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.formatErrors">
-                    <label class="fc-form-label"  for.bind="'format-'+model.id" id="labelFormat">Format de données</label>
+                    <label class="fc-form-label"  for.bind="'format-'+model.id" id="labelFormat">Type de donnée attendu</label>
                     <select
                             class="fc-form-input"
                             id.bind="'format-'+model.id"
@@ -78,7 +81,7 @@
                             aria-invalid.bind="model.formatErrors.length ? 'true' : 'false'"
                             required
                     >
-                        <option value="">Sélectionner un format de donnée</option>
+                        <option value="">Sélectionner un type de donnée</option>
                         <option value="pk">pk</option>
                         <option value="upk">upk</option>
                         <option value="bigpk">bigpk</option>
@@ -103,7 +106,7 @@
                         <option value="json">json</option>
                     </select>
                     <p class="fc-error" repeat.for="error of model.formatErrors" id.bind="'model.formatErrors'+model.id">${error.result.message}</p>
-
+                    <div class="text-xs italic text-orange-500">Type utilisé pour interpréter, valider ou convertir la valeur.</div>
                 </div>
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.defaultErrors">
                     <label class="fc-form-label" for.bind="'default-'+model.id" id="labelDefault">Valeur par défaut</label>
@@ -118,11 +121,12 @@
                             aria-required="true"
                             aria-invalid.bind="model.defaultErrors.length ? 'true' : 'false'"
                     />
+                    <div class="text-xs italic text-orange-500">Valeur utilisée si la donnée source est absente ou vide.</div>
                     <p class="fc-error" repeat.for="error of model.defaultErrors" id.bind="'model.defaultErrors'+model.id">${error.result.message}</p>
                 </div>
             </div>
             <div class="fc-form-group" validation-errors.from-view="model.transformerErrors">
-                <label class="fc-form-label" for.bind="'transformer-'+model.id" id="labelTransformer">Transformeur de donnée de la cellule</label>
+                <label class="fc-form-label" for.bind="'transformer-'+model.id" id="labelTransformer">Transformation de la valeur</label>
                 <select
                         class="fc-form-input"
                         id.bind="'transformer-'+model.id"
@@ -139,7 +143,7 @@
                     </option>
                 </select>
                 <div class="mt-2" if.bind="model.transformer && model.transformer.optionsSchema">
-                    <div class="text-balance">${model.transformer.description}</div>
+                    <div class="text-sm italic text-orange-500">${model.transformer.description}</div>
                     <div class="fc-row" repeat.for="option of model.transformer.optionsSchema">
                         <div class="fc-form-group" validation-errors.from-view="model.transformer.optionsSchema[$parent.$index].keyErrors">
                             <label

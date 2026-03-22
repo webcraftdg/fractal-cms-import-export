@@ -236,6 +236,7 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['exportTarget'] , 'required', 'message' => 'La cible de l\'export doit-être valorisé avec un valeur SQL', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
                 return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
+            ['exportTarget', 'validateExportTarget', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
             [['name', 'version'], 'unique', 'targetAttribute' => ['name', 'version'],'message' => 'name-version doit être unique'],
         ];
     }
@@ -272,6 +273,36 @@ class ImportConfig extends \yii\db\ActiveRecord
     }
 
     
+
+   
+    /**
+     * validate Export Target
+     *
+     * @param  [type] $attribute
+     * @param  [type] $params
+     *
+     * @return bool
+     */
+    public function validateExportTarget($attribute, $params) : bool
+    {
+        try {
+            $success = true;
+            $exportTarget = $this->exportTarget;
+            if (empty($this->sql) === true) {
+                $this->addError('sql', 'La requête SQL doit-être valorisé si le mode de calcul des données à exporter est SQL ou VIEW');
+                $success = false;
+            }
+            if ($this->sourceType === self::SOURCE_TYPE_EXTERN) {
+                $this->addError('exportTarget', 'Le mode de calcul des données doit-être vide si la source des données est EXTERNE');
+                $success = false;
+            }
+            return $success;
+        } catch (Exception $e) {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw $e;
+        }
+    }
+
 
     /**
      * @param $attribute

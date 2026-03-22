@@ -12,6 +12,7 @@ export class Column
     @bindable() public importConfigId:string;
     @bindable() public parent:any;
     @bindable() public index:number;
+    @bindable() public type:string;
     @bindable() public tableColumns:IImportConfigColumn[];
     @bindable() public transformers:ITransformer[];
 

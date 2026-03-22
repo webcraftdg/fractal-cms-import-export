@@ -16,6 +16,7 @@ export interface IImportConfig {
     active:boolean;
     truncateTable:boolean;
     table:string;
+    type:string;
     jsonConfig:string;
     dateCreate:string;
     dateUpdate:string;

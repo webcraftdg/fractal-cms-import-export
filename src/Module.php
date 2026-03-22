@@ -186,7 +186,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         try {
             Yii::debug(Constant::TRACE_DEBUG, __METHOD__, __METHOD__);
             $importExport = [
-                'title' => 'ImportExport',
+                'title' => 'Data Configuration',
                 'url' => null,
                 'optionsClass' => [],
                 'children' => []
@@ -200,14 +200,14 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $importExport['optionsClass'] = $optionsClass;
                 }
                 $importExport['children'][] = [
-                    'title' => 'Configuration import',
+                    'title' => 'Configurations',
                     'url' => Url::to(['/'.$this->contextId.'/import-config/index']),
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
 
                 $importExport['children'][] = [
-                    'title' => 'Test import/export',
+                    'title' => 'Tests',
                     'url' => Url::to(['/'.$this->contextId.'/import-config/test-import']),
                     'optionsClass' => $optionsClass,
                     'children' => [],
