@@ -25,26 +25,13 @@
                                 placeholder="Saisisser ou sélectionner une colonne source"
                                 name.bind="'ImportConfig[tmpColumns]['+index+'][source]'"
                                 class="fc-form-input"
-                                input.trigger="updateSelectColumns($event)"
+                                input.trigger="onInputChange($event)"
                                 id.bind="'source-'+model.id"
                                 aria-describedby="labelSource"
                                 aria-required="true"
                                 aria-invalid.bind="model.sourceErrors.length ? 'true' : 'false'"
                                 required
                         />
-                        <select 
-                                if.bind="tableColumns.length > 0"
-
-                                class="fc-form-input mt-2 columns"
-                                id.bind="'search-'+index+model.id"
-                                change.trigger="changeSelect($event)"
-                                value.bind="model.search"
-                        >
-                            <option value="">Colonnes disponible</option>
-                            <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.source">
-                                ${tableColumn.target}
-                            </option>
-                        </select>
                     </div>
                     <p class="fc-error" repeat.for="error of model.sourceErrors" id.bind="'model.sourceErrors'+model.id">${error.result.message}</p>
                 </div>
@@ -58,15 +45,32 @@
                             name.bind="'ImportConfig[tmpColumns]['+index+'][target]'"
                             value.bind="model.target & validate"
                             class.bind="model.targetErrors.length ? 'error' : ''"
+                            input.trigger="onInputChange($event)"
                             aria-describedby="labelTarget"
                             aria-required="true"
                             aria-invalid.bind="model.targetErrors.length ? 'true' : 'false'"
                             required
                     />
                     <p class="fc-error" repeat.for="error of model.targetErrors" id.bind="'model.targetErrors'+model.id">${error.result.message}</p>
-
                 </div>
             </div>
+            <div class="fc-form-group">
+                    <select 
+                            if.bind="tableColumns.length > 0"
+
+                            class="fc-form-input mt-2 columns"
+                            id.bind="'search-'+index+model.id"
+                            change.trigger="changeSelect($event)"
+                            value.bind="model.search"
+                    >
+                        <option value="">Colonnes disponible</option>
+                        <option repeat.for="tableColumn of tableColumns"  value.bind="tableColumn.source">
+                            ${tableColumn.target}
+                        </option>
+                    </select>
+                </div>
+            </div>
+             
             <div class="fc-row-inline">
                 <div class="fc-form-group sm:w-1/2" validation-errors.from-view="model.formatErrors">
                     <label class="fc-form-label"  for.bind="'format-'+model.id" id="labelFormat">Type de donnée attendu</label>

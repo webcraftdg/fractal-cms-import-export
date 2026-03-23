@@ -14,6 +14,7 @@ use Exception;
 use fractalCms\importExport\models\ColumnModel;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
+use fractalCms\importExport\models\ImportConfig;
 use Yii;
 use yii\base\Component;
 use yii\db\ColumnSchema;
@@ -104,9 +105,12 @@ class DbView extends Component implements DbViewInterface
     }
 
     /**
-     * @param string $tableName
+     * get Table columns
+     *
+     * @param  string       $tableName
+     * @param  ImportConfig $config
+     *
      * @return array
-     * @throws Exception
      */
     public function getTableColumns(string $tableName): array
     {
@@ -117,8 +121,9 @@ class DbView extends Component implements DbViewInterface
             if ($this->exists($tableName) === true && $hasTable === true) {
                 $columns = array_map(function(ColumnSchema $columnSchema) {
                     $newColumn = new ColumnModel(['scenario' => ColumnModel::SCENARIO_CREATE]);
+                    $ucFirst = ucfirst($columnSchema->name);
                     $newColumn->source = $columnSchema->name;
-                    $newColumn->target = ucfirst($columnSchema->name);
+                    $newColumn->target = $columnSchema->name;
                     $newColumn->format = $columnSchema->type;
                     return $newColumn;
                 }, Yii::$app->db->getSchema()->getTableSchema($tableName)->columns);

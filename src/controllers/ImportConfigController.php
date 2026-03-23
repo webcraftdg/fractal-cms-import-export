@@ -141,6 +141,8 @@ class ImportConfigController extends BaseController
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             $tables = $this->parameter->getActiveModelTableNames();
+            $rowProcessors = ($this->rowProcessorService instanceof RowProcessorService) ?
+                $this->rowProcessorService->getAll() : [];
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
@@ -174,7 +176,7 @@ class ImportConfigController extends BaseController
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowProcessors' => [],
+                    'rowProcessors' => $rowProcessors,
                 ]);
             }
             return $response;

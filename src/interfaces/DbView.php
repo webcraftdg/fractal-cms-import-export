@@ -10,6 +10,8 @@
  */
 namespace fractalCms\importExport\interfaces;
 
+use fractalCms\importExport\models\ImportConfig;
+
 interface DbView
 {
 
@@ -40,7 +42,11 @@ interface DbView
     public function exists(string $name) : bool;
 
     /**
-     * @param string $tableTableName
+     * get Table columns
+     *
+     * @param  string       $tableTableName
+     * @param  ImportConfig $config
+     *
      * @return array
      */
     public function getTableColumns(string $tableTableName) : array;

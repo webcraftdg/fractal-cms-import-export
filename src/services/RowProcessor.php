@@ -12,6 +12,7 @@ namespace fractalCms\importExport\services;
 
 use fractalCms\importExport\models\ImportConfig;
 use yii\web\NotFoundHttpException;
+use yii\helpers\ArrayHelper;
 use Exception;
 use Yii;
 
@@ -86,6 +87,25 @@ class RowProcessor
         return $this->format($this->rowProcessors['export']);
     }
 
+    /**
+     * get all
+     *
+     * @return array
+     */
+    public function getAll(): array 
+    {
+        $exports = $this->getExportList();
+        $import = $this->getImportList();
+        return ArrayHelper::merge($exports, $import);
+    }
+
+    /**
+     * format
+     *
+     * @param  array $items
+     *
+     * @return array
+     */
     private function format(array $items): array
     {
         $values = [];

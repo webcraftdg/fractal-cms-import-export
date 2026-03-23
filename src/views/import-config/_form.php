@@ -59,6 +59,9 @@ use fractalCms\core\helpers\Html;
             echo Html::activeDropDownList($model, 'sourceType', ImportConfig::optsSourceTypes(), [
                 'prompt' => 'Sélectionner une source de données', 'class' => 'fc-form-input',
             ]);
+               if ($model->hasErrors('sourceType') === true) {
+                echo Html::tag('div', $model->errors['sourceType'][0], ['class' => 'error-message']);
+            }
             ?>
             <div class="text-xs italic text-orange-500">
                 <strong>Définit comment les données sont récupérées pour un export :</strong>
@@ -88,6 +91,9 @@ use fractalCms\core\helpers\Html;
             echo Html::activeDropDownList($model, 'table', $tables, [
                 'prompt' => 'Sélectionner une table', 'class' => 'fc-form-input',
             ]);
+            if ($model->hasErrors('table') === true) {
+                echo Html::tag('div', $model->errors['table'][0], ['class' => 'error-message']);
+            }
             ?>
             <div class="text-xs italic">
                 <ul class="text-orange-500">
@@ -117,8 +123,8 @@ use fractalCms\core\helpers\Html;
             <div class="text-xs italic text-orange-500">
                 <strong>Choisissez comment récupérer les données de l’export :</strong>
                 <ul>
-                    <li><strong>SQL :</strong> la requête SQL est exécutée directement.</li>
-                    <li><strong>VIEW :</strong> les données proviennent de la vue créée vias la requête SQL.</li>
+                    <li><strong>SQL :</strong> la requête SQL est exécutée à chaque export.</li>
+                    <li><strong>VIEW :</strong> les données proviennent de la vue créée via la requête SQL.</li>
                 </ul>
             </div>
         </div>
@@ -145,24 +151,27 @@ use fractalCms\core\helpers\Html;
         </div>
     </div>
 </div>
-<?php if ($model->isNewRecord === false): ?>
-    <?php if (empty($rowProcessors) === false):?>
-        <div class="fc-row">
-            <div class="fc-form-group">
-                <?php
-                echo Html::activeLabel($model, 'rowProcessor', ['label' => 'Convertisseur métier', 'class' => 'fc-form-label']);
-                echo Html::activeDropDownList($model, 'rowProcessor', $rowProcessors, [
-                    'prompt' => 'Sélectionner un convertisseur', 'class' => 'fc-form-input',
-                ]);
-                ?>
-                <div class="text-xs italic text-orange-500">
-                <ul>
-                    <li>Permet d’appliquer une transformation métier à chaque ligne importée ou exportée.</li>
-                </ul>
-            </div>
-            </div>
+<?php if (empty($rowProcessors) === false):?>
+    <div class="fc-row">
+        <div class="fc-form-group">
+            <?php
+            echo Html::activeLabel($model, 'rowProcessor', ['label' => 'Convertisseur métier', 'class' => 'fc-form-label']);
+            echo Html::activeDropDownList($model, 'rowProcessor', $rowProcessors, [
+                'prompt' => 'Sélectionner un convertisseur', 'class' => 'fc-form-input',
+            ]);
+            if ($model->hasErrors('rowProcessor') === true) {
+                echo Html::tag('div', $model->errors['rowProcessor'][0], ['class' => 'error-message']);
+            }
+            ?>
+            <div class="text-xs italic text-orange-500">
+            <ul>
+                <li>Permet d’appliquer une transformation métier à chaque ligne importée ou exportée.</li>
+            </ul>
         </div>
-    <?php endif;?>
+        </div>
+    </div>
+<?php endif;?>
+<?php if ($model->isNewRecord === false): ?>
 <div class="fc-row mt-3">
     <div class="border rounded-md">
         <div class="px-3 py-2 border-b">

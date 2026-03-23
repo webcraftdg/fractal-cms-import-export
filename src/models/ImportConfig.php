@@ -219,10 +219,10 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['name'], 'match', 'pattern' => '/^[a-z][a-z0-9_]{0,63}$/i', 'message' => 'Le nom n\'accepte pas les caractères spéciaux (éè-#@!àç&).'
                 , 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE, self::SCENARIO_IMPORT_JSON_FILE]],
             [['type', 'table', 'sql', 'rowProcessor',], 'string'],
-            [['table'] , 'required', 'message' => 'La table doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
-                return $this->sourceType === self::SOURCE_TYPE_TABLE;
+            [['table'] , 'required', 'message' => 'La table est obligatoire lorsque la source des données est TABLE ou EXTERNE pour une configuration en IMPORT', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->sourceType === self::SOURCE_TYPE_TABLE || ($this->type ===self::TYPE_IMPORT && $this->sourceType === self::SOURCE_TYPE_EXTERN);
             }],
-            [['sql'] , 'required', 'message' => 'Le SQL doit-être valorisé', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+            [['sql'] , 'required', 'message' => 'Le SQL est obligatoire lorsque la source des données est SQL', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
                 return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
             [['sql'], 'validateSql','message' => 'Le SQL doit être conforme (uniquement verb "SELECT")', 'on' => [self::SCENARIO_IMPORT_JSON_FILE, self::SCENARIO_CREATE, self::SCENARIO_UPDATE]],
@@ -230,9 +230,17 @@ class ImportConfig extends \yii\db\ActiveRecord
             [['name'], 'string', 'max' => 150],
             [['fileFormat'], 'string', 'max' => 10],
             [['rowProcessor'], 'string', 'max' => 15],
+            [['rowProcessor'] , 'required', 'message' => 'Le convertisseur métier est obligatoire lorsque la source des données est EXTERNE', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->sourceType === self::SOURCE_TYPE_EXTERN && $this->type === self::TYPE_EXPORT;
+            }],
             ['fileFormat', 'in', 'range' => array_keys(self::optsFormats())],
             ['exportTarget', 'in', 'range' => array_keys(self::optsTargets())],
-            ['sourceType', 'in', 'range' => array_keys(self::optsSourceTypes())],
+            ['sourceType', 'in', 'range' => array_keys(self::optsSourceTypes()), 'message' => 'Une configuration EXPORT peut avoir : '.implode(',', self::optsSourceTypes()), 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->type === self::TYPE_EXPORT;
+            }],
+            ['sourceType', 'in', 'range' => [self::SOURCE_TYPE_EXTERN], 'message' => 'Une configuration IMPORT doit avoir une source des données EXTERNE', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
+                return $this->type === self::TYPE_IMPORT;
+            }],
             [['exportTarget'] , 'required', 'message' => 'La cible de l\'export doit-être valorisé avec un valeur SQL', 'on' => [self::SCENARIO_CREATE, self::SCENARIO_UPDATE], 'when' => function () {
                 return $this->sourceType === self::SOURCE_TYPE_SQL;
             }],
@@ -478,7 +486,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function buildDbView(DbViewInterface $dbView) : void
     {
         try {
-            if (empty($this->sql) === false) {
+            if (empty($this->sql) === false && $this->exportTarget === self::TARGET_VIEW) {
                 $name = $this->getContextName();
                 $dbView->create($name, $this->sql);
             }
@@ -525,7 +533,13 @@ class ImportConfig extends \yii\db\ActiveRecord
              * @var ColumnModel $params
              */
             foreach ($columns as $params) {
-                $values[] = $params->toArray();
+                $value = $params->toArray();
+                if ($this->type === self::TYPE_IMPORT) {
+                    $value['target'] = ucfirst($value['target']);
+                } else {
+                    $value['source'] = ucfirst($value['source']);
+                }
+                $values[] = $value;
             }
             return $values;
         } catch (Exception $e) {
@@ -855,12 +869,13 @@ class ImportConfig extends \yii\db\ActiveRecord
 
                 if ($this->dbView instanceof DbViewInterface) {
                     $tableName = $this->getContextName();
-                    $columnExist = $this->dbView->columnExists($tableName, $importColumn->source);
+                    $destData = ($this->type === self::TYPE_IMPORT) ? $importColumn->target : $importColumn->source;
+                    $columnExist = $this->dbView->columnExists($tableName, $destData);
                     if ($columnExist === false && empty($this->rowProcessor) === true) {
                         $errors[] = new ImportError(
                             rowNumber: $orderColumn,
-                            column: $importColumn->source,
-                            message: 'Colonne : '.$importColumn->source.': Pour une Colonne le convertisseur métier est obligatoire',
+                            column: $destData,
+                            message: 'Colonne : '.$destData.': Pour une Colonne le convertisseur métier est obligatoire',
                             level: ImportError::LEVEL_ERROR
                         );
                     }
@@ -940,7 +955,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $name = strtolower($this->name.'_v'.$this->version);
-            if($this->sourceType === self::SOURCE_TYPE_TABLE && empty($this->table) === false) {
+            if(($this->sourceType === self::SOURCE_TYPE_TABLE || $this->sourceType === self::SOURCE_TYPE_EXTERN && $this->type === self::TYPE_IMPORT) && empty($this->table) === false) {
                 $name = $this->table;
                 if ($this->parameter instanceof Parameter) {
                     $dbTables = $this->parameter->getActiveModelTableNames();
