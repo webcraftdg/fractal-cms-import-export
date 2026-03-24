@@ -14,11 +14,12 @@ use Exception;
 use fractalCms\importExport\interfaces\CountableDataReader;
 use InvalidArgumentException;
 use Yii;
+use yii\db\Command;
 
 class SqlDataReader implements CountableDataReader
 {
 
-    private $command;
+    private Command $command;
 
 
     /**

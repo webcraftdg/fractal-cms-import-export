@@ -24,6 +24,7 @@ class ColumnModel extends Model
     public string $format;
     public mixed $default;
     public ColumnTransformer|null $transformer;
+    
 
     public function scenarios() : array
     {

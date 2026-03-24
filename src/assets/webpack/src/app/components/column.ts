@@ -53,15 +53,19 @@ export class Column
     /**
      * 
      * @param event 
-     * @param mode 
+     * @param active 
      * @returns 
      */
-    public onInputChange(event:Event, mode:string)
+    public onInputChange(event:Event, active:boolean = false)
     {
         this.logger.trace('onInputChange');
         event.preventDefault();
-        const value = (this.type === 'import') ? this.model.target : this.model.source;
-        return this.prepareTableColumnNames(value);
+        if (active === true) {
+            const value = (this.type === 'import') ? this.model.target : this.model.source;
+            return this.prepareTableColumnNames(value);
+        } else {
+            this.tableColumns = [];
+        }
     }
 
 

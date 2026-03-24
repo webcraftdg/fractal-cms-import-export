@@ -16,9 +16,12 @@ use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\db\SourceColumnsResolver;
+use fractalCms\importExport\factories\ImportConfigColumn;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\services\ConfigDataBase;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\RowProcessor as RowProcessorService;
 use Yii;
@@ -29,10 +32,12 @@ use yii\web\UploadedFile;
 class ImportConfigController extends BaseController
 {
 
+    public RowProcessorService $rowProcessorService;
     protected DbViewInterface $dbView;
     protected Parameter $parameter;
-    public RowProcessorService $rowProcessorService;
-
+    protected SourceColumnsResolver $sourceColumnResolver;
+    protected ImportConfigColumn $importConfigColumnFactory;
+    protected ConfigDataBase $configDatabase;
     /**
      * @inheritDoc
      */
@@ -46,6 +51,12 @@ class ImportConfigController extends BaseController
        if (Yii::$container->has(RowProcessorService::class) === true) {
            $this->rowProcessorService = Yii::$container->get(RowProcessorService::class);
        }
+
+        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
+           $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
+        }
+        $this->importConfigColumnFactory = new ImportConfigColumn();
+        $this->configDatabase = new ConfigDataBase($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
    }
 
     /**
@@ -138,6 +149,9 @@ class ImportConfigController extends BaseController
         try {
             $request = Yii::$app->request;
             $response = null;
+            /**
+             * @var ImportConfig $model
+             */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
             $tables = $this->parameter->getActiveModelTableNames();
@@ -146,11 +160,10 @@ class ImportConfigController extends BaseController
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
-                $model->version = $model->checkVersion($model->name, $model->version);
                 if ($model->validate() === true) {
                     $buildViewOk = false;
                     try {
-                        $model->buildDbView($this->dbView);
+                        $this->configDatabase->generateDbView($model);
                         $buildViewOk = true;
                     } catch (Exception $e) {
                         Yii::error($e->getMessage(), __METHOD__);
@@ -160,7 +173,8 @@ class ImportConfigController extends BaseController
                         $transaction = Yii::$app->db->beginTransaction();
                         $model->save();
                         $model->refresh();
-                        $errorsColumns = $model->buildInitColumns($this->dbView);
+                        $rawColumns = $this->configDatabase->generateColumns($model);
+                        $errorsColumns = $model->manageColumns($rawColumns);
                         if (empty($errorsColumns) === true) {
                             $transaction->commit();
                             $response = $this->redirect(['import-config/update', 'id' => $model->id]);
@@ -200,6 +214,9 @@ class ImportConfigController extends BaseController
         try {
             $request = Yii::$app->request;
             $response = null;
+            /**
+             * @var ImportConfig $model
+             */
             $model = ImportConfig::findOne($id);
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
@@ -214,17 +231,31 @@ class ImportConfigController extends BaseController
                 }
                 $model->load($body);
                 if ($model->validate() === true) {
-                    $tmpColumns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
+                    $columns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
                     $transaction = Yii::$app->db->beginTransaction();
-                    $errorColumns = $model->manageColumns($tmpColumns);
-                    $model->save();
-                    $model->refresh();
-                    if (empty($errorColumns) === true) {
-                        $transaction->commit();
-                        $response = $this->redirect(['import-config/index']);
-                    } else {
+                    $buildViewOk = false;
+                    try {
+                        $this->configDatabase->generateDbView($model);
+                        if (empty($columns) === true) {
+                            $columns = $this->configDatabase->generateColumns($model);
+                        }
+                        $buildViewOk = true;
+                    } catch (Exception $e) {
+                        Yii::error($e->getMessage(), __METHOD__);
                         $transaction->rollBack();
-                        $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                        $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
+                    }
+                    if ($buildViewOk === true) {
+                        $errorColumns = $model->manageColumns($columns);
+                        $model->save();
+                        $model->refresh();
+                        if (empty($errorColumns) === true) {
+                            $transaction->commit();
+                            $response = $this->redirect(['import-config/index']);
+                        } else {
+                            $transaction->rollBack();
+                            $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                        }
                     }
                 }
             }
@@ -253,7 +284,7 @@ class ImportConfigController extends BaseController
     {
         try {
             $request = Yii::$app->request;
-            $modelQuery = ImportConfig::find()->andWhere(['not', ['sourceType' => ImportConfig::SOURCE_TYPE_EXTERN]]);
+            $modelQuery = ImportConfig::find()->andWhere(['active' => 1]);
             /** @var ImportConfig $model */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;

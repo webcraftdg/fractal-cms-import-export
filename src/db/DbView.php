@@ -11,13 +11,10 @@
 namespace fractalCms\importExport\db;
 
 use Exception;
-use fractalCms\importExport\models\ColumnModel;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\models\ImportConfig;
 use Yii;
 use yii\base\Component;
-use yii\db\ColumnSchema;
 
 class DbView extends Component implements DbViewInterface
 {
@@ -98,60 +95,6 @@ class DbView extends Component implements DbViewInterface
         try {
             $dbTables = Yii::$app->db->schema->tableNames;
             return in_array($name, $dbTables);
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * get Table columns
-     *
-     * @param  string       $tableName
-     * @param  ImportConfig $config
-     *
-     * @return array
-     */
-    public function getTableColumns(string $tableName): array
-    {
-        try {
-            $columns = [];
-            $dbTables = Yii::$app->db->getSchema()->tableNames;
-            $hasTable = in_array($tableName, $dbTables);
-            if ($this->exists($tableName) === true && $hasTable === true) {
-                $columns = array_map(function(ColumnSchema $columnSchema) {
-                    $newColumn = new ColumnModel(['scenario' => ColumnModel::SCENARIO_CREATE]);
-                    $ucFirst = ucfirst($columnSchema->name);
-                    $newColumn->source = $columnSchema->name;
-                    $newColumn->target = $columnSchema->name;
-                    $newColumn->format = $columnSchema->type;
-                    return $newColumn;
-                }, Yii::$app->db->getSchema()->getTableSchema($tableName)->columns);
-            }
-            return $columns;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * @param string $tableName
-     * @param string $columnName
-     * @return bool
-     * @throws \yii\base\NotSupportedException
-     */
-    public function columnExists(string $tableName, string $columnName): bool
-    {
-        try {
-            $exists = false;
-            $dbTables = Yii::$app->db->getSchema()->tableNames;
-            $hasTable = in_array($tableName, $dbTables);
-            if ($this->exists($tableName) === true && $hasTable === true) {
-                $columns = Yii::$app->db->getSchema()->getTableSchema($tableName)->columns;
-                $exists = in_array($columnName, array_keys($columns));
-            }
-            return $exists;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

@@ -57,7 +57,7 @@ class ActiveRecord implements ImportInserter
                 /** @var ActiveRecord $model */
                 $model = Yii::createObject($importConfig->table);
                 foreach($attributes as $attribute => $value){
-                    if ($model->hasAttribue($attribute) === true) {
+                    if ($model->hasAttribute($attribute) === true) {
                         $model->$attribute = $value;
                     }
                 }
@@ -66,6 +66,7 @@ class ActiveRecord implements ImportInserter
                         $model->save();
                     } catch(Exception $e) {
                         Yii::error($e->getMessage(), __METHOD__);
+                        $success = false;
                         $errors[] = new ImportError(
                             rowNumber: $rowNumber,column: 'Save model',message: $e->getMessage(),level: ImportError::LEVEL_VALIDATION_ERROR
                         );

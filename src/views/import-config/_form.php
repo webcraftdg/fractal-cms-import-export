@@ -36,7 +36,7 @@ use fractalCms\core\helpers\Html;
     </div>
 </div>
 <div class="fc-row-inline">
-    <div class="fc-form-group  sm:w-1/2">
+    <div class="fc-form-group  sm:w-1/3">
             <?php
             echo Html::activeLabel($model, 'name', ['label' => 'Nom de la configuration', 'class' => 'fc-form-label']);
             echo Html::activeTextInput($model, 'name', ['placeholder' => 'Nom', 'class' => 'fc-form-input']);
@@ -45,12 +45,20 @@ use fractalCms\core\helpers\Html;
             }
             ?>
     </div>
-    <div class="fc-form-group  sm:w-1/2">
+    <div class="fc-form-group  sm:w-1/3">
             <?php
             echo Html::activeLabel($model, 'version', ['label' => 'Version', 'class' => 'fc-form-label']);
             echo Html::activeTextInput($model, 'version', ['placeholder' => 'Version', 'class' => 'fc-form-input']);
             ?>
     </div>
+    <div class="fc-form-group  sm:w-1/3">
+            <?php
+            echo Html::activeLabel($model, 'type', ['label' => 'Type (import ou export)', 'class' => 'fc-form-label']);
+            echo Html::activeDropDownList($model, 'type', ImportConfig::optsTypes(), [
+                'prompt' => 'Sélectionner un type', 'class' => 'fc-form-input',
+            ]);
+            ?>
+        </div>
 </div>
 <div class="fc-row-inline">
     <div class="fc-form-group   sm:w-1/2">
@@ -63,12 +71,12 @@ use fractalCms\core\helpers\Html;
                 echo Html::tag('div', $model->errors['sourceType'][0], ['class' => 'error-message']);
             }
             ?>
-            <div class="text-xs italic text-orange-500">
+            <div class="text-xs italic text-stone-700">
                 <strong>Définit comment les données sont récupérées pour un export :</strong>
                 <ul>
                     <li><strong>Table</strong> : via ActiveQuery sur une table</li>
                     <li><strong>SQL</strong> : via une requête SQL personnalisée</li>
-                    <li><strong>Externe</strong> : via un tableau de données fourni par le code</li>
+                    <li><strong>Externe</strong> : via un tableau de données fourni par le code ou un fichier (import)</li>
                 </ul>
             </div>
     </div>
@@ -79,7 +87,7 @@ use fractalCms\core\helpers\Html;
                 'prompt' => 'Sélectionner un format', 'class' => 'fc-form-input',
             ]);
              echo Html::tag('div', 'Format du fichier lu en import ou généré en export.', 
-            ['class' => 'text-orange-500 text-xs italic']);
+            ['class' => 'text-stone-700 text-xs italic']);
             ?>
     </div>
 </div>
@@ -96,19 +104,11 @@ use fractalCms\core\helpers\Html;
             }
             ?>
             <div class="text-xs italic">
-                <ul class="text-orange-500">
+                <ul class="text-stone-700">
                     <li><strong>Import</strong> : table dans laquelle les données seront enregistrées.</li>
                     <li><strong>Export</strong> : table utilisée comme base de correspondance ou de contrôle des colonnes.</li>
                 </ul>
             </div>
-        </div>
-        <div class="fc-form-group">
-            <?php
-            echo Html::activeLabel($model, 'type', ['label' => 'Type (import ou export)', 'class' => 'fc-form-label']);
-            echo Html::activeDropDownList($model, 'type', ImportConfig::optsTypes(), [
-                'prompt' => 'Sélectionner un type', 'class' => 'fc-form-input',
-            ]);
-            ?>
         </div>
         <div class="fc-form-group">
             <?php
@@ -120,7 +120,7 @@ use fractalCms\core\helpers\Html;
                 echo Html::tag('div', $model->errors['exportTarget'][0], ['class' => 'error-message']);
             }
             ?>
-            <div class="text-xs italic text-orange-500">
+            <div class="text-xs italic text-stone-700">
                 <strong>Choisissez comment récupérer les données de l’export :</strong>
                 <ul>
                     <li><strong>SQL :</strong> la requête SQL est exécutée à chaque export.</li>
@@ -142,7 +142,7 @@ use fractalCms\core\helpers\Html;
                 echo Html::tag('div', $model->errors['sql'][0], ['class' => 'error-message']);
             }
             ?>
-             <div class="text-xs italic text-orange-500">
+             <div class="text-xs italic text-stone-700">
                 <strong>Obligatoire pour un type <strong>export</strong> si la <strong>source des données</strong> est SQL</strong>
                 <ul>
                     <li><strong>Export</strong> : utilisée si la source des données exportées est de type SQL.</li>
@@ -163,7 +163,7 @@ use fractalCms\core\helpers\Html;
                 echo Html::tag('div', $model->errors['rowProcessor'][0], ['class' => 'error-message']);
             }
             ?>
-            <div class="text-xs italic text-orange-500">
+            <div class="text-xs italic text-stone-700">
             <ul>
                 <li>Permet d’appliquer une transformation métier à chaque ligne importée ou exportée.</li>
             </ul>

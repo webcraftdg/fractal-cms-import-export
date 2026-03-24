@@ -10,8 +10,7 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\interfaces\DbView as DbViewInterface;
+use fractalCms\importExport\interfaces\DbSourceInspector;
 use fractalCms\importExport\interfaces\RowExportTransformer;
 use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
@@ -27,19 +26,20 @@ use fractalCms\importExport\services\exports\readers\SqlDataReader;
 use fractalCms\importExport\services\Import;
 use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\services\RowProcessor;
-use yii\web\Application;
-use yii\behaviors\TimestampBehavior;
-use yii\db\Expression;
-use yii\db\Query;
-use yii\helpers\Json;
-use yii\web\UploadedFile;
-use Exception;
+use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\services\exports\writers\CsvWriter;
 use fractalCms\importExport\services\exports\writers\JsonWriter;
 use fractalCms\importExport\services\exports\writers\XlsxWriter;
 use fractalCms\importExport\services\exports\writers\XmlWriter;
+use yii\behaviors\TimestampBehavior;
+use yii\db\Query;
+use yii\db\Expression;
+use yii\helpers\Json;
+use yii\web\Application;
+use yii\web\UploadedFile;
 use InvalidArgumentException;
+use Exception;
 use Yii;
 
 /**
@@ -55,7 +55,7 @@ use Yii;
  * @property string $fileFormat
  * @property int|null $truncateTable
  * @property string $table
- * @property resource|null $sql
+ * @property string|null $sql
  * @property resource|null $rowProcessor
  * @property string|null $exportTarget
  * @property string|null $dateCreate
@@ -96,10 +96,15 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     protected Parameter $parameter;
     protected ExportLimiter $exportLimiter;
-    protected ?DbViewInterface $dbView = null;
+    protected ?SourceColumnsResolver $columnResolver = null;
 
     private array $columnsByNames = [];
 
+    /**
+     * @inheritDoc
+     *
+     * @return void
+     */
     public function init()
     {
         parent::init();
@@ -109,8 +114,8 @@ class ImportConfig extends \yii\db\ActiveRecord
         if (Yii::$app->has('exportLimiter') === true) {
             $this->exportLimiter = Yii::$app->exportLimiter;
         }
-        if (Yii::$container->has(DbView::class) === true) {
-            $this->dbView = Yii::$container->get(DbView::class);
+        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
+            $this->columnResolver = Yii::$container->get(SourceColumnsResolver::class);
         }
     }
 
@@ -296,7 +301,7 @@ class ImportConfig extends \yii\db\ActiveRecord
         try {
             $success = true;
             $exportTarget = $this->exportTarget;
-            if (empty($this->sql) === true) {
+            if (empty($this->sql) === true && $this->sourceType !== self::SOURCE_TYPE_EXTERN) {
                 $this->addError('sql', 'La requête SQL doit-être valorisé si le mode de calcul des données à exporter est SQL ou VIEW');
                 $success = false;
             }
@@ -478,63 +483,26 @@ class ImportConfig extends \yii\db\ActiveRecord
             throw $e;
         }
     }
-    /**
-     * @param DbViewInterface $dbView
-     * @return void
-     * @throws Exception
-     */
-    public function buildDbView(DbViewInterface $dbView) : void
-    {
-        try {
-            if (empty($this->sql) === false && $this->exportTarget === self::TARGET_VIEW) {
-                $name = $this->getContextName();
-                $dbView->create($name, $this->sql);
-            }
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
+  
 
     /**
-     * @param DbViewInterface $dbView
-     * @return array
-     * @throws \yii\base\InvalidConfigException
-     * @throws \yii\base\NotSupportedException
-     * @throws \yii\db\Exception
-     * @throws \yii\di\NotInstantiableException
-     */
-    public function buildInitColumns(DbViewInterface $dbView) : array
-    {
-        try {
-            $columns = $this->getContextColumns($dbView);
-            return $this->manageColumns($columns);
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-    /**
-     * Get context columns
+     * get Context columns
      *
-     * @param DbViewInterface $dbView
+     * @param  array $columns
+     *
      * @return array
-     * @throws \yii\base\NotSupportedException
      */
-    public function getContextColumns(DbViewInterface $dbView) : array
+    public function getContextColumns(array $columns) : array
     {
         try {
             $values = [];
-            $name = $this->getContextName();
-            $columns =  $dbView->getTableColumns($name);
             /**
              * @var string $id
              * @var ColumnModel $params
              */
             foreach ($columns as $params) {
                 $value = $params->toArray();
-                if ($this->type === self::TYPE_IMPORT) {
+                if ($this->isImport() === true) {
                     $value['target'] = ucfirst($value['target']);
                 } else {
                     $value['source'] = ucfirst($value['source']);
@@ -559,7 +527,7 @@ class ImportConfig extends \yii\db\ActiveRecord
         try {
             $dataReader = null;
             if ($this->sourceType === self::SOURCE_TYPE_TABLE) {
-                $cols = $this->buildConfigColumns();
+                $cols = $this->getHeaderColumns();
                 $statementName = $this->getContextName();
                 $query = new Query();
                 $query->select($cols);
@@ -655,7 +623,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                 case ImportConfig::FORMAT_CSV: 
                 case ImportConfig::FORMAT_EXCEL:
                 case ImportConfig::FORMAT_EXCEL_X:
-                    $preamble = $this->buildConfigColumns(false);
+                    $preamble = $this->getHeaderColumns(false);
                     break;
             }
             return $preamble;
@@ -673,7 +641,7 @@ class ImportConfig extends \yii\db\ActiveRecord
      * @return array
      * @throws Exception
      */
-    public function buildConfigColumns(bool $isSource = true) : array
+    public function getHeaderColumns(bool $isSource = true) : array
     {
         try {
             $cols = [];
@@ -846,7 +814,9 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $importColumn->tmpTransformer = ($column['transformer']) ?? null;
                 $importColumn->tmpTransformerOptions = ($column['transformerOptions']) ?? null;
                 unset($column['transformer']);
-                unset($column['transformerOptions']);
+                if ($importColumn->tmpTransformerOptions !== null) {
+                    unset($column['transformerOptions']);
+                }
                 $importColumn->attributes = $column;
                 if (empty($importColumn->order) === true) {
                     $order = ($prevIndex > -1) ? ($prevIndex + 0.5) : $index;
@@ -867,15 +837,14 @@ class ImportConfig extends \yii\db\ActiveRecord
                     }
                 }
 
-                if ($this->dbView instanceof DbViewInterface) {
-                    $tableName = $this->getContextName();
-                    $destData = ($this->type === self::TYPE_IMPORT) ? $importColumn->target : $importColumn->source;
-                    $columnExist = $this->dbView->columnExists($tableName, $destData);
+                if ($this->columnResolver instanceof DbSourceInspector) {
+                    $columnName = ($this->isImport() === true) ? $importColumn->target : $importColumn->source;
+                    $columnExist = $this->columnResolver->columnExistsForConfig($this, $columnName);
                     if ($columnExist === false && empty($this->rowProcessor) === true) {
                         $errors[] = new ImportError(
                             rowNumber: $orderColumn,
-                            column: $destData,
-                            message: 'Colonne : '.$destData.': Pour une Colonne le convertisseur métier est obligatoire',
+                            column: $columnName,
+                            message: 'Colonne : '.$columnName.': Pour une Colonne le convertisseur métier est obligatoire',
                             level: ImportError::LEVEL_ERROR
                         );
                     }
@@ -921,32 +890,6 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
-
-    /**
-     * Check available version
-     *
-     * @param $name
-     * @param $version
-     * @return int
-     * @throws Exception
-     */
-    public function checkVersion($name, $version) : int
-    {
-        try {
-            $importConfig = ImportConfig::find()
-                ->where(['name' => $name, 'version' => $version])
-                ->one();
-            if ($importConfig !== null) {
-                $newVersion = (int)$version + 1;
-                return $this->checkVersion($name, $newVersion);
-            }
-            return (int)$version;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
     /**
      * @return string
      * @throws Exception
@@ -967,6 +910,26 @@ class ImportConfig extends \yii\db\ActiveRecord
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
         }
+    }
+
+    /**
+     * is Import
+     *
+     * @return bool
+     */
+    public function isImport() : bool
+    {
+        return $this->type === self::TYPE_IMPORT;
+    }
+
+    /**
+     * is Export
+     *
+     * @return bool
+     */
+    public function isExport() : bool
+    {
+        return $this->type === self::TYPE_EXPORT;
     }
 
      /**

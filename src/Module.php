@@ -18,6 +18,7 @@ use fractalCms\core\Module as CoreModule;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\console\ImportExportController;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Parameter;
@@ -59,6 +60,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
+            ]);
+            Yii::$container->setSingleton(SourceColumnsResolver::class, [
+                'class' => SourceColumnsResolver::class,
             ]);
             Yii::$container->setDefinitions([
                 TransformService::class => function() {

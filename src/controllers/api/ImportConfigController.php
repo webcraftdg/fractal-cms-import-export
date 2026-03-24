@@ -18,13 +18,15 @@ use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\interfaces\ColumnTransformer;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
+use fractalCms\importExport\factories\ImportConfigColumn as ImportConfigColumnFactory;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use Yii;
+use fractalCms\importExport\services\ConfigDataBase;
 use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
@@ -32,12 +34,16 @@ use yii\helpers\Json;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use Yii;
 
 class ImportConfigController extends BaseController
 {
 
     private DbViewInterface $dbView;
     private TransformService $transformService;
+    protected SourceColumnsResolver $sourceColumnResolver;
+    protected ImportConfigColumnFactory $importConfigColumnFactory;
+    protected ConfigDataBase $configDatabase;
 
     /**
      * @inheritDoc
@@ -47,6 +53,11 @@ class ImportConfigController extends BaseController
         parent::__construct($id, $module, $config);
         $this->dbView = $dbView;
         $this->transformService = $transformService;
+        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
+           $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
+        }
+        $this->importConfigColumnFactory = new ImportConfigColumnFactory();
+        $this->configDatabase = new ConfigDataBase($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
     }
 
     /**
@@ -322,7 +333,7 @@ class ImportConfigController extends BaseController
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
             $name = $request->getQueryParam('name', null);
-            $columns =  $importConfig->getContextColumns($this->dbView);
+            $columns = $this->configDatabase->generateColumns($importConfig);
             if (empty($name) === false) {
                 $columns = array_filter($columns, function($value) use ($name){
                     return isset($value['source']) === true && str_contains($value['source'], $name) === true;

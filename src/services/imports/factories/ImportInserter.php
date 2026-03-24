@@ -34,11 +34,9 @@ class ImportInserter {
                 case ImportConfig::SOURCE_TYPE_SQL: 
                     return new Sql();
                     break;
-                case ImportConfig::SOURCE_TYPE_TABLE: 
+                default: 
                     return new ActiveRecord();
                     break;
-                default: 
-                    throw new InvalidArgumentException('Import Inserted Source not exist:'.$source);
             }
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

@@ -40,21 +40,4 @@ interface DbView
      * @return bool
      */
     public function exists(string $name) : bool;
-
-    /**
-     * get Table columns
-     *
-     * @param  string       $tableTableName
-     * @param  ImportConfig $config
-     *
-     * @return array
-     */
-    public function getTableColumns(string $tableTableName) : array;
-
-    /**
-     * @param string $tableName
-     * @param string $columnName
-     * @return bool
-     */
-    public function columnExists(string $tableName, string $columnName) : bool;
 }
