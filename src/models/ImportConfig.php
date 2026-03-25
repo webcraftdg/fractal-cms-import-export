@@ -40,6 +40,9 @@ use yii\web\Application;
 use yii\web\UploadedFile;
 use InvalidArgumentException;
 use Exception;
+use fractalCms\importExport\interfaces\FileConfigImportReader;
+use fractalCms\importExport\services\ConfigFileImport;
+use fractalCms\importExport\services\exports\writers\NDJsonWriter;
 use Yii;
 
 /**
@@ -77,6 +80,8 @@ class ImportConfig extends \yii\db\ActiveRecord
     const FORMAT_CSV = 'csv';
     const FORMAT_XML = 'xml';
     const FORMAT_JSON = 'json';
+    const FORMAT_NDJSON = 'ndjson';
+
 
     const SOURCE_TYPE_SQL = 'sql';
     const SOURCE_TYPE_TABLE = 'table';
@@ -564,6 +569,9 @@ class ImportConfig extends \yii\db\ActiveRecord
                 case ImportConfig::FORMAT_JSON:
                     $writer = new JsonWriter($this);
                     break;
+                case ImportConfig::FORMAT_NDJSON: 
+                    $writer = new NDJsonWriter($this);
+                    break;    
                 case ImportConfig::FORMAT_XML:
                     $writer = new XmlWriter($this);
                     break;
@@ -595,6 +603,7 @@ class ImportConfig extends \yii\db\ActiveRecord
                     $fileName =  $fileName . '.xlsx';
                     break;
                 case ImportConfig::FORMAT_JSON:
+                case ImportConfig::FORMAT_NDJSON:
                     $fileName =  $fileName . '.json';
                     break;
                 case ImportConfig::FORMAT_XML:
@@ -688,6 +697,7 @@ class ImportConfig extends \yii\db\ActiveRecord
         return [
             self::FORMAT_CSV => 'Csv',
             self::FORMAT_JSON => 'Json',
+            self::FORMAT_NDJSON => 'NDJson',
             self::FORMAT_EXCEL_X => 'Xlsx',
             self::FORMAT_XML => 'Xml',
         ];
@@ -728,59 +738,54 @@ class ImportConfig extends \yii\db\ActiveRecord
         ];
     }
 
+     
     /**
-     * Manage import file
-     * @return bool|mixed
-     * @throws Exception
+     * manage import File
+     *
+     * @return ImportConfig
      */
-    public function manageImportFile()
+    public function manageImportFile() : ImportConfig
     {
         try {
             $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
-            $valid = true;
+            $config = $this;
             if ($this->importFile instanceof UploadedFile) {
                 $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
                 $this->importFile->saveAs($finalPathFile);
-                $contentJson = file_get_contents($finalPathFile);
-                $valid = json_validate($contentJson);
-                if ($valid === false) {
-                    $this->addError('importFile', 'Le fichier n\'est un JSON Valide');
-                } else {
-                    $transaction = Yii::$app->db->beginTransaction();
-                    $jsonData = Json::decode($contentJson);
-                    $columns = ($jsonData['columns']) ?? [];
-                    unset($jsonData['columns']);
-                    $this->attributes = $jsonData;
-                    $this->truncateTable = (int)$this->truncateTable;
-                    $this->version = $this->checkVersion($this->name, $this->version);
-                    if ($this->validate() === true) {
-                        $this->save();
-                        $this->refresh();
-                        $errorsColumns = $this->manageColumns($columns);
-                        if (empty($errorsColumns) === true) {
-                            $transaction->commit();
-                        } else {
-                            $transaction->rollBack();
-                            /** @var ImportError $errorsColumn */
-                            foreach ($errorsColumns as $errorsColumn) {
-                                $this->addError('tmpColumns', $errorsColumn->message);
-                                break;
-                            }
-                            $valid = false;
-                        }
-                    } else {
-                        $valid = false;
-                        $transaction->rollBack();
-                    }
+                $this->scenario = self::SCENARIO_CREATE;
+                /**@var ConfigFileImport $configFileImport */
+                $configFileImport = new ConfigFileImport($this, $finalPathFile);
+                $config = $configFileImport->run();
+                if ($this->parameter instanceof Parameter) {
+                    $config->table = $this->parameter->parseTable($config->table);
                 }
-                unlink($finalPathFile);
+                $transaction = Yii::$app->db->beginTransaction();
+                
+                if ($config->hasErrors() === false && $config->validate() === true) {
+                    $config->save();
+                    $config->refresh();
+                    $errorsColumns = $config->manageColumns($config->tmpColumns);
+                    if (empty($errorsColumns) === true) {
+                        $transaction->commit();
+                    } else {
+                        $transaction->rollBack();
+                        /** @var ImportError $errorsColumn */
+                        foreach ($errorsColumns as $errorsColumn) {
+                            $config->addError('tmpColumns', $errorsColumn->message);
+                            break;
+                        }
+                    }
+                } else {
+                    $transaction->rollBack();
+                }
             }
-            return $valid;
+            return $config;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
         }
     }
+
 
 
     /**

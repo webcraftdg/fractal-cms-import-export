@@ -111,6 +111,9 @@ class ImportConfigController extends BaseController
             $response = null;
             $request = Yii::$app->request;
             $modelQuery = ImportConfig::find();
+            /**
+             * @var ImportConfig $model
+             */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_JSON_FILE;
             if ($request->isPost === true) {
@@ -118,8 +121,8 @@ class ImportConfigController extends BaseController
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if ($model->validate() === true && $model->importFile instanceof UploadedFile) {
-                    $valid = $model->manageImportFile();
-                    if ($valid === true) {
+                    $model = $model->manageImportFile();
+                    if ($model->hasErrors() === false) {
                         $response = $this->redirect(['import-config/update', 'id' => $model->id]);
                     }
                 }

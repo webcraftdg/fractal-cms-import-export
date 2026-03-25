@@ -97,14 +97,14 @@ class ImportExportController extends Controller
 
             if ($importConfig->type === ImportConfig::TYPE_IMPORT) {
                 $importJob = Import::run(
-                    importConfig: $importConfig,
+                    config: $importConfig,
                     filePath: $this->pathFile,
                     isTest: $isTest,
                     params: $params
                 );
             } else {
                 $importJob = Export::run(
-                    importConfig: $importConfig,
+                    config: $importConfig,
                     batchSize: (int)$batchSize,
                     params: $params
                 );

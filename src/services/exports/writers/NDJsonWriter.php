@@ -15,12 +15,14 @@ use fractalCms\importExport\interfaces\WriterInterface;
 use fractalCms\importExport\formatters\Record;
 use fractalCms\importExport\interfaces\RecordFormatter;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\models\ImportConfigColumn;
+use yii\helpers\ArrayHelper;
 use yii\helpers\Json;
 use InvalidArgumentException;
 use Exception;
 use Yii;
 
-class JsonWriter implements WriterInterface
+class NDJsonWriter implements WriterInterface
 {
     /**
      * @var resource | false
@@ -54,20 +56,30 @@ class JsonWriter implements WriterInterface
         try {
             $path = $writerContext->absolutePath ?? null;
             if ($path === null) {
-                throw new InvalidArgumentException('JsonWriter params "path" not found');
+                throw new InvalidArgumentException('NDJsonWriter params "path" not found');
             }
-            $meta =  [
+            $columnsDbQuery = $this->config->getImportColumns();
+            $columns = [];
+            /**
+             * @var ImportConfigColumn $columnDb
+             */
+            foreach($columnsDbQuery->each() as $columnDb) {
+                $columns[] = [
+                    'name' => $columnDb->source,
+                    'label' => $columnDb->target
+                ];
+            }
+            $row =  [
+                '_type' => 'metas',
                 'configId' => $this->config->id,
                 'name' => $this->config->name,
                 'version' => $this->config->version,
+                'columns' => $columns,
                 'dateCreate' => date('c', strtotime($this->config->dateCreate)),
                 'generatedAt' => date('c'),
             ];
-        
             $this->handle = fopen($path, 'w');
-            fwrite($this->handle, '{'."\n");
-            fputs($this->handle, '"metas":'.Json::encode($meta).",\n");
-            fputs($this->handle, '"records":['."\n");
+            fwrite($this->handle, Json::encode($row).PHP_EOL);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -85,39 +97,9 @@ class JsonWriter implements WriterInterface
     {
         try {
             if (empty($row) === false) {
-                $row = $this->recordFrormatter->format($row, $this->config);
-                if ($this->firstRecord === false) {
-                    fputs($this->handle, ','."\n");
-                }
-                fputs($this->handle, Json::encode(['fields' => $this->prepareRow($row)]));
-                $this->firstRecord = false;
+                $row = ArrayHelper::merge(['_type' => 'data'], $row);
+                fwrite($this->handle, Json::encode($row).PHP_EOL);
             }
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-    /**
-     * prepare row
-     *
-     * @param  array $rawRow
-     *
-     * @return array
-     */
-    protected function prepareRow(array $rawRow) : array
-    {
-         try {
-            $fields = [];
-            foreach ($rawRow as $fieldName => $item) {
-                $field = [];
-                $field['columnId'] = ($item['columnId']) ?? '';
-                $field['name'] = ($item['name']) ?? '';
-                $field['label'] = $fieldName;
-                $field['value'] = ($item['value']) ?? '';
-                $fields[] = $field;
-            }
-            return $fields;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -132,7 +114,6 @@ class JsonWriter implements WriterInterface
     public function close(WriterContext $writerContext): void
     {
         try {
-            fputs($this->handle, "\n".']}');
             fclose($this->handle);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);

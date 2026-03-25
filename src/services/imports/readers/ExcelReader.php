@@ -30,7 +30,7 @@ class ExcelReader implements importReader, SpreadsheetImportReader
     private Worksheet $sheet;
     private $maxColumns = 0;
     private $headers = [];
-    private $batchSize = 100;
+    private $batchSize = 250;
 
     /**
      * open

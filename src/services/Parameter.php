@@ -12,9 +12,9 @@ namespace fractalCms\importExport\services;
 
 use fractalCms\importExport\interfaces\Parameter as ParameterInterface;
 use fractalCms\importExport\Module;
+use yii\helpers\Json;
 use Exception;
 use Yii;
-use yii\helpers\Json;
 
 class Parameter implements ParameterInterface
 {
@@ -80,6 +80,31 @@ class Parameter implements ParameterInterface
     {
         try {
             return in_array($tableName, $tables) === true ? $tableName : false;
+        } catch (Exception $e)  {
+            Yii::error($e->getMessage(), __METHOD__);
+            throw  $e;
+        }
+    }
+
+    /**
+     * parse table
+     *
+     * @param  string $tableName
+     *
+     * @return string
+     */
+     public function parseTable(string $tableName): string
+    {
+        try {
+            $dbTables = $this->getActiveModelTableNames();
+            $findTable = $this->findTable(array_keys($dbTables), $tableName);
+            if ($findTable === false) {
+                $findTable = array_search($tableName, $dbTables);
+            }
+            if ($findTable !== false) {
+                $tableName = $findTable;
+            }
+            return $tableName;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

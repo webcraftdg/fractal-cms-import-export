@@ -39,7 +39,7 @@ class Record implements RecordFormatter
                 if ($column !== null) {
                     $rawColumn['name']  = $column->source;
                     $rawColumn['columnId']  = $column->id;
-                    }
+                }
                 $rawColumn['label'] = $field;
                 $rawColumn['value']  = $value;
                 $attributes[$field] = $rawColumn;

@@ -22,7 +22,7 @@ class XmlReader implements ImportReader
 
     
     private GlobalXMLReader $xmlReader;
-    private $batchSize = 500;
+    private $batchSize = 250;
 
     /**
      * open
@@ -86,9 +86,9 @@ class XmlReader implements ImportReader
     /**
      * get row values
      *
-     * @return void
+     * @return array
      */
-    public function getRowValues()
+    public function getRowValues() : array
     {
         try {
             $row = [];

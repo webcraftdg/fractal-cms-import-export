@@ -14,6 +14,8 @@ use Exception;
 use fractalCms\importExport\interfaces\importReader as InterfacesImportReader;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\imports\readers\ExcelReader;
+use fractalCms\importExport\services\imports\readers\JsonReader;
+use fractalCms\importExport\services\imports\readers\NDJsonReader;
 use fractalCms\importExport\services\imports\readers\XmlReader;
 use InvalidArgumentException;
 use Yii;
@@ -38,7 +40,12 @@ class ImportReader {
                     break;
                 case ImportConfig::FORMAT_XML: 
                     return new XmlReader();
-                    break;    
+                    break;
+                case ImportConfig::FORMAT_JSON: 
+                    return new JsonReader() ;
+                    break;
+                case ImportConfig::FORMAT_NDJSON: 
+                    return new NDJsonReader();           
                 default: 
                     throw new InvalidArgumentException('Error Import Format : '.$format);
                     break;

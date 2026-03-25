@@ -28,7 +28,7 @@ class Import implements ImportInterface
     /**
      * Run import
      *
-     * @param ImportConfig $importConfig
+     * @param ImportConfig $config
      * @param string $filePath
      * @param bool $isTest
      * @param $params
@@ -37,17 +37,17 @@ class Import implements ImportInterface
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, $params = []): ImportJob
+    public static function run(ImportConfig $config, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
             $readerFactory = new ImportReader();
-            $reader = $readerFactory->create($importConfig->fileFormat);
+            $reader = $readerFactory->create($config->fileFormat);
 
             $inserterFactory = new ImportInserter();
-            $inserter = $inserterFactory->create($importConfig->sourceType);
+            $inserter = $inserterFactory->create($config->sourceType);
             $mapper = new Column();
             $processor = new ImportProcessor();
-            return $processor->run($reader, $mapper, $inserter, $importConfig, $filePath, $isTest, $params);
+            return $processor->run($reader, $mapper, $inserter, $config, $filePath, $isTest, $params);
 
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

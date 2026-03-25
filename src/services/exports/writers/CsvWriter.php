@@ -19,9 +19,9 @@ use Yii;
 class CsvWriter implements WriterInterface
 {
     /**
-     * @var resource | false
+     * @var $handle resource | false
      */
-    private  $f;
+    private  $handle;
 
     /**
      * open
@@ -37,7 +37,7 @@ class CsvWriter implements WriterInterface
             if ($path === null) {
                 throw new InvalidArgumentException('CsvWriter params "path" not found');
             }
-            $this->f = fopen($path, 'w');
+            $this->handle = fopen($path, 'w');
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -53,7 +53,7 @@ class CsvWriter implements WriterInterface
     public function write(WriteTarget $target, array $row): void
     {
         try {
-            fputcsv($this->f, $row, ';', '"', "\\", \PHP_EOL);
+            fputcsv($this->handle, $row, ';', '"', "\\", \PHP_EOL);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -68,7 +68,7 @@ class CsvWriter implements WriterInterface
     public function close(WriterContext $writerContext): void
     {
         try {
-            fclose($this->f);
+            fclose($this->handle);
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
