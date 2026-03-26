@@ -44,10 +44,10 @@ C’est le **point d’extension principal côté export**.
 ## Pipeline simplifié
 
 Import :
-Source → Provider → RowImportTransformer → Application
+Source → Provider → RowImportProcessor → Application
 
 Export :
-Application → RowExportTransformer → Provider → Destination
+Application → RowExportProcessor → Provider → Destination
 
 [<- Précédent](initialisation.md) | [Suivant ->](configuration.md)
 

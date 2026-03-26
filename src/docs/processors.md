@@ -1,6 +1,6 @@
-# Transformers
+# Processors
 
-Les Transformers sont le cœur de la personnalisation du module.
+Les proccesseurs sont le cœur de la personnalisation du module.
 
 Ils permettent d’adapter le comportement sans toucher
 au pipeline global.
@@ -15,16 +15,16 @@ au pipeline global.
 
 ![Formulaire de création transformation](images/form-creer-list-transformer-colonne.png)
 
-Les transformers de colonne sont appliqués avant le RowTransformer.
+Les transformers de colonne sont appliqués avant le RowProcessor.
 
-## RowImportTransformer
+## RowImportProcessors
 
 Les RowTransformer doivent respecter une Interface RowImportTransformer 
 
 ```php
-use fractalCms\importExport\interfaces\RowImportTransformer as RowImportTransformerInterface;
+use fractalCms\importExport\interfaces\RowImportProcessor;
 
-final class ImportRowTransformer implements RowImportTransformerInterface
+final class ImportRowProcessor implements RowImportProcessor
 {
 
 
@@ -41,7 +41,7 @@ final class ImportRowTransformer implements RowImportTransformerInterface
      * @param ImportContext $context
      * @return RowTransformerResult
      */
-    public function transformRow(array $row, ImportContext $context): RowTransformerResult
+    public function process(array $row, ImportContext $context): RowTransformerResult
     {
         try {
             /**
@@ -66,12 +66,12 @@ Afin de pouvoir l'utiliser, le RowImportTransformer doit être ajouté dans la c
         'pathsNamespacesModels' => [
             '@app/models' => 'app\\models\\', /*path des models active record de votre application*/
         ],
-        /*Ajout de transformer de ligne (RowTransformer)*/
-        'rowTransformers' => [
+        /*Ajout de processeurs de ligne (RowTransformer)*/
+        'rowProcessorss' => [
         /* Pour les configurations import*/
             'import' => [
                 'nom-1' => [
-                    'class' => ImportRowTransformer::class,
+                    'class' => ImportRowProcessor::class,
                     'label' => 'Nom 1 (Import)',
                 ],
             ]

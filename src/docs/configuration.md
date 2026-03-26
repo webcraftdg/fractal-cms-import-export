@@ -16,16 +16,11 @@ En important un fichier au format JSON avec le format suivant :
 
 ```json
 {
-  "name": "nom de la configuration",
-  "version": 1,
-  "table": "nom de la table",
-  "type": "type ('import' ou 'export')",
-  "sourceType":"la source ('table', 'sql', 'extern')",
-  "active": 1,
-  "stopOnError":"1 ou 0, permet de stopper dès la première erreur",
-  "rowTransformer":"nom de votre row transformer",
-  "columns": [
-    {
+"metas":{"name":"nom de la configuration","version":1,"type":"la source ('table', 'sql', 'extern')", "sourceType":"type de la source", "fileFormat":"xml", "active":1, "stopOnError":"1 ou 0, permet de stopper dès la première erreur", "table":"nom de la table", "rowProcessor":"nom de votre row processor"},
+"records":[
+	{"fields":
+		[
+		  {
       "source": "column-1",
       "target": "Colonne 1",
       "format": "string"
@@ -59,8 +54,9 @@ En important un fichier au format JSON avec le format suivant :
         "to":"Y-m-d"
       }
     }
-  ]
+	]
 }
+]}
 ```
 Le fichier sera vérifié, validé, le formulaire et les colonnes seront automatiquement créées et l'application redirigera vers le formulaire valorisé.
 
@@ -72,19 +68,20 @@ En cliquant sur le bouton "Créer manuellement", un formulaire de création sera
 
 **Attention**: la clé [nom, version] doit-être unique dans l'application
 
-* **Actif** : La configuration est active
-* **Nom** : Obligatoire : nom de la configuration
+* **Configuration active** : La configuration est active
+* **Arrêter le traitement à la première erreur** : arrête le traitement en cas d'erreur (import)
+* **Nom de la configuration** : Obligatoire : nom de la configuration
 * **version** : Obligatoire : version de cette configuration
-* **Type de la source** : Obligatoire : Type de la source ou cible des données
-    * **externe** : Résultat d'une requête vers un array ..
+* **Type (import ou export)** : Configuration pour un **import** ou un **export**
+* **TSource des données** : Source des données
+    * **externe** : En import indique que la source est externe (fichier), en export indique d'ou vient la source (extern:données externe via un Row processor, Table : export de la table, SQL : export du résultat de la requête SQL)
     * **table** : Table de la base de données
     * **SQL** : Requête SQL
 * **Format du fichier** : Format du fichier d'import ou du fichier exporté
-* **Table cible** : table de la base de données ciblé (type de source = 'table')
+* **Table cible** : table de la base de données ciblé (type de source = 'table' ou 'extern' pour un import)
 * **Requête SQL** : Requête SQL ciblé (type de source = 'sql')
-* **type** : Configuration pour un **import** ou un **export**
-* **Cible de l'export** : Dans le cas d'un requête SQL, ce paramètre permet de déterminer si l'export relancera la requête SQL ou lira la view généré
-* **transformer des colonnes** : Vos transformers que vous avez ajouté dans la configuration du composant (voir [initialisation](initialisation.md))
+* **Mode de calcul des données à exporter** : Dans le cas d'un requête SQL, ce paramètre permet de déterminer si l'export relancera la requête SQL ou lira la view généré
+* **Convertisseur métier** : Convertisseur métier **RowProcessors** cette option indique que chaque ligne sera traiter via une autre implémentation (voir [initialisation](initialisation.md))
 
 ![Formulaire de création import](images/form-creer-import.png)
 
@@ -110,4 +107,4 @@ L'interface affichera les erreurs.
 
 Les exports seront réalisé avec une limite de mémoire calculée. les gros exports Xslx ne seront pas exécutés.
 
-[<- Précédent](concept.md) | [Suivant ->](transformer.md)
+[<- Précédent](concept.md) | [Suivant ->](processors.md)

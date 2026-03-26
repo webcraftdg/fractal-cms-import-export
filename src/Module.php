@@ -49,7 +49,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
     public int $maxColumns = 80;
     public int $maxEstimatedMb = 500;
     public array $pathsNamespacesModels = [];
-    public array $rowTransformers = [];
+    public array $rowProcessors = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -113,7 +113,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
      */
     protected function registerRowProcessors() : void
     {
-        Yii::$container->set(RowProcessorService::class, new RowProcessorService($this->rowTransformers));
+        Yii::$container->set(RowProcessorService::class, new RowProcessorService($this->rowProcessors));
     }
 
     /**
