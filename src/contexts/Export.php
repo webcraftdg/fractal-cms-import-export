@@ -11,7 +11,7 @@
 namespace fractalCms\importExport\contexts;
 
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\interfaces\Writer as WriterInterface;
 use fractalCms\importExport\services\exports\writers\WriteTarget;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use yii\helpers\Json;

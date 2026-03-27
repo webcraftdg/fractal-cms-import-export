@@ -17,7 +17,7 @@ use InvalidArgumentException;
 use Exception;
 use Yii;
 
-class ConfigFileImport
+class ConfigFileImportService
 {
 
 

@@ -11,9 +11,10 @@
 namespace fractalCms\importExport\mappers;
 
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\ColumnTransformer;
+use fractalCms\importExport\services\ColumnTransformerService;
 use fractalCms\importExport\interfaces\DataMapper;
 use Exception;
+use fractalCms\importExport\models\ImportConfigColumn;
 use Yii;
 
 class Column implements DataMapper {
@@ -32,13 +33,14 @@ class Column implements DataMapper {
     {
         try {
             $attributes = [];
-            $transformerService = Yii::$container->get(ColumnTransformer::class);
+            $transformerService = Yii::$container->get(ColumnTransformerService::class);
             foreach ($rawRecord  as $field => $value) {
+                /**@var ImportConfigColumn $column */
                 $column = $config->findColumnByName($field);
                 if (
                     $value !== null
                     && $column !== null
-                    && $transformerService instanceof ColumnTransformer
+                    && $transformerService instanceof ColumnTransformerService
                     && $column->transformer !== null
                     && empty($column->transformer['name']) === false
                 ) {

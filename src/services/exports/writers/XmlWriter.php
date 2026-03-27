@@ -11,7 +11,7 @@
 namespace fractalCms\importExport\services\exports\writers;
 
 use fractalCms\importExport\contexts\Writer as WriterContext;
-use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\interfaces\Writer as WriterInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\formatters\Record;
 use fractalCms\importExport\interfaces\RecordFormatter;

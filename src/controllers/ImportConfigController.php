@@ -21,42 +21,43 @@ use fractalCms\importExport\factories\ImportConfigColumn;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\ConfigDataBase;
-use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\RowProcessor as RowProcessorService;
-use Yii;
+use fractalCms\importExport\services\ActiveRecordParameterService;
+use fractalCms\importExport\services\ConfigDataBaseService;
+use fractalCms\importExport\services\RowProcessorService;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use Yii;
 
 class ImportConfigController extends BaseController
 {
 
     public RowProcessorService $rowProcessorService;
     protected DbViewInterface $dbView;
-    protected Parameter $parameter;
+    protected ActiveRecordParameterService $activeRecordParameter;
     protected SourceColumnsResolver $sourceColumnResolver;
     protected ImportConfigColumn $importConfigColumnFactory;
-    protected ConfigDataBase $configDatabase;
+    protected ConfigDataBaseService $configDatabase;
     /**
      * @inheritDoc
      */
-   public function __construct($id, $module, DbView $dbView, $config = [])
+   public function __construct(
+        $id,
+        $module,
+        DbView $dbView,
+        RowProcessorService $rowProcessorService,
+        SourceColumnsResolver $sourceColumnResolver,
+        ActiveRecordParameterService $activeRecordParameter,
+        $config = []
+    )
    {
-       parent::__construct($id, $module, $config);
-       $this->dbView = $dbView;
-       if (Yii::$app->has('importDbParameters') === true) {
-           $this->parameter = Yii::$app->importDbParameters;
-       }
-       if (Yii::$container->has(RowProcessorService::class) === true) {
-           $this->rowProcessorService = Yii::$container->get(RowProcessorService::class);
-       }
-
-        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
-           $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
-        }
+        parent::__construct($id, $module, $config);
+        $this->dbView = $dbView;
+        $this->activeRecordParameter = $activeRecordParameter;
+        $this->rowProcessorService = $rowProcessorService;
+        $this->sourceColumnResolver = $sourceColumnResolver;
         $this->importConfigColumnFactory = new ImportConfigColumn();
-        $this->configDatabase = new ConfigDataBase($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabase = new ConfigDataBaseService($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
    }
 
     /**
@@ -157,7 +158,7 @@ class ImportConfigController extends BaseController
              */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
-            $tables = $this->parameter->getActiveModelTableNames();
+            $tables = $this->activeRecordParameter->getActiveModelTableNames();
             $rowProcessors = ($this->rowProcessorService instanceof RowProcessorService) ?
                 $this->rowProcessorService->getAll() : [];
             if ($request->isPost === true) {
@@ -224,7 +225,7 @@ class ImportConfigController extends BaseController
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
-            $tables = $this->parameter->getActiveModelTableNames();
+            $tables = $this->activeRecordParameter->getActiveModelTableNames();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
 
             if ($request->isPost === true) {

@@ -1,6 +1,6 @@
 <?php
 /**
- * ConfigColumnsGenerator.php
+ * ConfigColumnsGeneratorService.php
  *
  * PHP Version 8.2+
  *
@@ -14,7 +14,7 @@ use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\factories\ImportConfigColumn;
 
-class ConfigColumnsGenerator
+class ConfigColumnsGeneratorService
 {
     
     /**

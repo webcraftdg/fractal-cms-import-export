@@ -25,8 +25,8 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\factories\ImportConfigColumn as ImportConfigColumnFactory;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use fractalCms\importExport\services\ConfigDataBase;
+use fractalCms\importExport\services\ColumnTransformerService;
+use fractalCms\importExport\services\ConfigDataBaseService;
 use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
@@ -40,24 +40,24 @@ class ImportConfigController extends BaseController
 {
 
     private DbViewInterface $dbView;
-    private TransformService $transformService;
+    private ColumnTransformerService $columnTransformService;
     protected SourceColumnsResolver $sourceColumnResolver;
     protected ImportConfigColumnFactory $importConfigColumnFactory;
-    protected ConfigDataBase $configDatabase;
+    protected ConfigDataBaseService $configDatabaseService;
 
     /**
      * @inheritDoc
      */
-    public function __construct($id, $module, DbView $dbView, TransformService $transformService, $config = [])
+    public function __construct($id, $module, DbView $dbView, ColumnTransformerService $columnTransformService, $config = [])
     {
         parent::__construct($id, $module, $config);
         $this->dbView = $dbView;
-        $this->transformService = $transformService;
+        $this->columnTransformService = $columnTransformService;
         if (Yii::$container->has(SourceColumnsResolver::class) === true) {
            $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
         }
         $this->importConfigColumnFactory = new ImportConfigColumnFactory();
-        $this->configDatabase = new ConfigDataBase($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabaseService = new ConfigDataBaseService($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
     }
 
     /**
@@ -274,7 +274,7 @@ class ImportConfigController extends BaseController
         try {
             $transformers = [];
             /** @var ColumnTransformer $transformer */
-            foreach ($this->transformService->getTransformers() as $transformer) {
+            foreach ($this->columnTransformService->getTransformers() as $transformer) {
                 $transformers[] = [
                     'name' => $transformer->getName(),
                     'description' => $transformer->getDescription(),
@@ -333,7 +333,7 @@ class ImportConfigController extends BaseController
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
             $name = $request->getQueryParam('name', null);
-            $columns = $this->configDatabase->generateColumns($importConfig);
+            $columns = $this->configDatabaseService->generateColumns($importConfig);
             if (empty($name) === false) {
                 $columns = array_filter($columns, function($value) use ($name){
                     return isset($value['source']) === true && str_contains($value['source'], $name) === true;

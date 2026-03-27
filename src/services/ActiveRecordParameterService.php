@@ -1,6 +1,6 @@
 <?php
 /**
- * Parameter.php
+ * ActiveRecordParameterService.php
  *
  * PHP Version 8.2+
  *
@@ -16,7 +16,7 @@ use yii\helpers\Json;
 use Exception;
 use Yii;
 
-class Parameter implements ParameterInterface
+class ActiveRecordParameterService implements ParameterInterface
 {
 
     protected $parameterTables = [];

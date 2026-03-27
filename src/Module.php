@@ -21,9 +21,10 @@ use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use fractalCms\importExport\services\RowProcessor as RowProcessorService;
+use fractalCms\importExport\services\ActiveRecordParameterService;
+use fractalCms\importExport\services\ColumnTransformerService;
+use fractalCms\importExport\services\RowProcessorService;
+use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
 use fractalCms\importExport\transformers\BooleanColumnTransformer;
 use fractalCms\importExport\transformers\DateColumnTransformer;
 use fractalCms\importExport\transformers\LowerColumnTransformer;
@@ -64,9 +65,12 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setSingleton(SourceColumnsResolver::class, [
                 'class' => SourceColumnsResolver::class,
             ]);
+            Yii::$container->setSingleton(ConfigRuntimeService::class, [
+                'class' => ConfigRuntimeService::class,
+            ]);
             Yii::$container->setDefinitions([
-                TransformService::class => function() {
-                    return new TransformService([
+                ColumnTransformerService::class => function() {
+                    return new ColumnTransformerService([
                         new BooleanColumnTransformer(),
                         new DateColumnTransformer(),
                         new LowerColumnTransformer(),
@@ -78,12 +82,12 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     ]);
                 }
             ]);
-            $this->registerRowProcessors();
-            $app->setComponents([
-                'importDbParameters' => [
-                    'class' => Parameter::class
+            Yii::$container->setDefinitions([
+                ActiveRecordParameterService::class => [
+                    'class' => ActiveRecordParameterService::class
                 ]
             ]);
+            $this->registerRowProcessors();
             $app->setComponents([
                 'exportLimiter' => [
                     'class' => ExportLimiter::class,

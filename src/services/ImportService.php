@@ -16,28 +16,26 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\services\imports\factories\ImportInserter;
 use fractalCms\importExport\services\imports\factories\ImportReader;
-use fractalCms\importExport\services\imports\ImportProcessor;
+use fractalCms\importExport\services\imports\ImportProcessorService;
 use fractalCms\importExport\mappers\Column;
 use yii\base\NotSupportedException;
 use Exception;
 use Yii;
 
-class Import implements ImportInterface
+class ImportService implements ImportInterface
 {
 
     /**
-     * Run import
+     * run
      *
-     * @param ImportConfig $config
-     * @param string $filePath
-     * @param bool $isTest
-     * @param $params
+     * @param  ImportConfig $config
+     * @param  string       $filePath
+     * @param  bool         $isTest
+     * @param  array        $params
+     *
      * @return ImportJob
-     * @throws NotSupportedException
-     * @throws \yii\base\InvalidConfigException
-     * @throws \yii\db\Exception
      */
-    public static function run(ImportConfig $config, string $filePath, bool $isTest = false, $params = []): ImportJob
+    public function run(ImportConfig $config, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
             $readerFactory = new ImportReader();
@@ -46,7 +44,7 @@ class Import implements ImportInterface
             $inserterFactory = new ImportInserter();
             $inserter = $inserterFactory->create($config->sourceType);
             $mapper = new Column();
-            $processor = new ImportProcessor();
+            $processor = new ImportProcessorService();
             return $processor->run($reader, $mapper, $inserter, $config, $filePath, $isTest, $params);
 
         } catch (Exception $e)  {

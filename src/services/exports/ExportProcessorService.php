@@ -1,6 +1,6 @@
 <?php
 /**
- * ExportXlsx.php
+ * ExportProcessorService.php
  *
  * PHP Version 8.2+
  *
@@ -19,7 +19,7 @@ use fractalCms\importExport\interfaces\RowExportProcessor;
 use Exception;
 use Yii;
 
-class ExportProcessor implements InterfacesExportProcessor
+class ExportProcessorService implements InterfacesExportProcessor
 {
     public function run(
         CountableDataReader $reader,

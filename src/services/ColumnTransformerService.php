@@ -1,6 +1,6 @@
 <?php
 /**
- * Transform.php
+ * ColumnTransformerService.php
  *
  * PHP Version 8.2+
  *
@@ -14,7 +14,7 @@ use fractalCms\importExport\interfaces\ColumnTransformer as TransformInterface;
 use Exception;
 use Yii;
 
-class ColumnTransformer
+class ColumnTransformerService
 {
     /** @var TransformInterface[] */
     private array $transformers = [];

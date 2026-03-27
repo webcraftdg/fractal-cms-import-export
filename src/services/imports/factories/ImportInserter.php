@@ -25,7 +25,7 @@ class ImportInserter {
      *
      * @param  string $source
      *
-     * @return InterfacesImportReader
+     * @return ImportInserterInterface
      */
     public function create(string $source) : ImportInserterInterface
     {

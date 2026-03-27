@@ -12,37 +12,24 @@ namespace fractalCms\importExport\models;
 
 use fractalCms\importExport\interfaces\DbSourceInspector;
 use fractalCms\importExport\interfaces\RowExportTransformer;
-use fractalCms\importExport\estimations\ExportEstimator;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\exceptions\ImportError;
-use fractalCms\importExport\interfaces\DataReader;
 use fractalCms\importExport\interfaces\RowExportProcessor;
 use fractalCms\importExport\interfaces\RowImportProcessor;
 use fractalCms\importExport\interfaces\RowImportTransformer;
 use fractalCms\importExport\Module;
-use fractalCms\importExport\services\Export;
-use fractalCms\importExport\services\exports\readers\QueryDataReader;
-use fractalCms\importExport\services\exports\readers\SqlDataReader;
-use fractalCms\importExport\services\Import;
-use fractalCms\importExport\services\Parameter;
+use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
+use fractalCms\importExport\services\ActiveRecordParameterService;
 use fractalCms\importExport\services\RowProcessor;
 use fractalCms\importExport\db\SourceColumnsResolver;
-use fractalCms\importExport\interfaces\WriterInterface;
-use fractalCms\importExport\services\exports\writers\CsvWriter;
-use fractalCms\importExport\services\exports\writers\JsonWriter;
-use fractalCms\importExport\services\exports\writers\XlsxWriter;
-use fractalCms\importExport\services\exports\writers\XmlWriter;
+use fractalCms\importExport\services\ConfigFileImport;
 use yii\behaviors\TimestampBehavior;
-use yii\db\Query;
 use yii\db\Expression;
-use yii\helpers\Json;
 use yii\web\Application;
 use yii\web\UploadedFile;
-use InvalidArgumentException;
 use Exception;
-use fractalCms\importExport\interfaces\FileConfigImportReader;
-use fractalCms\importExport\services\ConfigFileImport;
-use fractalCms\importExport\services\exports\writers\NDJsonWriter;
+use fractalCms\importExport\services\ExportService;
+use fractalCms\importExport\services\ImportService;
 use Yii;
 
 /**
@@ -99,8 +86,9 @@ class ImportConfig extends \yii\db\ActiveRecord
 
     public $tmpColumns = [];
 
-    protected Parameter $parameter;
+    protected ActiveRecordParameterService $activeRecordParameterService;
     protected ExportLimiter $exportLimiter;
+    protected ConfigRuntimeService $configRuntimeService;
     protected ?SourceColumnsResolver $columnResolver = null;
 
     private array $columnsByNames = [];
@@ -113,14 +101,17 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function init()
     {
         parent::init();
-        if (Yii::$app->has('importDbParameters') === true) {
-            $this->parameter = Yii::$app->importDbParameters;
-        }
-        if (Yii::$app->has('exportLimiter') === true) {
-            $this->exportLimiter = Yii::$app->exportLimiter;
+        if (Yii::$container->has(ActiveRecordParameterService::class) === true) {
+            $this->activeRecordParameterService = Yii::$container->get(ActiveRecordParameterService::class);
         }
         if (Yii::$container->has(SourceColumnsResolver::class) === true) {
             $this->columnResolver = Yii::$container->get(SourceColumnsResolver::class);
+        }
+        if (Yii::$container->has(ConfigRuntimeService::class) === true) {
+            $this->configRuntimeService = Yii::$container->get(ConfigRuntimeService::class);
+        }
+        if (Yii::$app->has('exportLimiter') === true) {
+            $this->exportLimiter = Yii::$app->exportLimiter;
         }
     }
 
@@ -333,8 +324,8 @@ class ImportConfig extends \yii\db\ActiveRecord
         try {
             $table = $this->table;
             $dbTables = [];
-            if ($this->parameter instanceof Parameter) {
-                $dbTables = $this->parameter->getActiveModelTableNames();
+            if ($this->activeRecordParameterService instanceof ActiveRecordParameterService) {
+                $dbTables = $this->activeRecordParameterService->getActiveModelTableNames();
             }
             $success = in_array($table, array_keys($dbTables));
             if( $success === false) {
@@ -423,12 +414,12 @@ class ImportConfig extends \yii\db\ActiveRecord
     public function validateLimit($attribute, $params) : bool
     {
         try {
-            $importConfig = ImportConfig::findOne($this->importConfigId);
+            $config = ImportConfig::findOne($this->importConfigId);
             $success = true;
             $message = null;
-            if ($importConfig !== null) {
-                $limitModel = $importConfig->getLimits();
-                $limitModel->name = $importConfig->name;
+            if ($config !== null) {
+                $limitModel = $this->configRuntimeService->getLimits($config);
+                $limitModel->name = $config->name;
                 $message = $this->exportLimiter->assertAllowed($limitModel);
             }
             if(empty($message) === false) {
@@ -467,29 +458,6 @@ class ImportConfig extends \yii\db\ActiveRecord
         }
     }
 
-
-    /**
-     * @return LimiterModel
-     * @throws \yii\base\InvalidConfigException
-     * @throws \yii\db\Exception
-     */
-    public function getLimits() : LimiterModel
-    {
-        try {
-            $limiter = Yii::createObject(LimiterModel::class);
-            $limiter->scenario = LimiterModel::SCENARIO_CREATE;
-            $limiter->rows = ExportEstimator::estimateRows($this);
-            $limiter->format = ($this->fileFormat) ?? self::FORMAT_CSV;
-            $limiter->columns = ExportEstimator::estimateColumns($this);
-            $limiter->estimatedMb = ExportEstimator::estimateSizeMb($limiter->rows, $limiter->columns);
-            return $limiter;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-  
-
     /**
      * get Context columns
      *
@@ -515,155 +483,6 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $values[] = $value;
             }
             return $values;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-
-    /**
-     * @param int $batchSize
-     * @return DataReader|null
-     * @throws Exception
-     */
-    public function getDataReader(int $batchSize = 1000) : DataReader | null
-    {
-        try {
-            $dataReader = null;
-            if ($this->sourceType === self::SOURCE_TYPE_TABLE) {
-                $cols = $this->getHeaderColumns();
-                $statementName = $this->getContextName();
-                $query = new Query();
-                $query->select($cols);
-                $query->from($statementName);
-                $dataReader = new QueryDataReader();
-                $dataReader->open(['query' => $query, 'batchSize' => $batchSize]);
-            } elseif($this->sourceType === self::SOURCE_TYPE_SQL) {
-                $dataReader = new SqlDataReader();
-                $dataReader->open(['command' => Yii::$app->db->createCommand($this->sql)]);
-            }
-            return  $dataReader;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-    /**
-     * createWriter
-     *
-     * @return WriterInterface
-     */
-    public function createWriter() : WriterInterface
-    {
-        try {
-            switch ($this->fileFormat) {
-                case ImportConfig::FORMAT_CSV: 
-                    $writer = new CsvWriter();
-                    break;
-                case ImportConfig::FORMAT_EXCEL:
-                case ImportConfig::FORMAT_EXCEL_X: 
-                    $writer = new XlsxWriter();
-                    break;
-                case ImportConfig::FORMAT_JSON:
-                    $writer = new JsonWriter($this);
-                    break;
-                case ImportConfig::FORMAT_NDJSON: 
-                    $writer = new NDJsonWriter($this);
-                    break;    
-                case ImportConfig::FORMAT_XML:
-                    $writer = new XmlWriter($this);
-                    break;
-                default: 
-                    throw new InvalidArgumentException('ImportConfig : createWriter, format not found');    
-            }
-            return $writer;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-    /**
-     * getExportFileName
-     *
-     * @return string
-     */
-    public function getExportFileName() : string
-    {
-        try {
-            $fileName = 'export_' . date('Ymd_His');
-            switch ($this->fileFormat) {
-                case ImportConfig::FORMAT_CSV: 
-                    $fileName =  $fileName . '.csv';
-                    break;
-                case ImportConfig::FORMAT_EXCEL:
-                case ImportConfig::FORMAT_EXCEL_X: 
-                    $fileName =  $fileName . '.xlsx';
-                    break;
-                case ImportConfig::FORMAT_JSON:
-                case ImportConfig::FORMAT_NDJSON:
-                    $fileName =  $fileName . '.json';
-                    break;
-                case ImportConfig::FORMAT_XML:
-                    $fileName =  $fileName . '.xml';
-                    break;
-                default: 
-                    throw new InvalidArgumentException('ImportConfig : getExportFileName, format not found');    
-            }
-            return $fileName;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-    /**
-     * getExportPreamble
-     *
-     * @return array
-     */
-      public function getExportPreamble() : array
-    {
-        try {
-            $preamble = [];
-            switch ($this->fileFormat) {
-                case ImportConfig::FORMAT_CSV: 
-                case ImportConfig::FORMAT_EXCEL:
-                case ImportConfig::FORMAT_EXCEL_X:
-                    $preamble = $this->getHeaderColumns(false);
-                    break;
-            }
-            return $preamble;
-        } catch (Exception $e) {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw $e;
-        }
-    }
-
-
-    /**
-     * Build column config list
-     *
-     * @param bool $isSource
-     * @return array
-     * @throws Exception
-     */
-    public function getHeaderColumns(bool $isSource = true) : array
-    {
-        try {
-            $cols = [];
-            $query = $this->getImportColumns();
-            /** @var ImportConfigColumn $importColumn */
-            foreach ($query->each() as $importColumn) {
-                $col = $importColumn->source;
-                if ($isSource === false) {
-                    $col = $importColumn->target;
-                }
-                $cols[] = $col;
-            }
-            return $cols;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -756,8 +575,8 @@ class ImportConfig extends \yii\db\ActiveRecord
                 /**@var ConfigFileImport $configFileImport */
                 $configFileImport = new ConfigFileImport($this, $finalPathFile);
                 $config = $configFileImport->run();
-                if ($this->parameter instanceof Parameter) {
-                    $config->table = $this->parameter->parseTable($config->table);
+                if ($this->activeRecordParameterService instanceof ActiveRecordParameterService) {
+                    $config->table = $this->activeRecordParameterService->parseTable($config->table);
                 }
                 $transaction = Yii::$app->db->beginTransaction();
                 
@@ -878,12 +697,14 @@ class ImportConfig extends \yii\db\ActiveRecord
             $targetModel = ImportConfig::findOne(['id' => $this->importConfigId]);
             if($targetModel !== null) {
                 if ($this->importFile instanceof UploadedFile && $targetModel->type === static::TYPE_IMPORT) {
+                    $importService = new ImportService();
                     $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
                     $this->importFile->saveAs($finalPathFile);
-                    $importJob = Import::run($targetModel, $finalPathFile, true);
+                    $importJob = $importService->run($targetModel, $finalPathFile, true);
                     unlink($finalPathFile);
                 } elseif ($targetModel->type === static::TYPE_EXPORT) {
-                    $importJob = Export::run($targetModel);
+                    $exportService = new ExportService($this->configRuntimeService);
+                    $importJob = $exportService->run($targetModel);
                 }
             } else {
                 $this->addError('importFile', 'Merci de télécharger un fichier');
@@ -905,8 +726,8 @@ class ImportConfig extends \yii\db\ActiveRecord
             $name = strtolower($this->name.'_v'.$this->version);
             if(($this->sourceType === self::SOURCE_TYPE_TABLE || $this->sourceType === self::SOURCE_TYPE_EXTERN && $this->type === self::TYPE_IMPORT) && empty($this->table) === false) {
                 $name = $this->table;
-                if ($this->parameter instanceof Parameter) {
-                    $dbTables = $this->parameter->getActiveModelTableNames();
+                if ($this->activeRecordParameterService instanceof ActiveRecordParameterService) {
+                    $dbTables = $this->activeRecordParameterService->getActiveModelTableNames();
                     $name = (isset($dbTables[$this->table]) === true) ? $dbTables[$this->table] : $this->table;
                 }
             }

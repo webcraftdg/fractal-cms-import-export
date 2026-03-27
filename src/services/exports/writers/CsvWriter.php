@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\services\exports\writers;
 
-use fractalCms\importExport\interfaces\WriterInterface;
+use fractalCms\importExport\interfaces\Writer as WriterInterface;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use InvalidArgumentException;
 use Exception;

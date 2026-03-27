@@ -1,6 +1,6 @@
 <?php
 /**
- * ConfigDataBase.php
+ * ConfigDataBaseService.php
  *
  * PHP Version 8.2+
  *
@@ -17,10 +17,10 @@ use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\factories\ImportConfigColumn;
 use Yii;
 
-class ConfigDataBase
+class ConfigDataBaseService
 {
     
-    private ConfigColumnsGenerator $configColumnGenerator;
+    private ConfigColumnsGeneratorService $configColumnGenerator;
     
     /**
      * constructor
@@ -34,7 +34,7 @@ class ConfigDataBase
         private SourceColumnsResolver $resolver,
         private ImportConfigColumn $factory
     ) {
-        $this->configColumnGenerator = new ConfigColumnsGenerator($resolver, $factory);
+        $this->configColumnGenerator = new ConfigColumnsGeneratorService($resolver, $factory);
     }
 
     /**

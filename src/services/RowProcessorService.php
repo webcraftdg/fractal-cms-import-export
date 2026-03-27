@@ -1,6 +1,6 @@
 <?php
 /**
- * RowProcessor.php
+ * RowProcessorService.php
  *
  * PHP Version 8.2+
  *
@@ -16,7 +16,7 @@ use yii\helpers\ArrayHelper;
 use Exception;
 use Yii;
 
-class RowProcessor
+class RowProcessorService
 {
     /** @var array $rowProcessors */
     private array $rowProcessors = [];

@@ -1,6 +1,6 @@
 <?php
 /**
- * WriterInterface.php
+ * Writer.php
  *
  * PHP Version 8.2+
  *
@@ -13,7 +13,7 @@ namespace fractalCms\importExport\interfaces;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use fractalCms\importExport\services\exports\writers\WriteTarget;
 
-interface WriterInterface
+interface Writer
 {
     /**
      * open

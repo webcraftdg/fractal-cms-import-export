@@ -10,25 +10,13 @@
  */
 namespace fractalCms\importExport\db;
 
-use Exception;
-use fractalCms\importExport\services\Parameter;
 use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use Yii;
 use yii\base\Component;
+use Exception;
+use Yii;
 
 class DbView extends Component implements DbViewInterface
 {
-
-    protected Parameter $parameter;
-    /**
-     * @inheritDoc
-     */
-    public function __construct(Parameter $parameter, $config = [])
-    {
-        parent::__construct($config);
-        $this->parameter = $parameter;
-    }
-
     /**
      * @param string $name
      * @param string $sql

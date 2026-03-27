@@ -18,11 +18,11 @@ interface Import
 {
 
     /**
-     * @param ImportConfig $importConfig
+     * @param ImportConfig $config
      * @param string $filePath
      * @param bool $isTest
      * @param array $params
      * @return ImportJob
      */
-    public static function run(ImportConfig $importConfig, string $filePath, bool $isTest = false, array $params = []) : ImportJob;
+    public function run(ImportConfig $config, string $filePath, bool $isTest = false, array $params = []) : ImportJob;
 }

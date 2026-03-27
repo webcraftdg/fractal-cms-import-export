@@ -1,6 +1,6 @@
 <?php
 /**
- * ImportProcessor.php
+ * ImportProcessorService.php
  *
  * PHP Version 8.2+
  *
@@ -26,7 +26,7 @@ use yii\web\Application as WebApplication;
 use Exception;
 use Yii;
 
-final class ImportProcessor implements ImportProcessorInterface
+final class ImportProcessorService implements ImportProcessorInterface
 {
 
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Export.php
+ * ExportService.php
  *
  * PHP Version 8.2+
  *
@@ -17,13 +17,20 @@ use fractalCms\importExport\contexts\Export as ContextsExport;
 use fractalCms\importExport\contexts\Writer as WriterContext;
 use fractalCms\importExport\interfaces\DataReader;
 use fractalCms\importExport\mappers\Column;
-use fractalCms\importExport\services\exports\ExportProcessor;
+use fractalCms\importExport\services\exports\ExportProcessorService;
+use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
 use yii\helpers\FileHelper;
 use Exception;
 use Yii;
 
-class Export
+class ExportService
 {
+
+    public function __construct(
+        private ConfigRuntimeService $configRuntimeService
+    )
+    {
+    }
 
     /**
      * @param ImportConfig $config
@@ -32,10 +39,10 @@ class Export
      * @return ImportJob
      * @throws Exception
      */
-    public static function run(ImportConfig $config, int $batchSize = 1000, array $params = []): ImportJob
+    public function run(ImportConfig $config, int $batchSize = 1000, array $params = []): ImportJob
     {
         try {
-            return static::executeProcessor(
+            return $this->executeProcessor(
                 config:$config,
                 dataReader:null,
                 batchSize:$batchSize,
@@ -56,10 +63,10 @@ class Export
      *
      * @return ImportJob
      */
-    public static function runWithDataReader(ImportConfig $config, DataReader $dataReader, array $params = []) : ImportJob
+    public function runWithDataReader(ImportConfig $config, DataReader $dataReader, array $params = []) : ImportJob
     {
         try {
-            return static::executeProcessor(
+            return $this->executeProcessor(
                 config: $config,
                 dataReader: $dataReader,
                 batchSize: 1000,
@@ -81,7 +88,7 @@ class Export
      *
      * @return ImportJob
      */
-    public static function executeProcessor(
+    public function executeProcessor(
         ImportConfig $config,
         ?DataReader $dataReader = null,
         int $batchSize = 1000,
@@ -89,15 +96,15 @@ class Export
         ) : ImportJob
     {
           try {
-            $filename = $config->getExportFileName();
+            $filename = $this->configRuntimeService->getExportFileName($config);
             FileHelper::createDirectory(Yii::getAlias('@runtime'));
             $path = Yii::getAlias('@runtime') . '/' . $filename;
             if($dataReader === null) {
-                $dataReader = $config->getDataReader($batchSize);
+                $dataReader = $this->configRuntimeService->getDataReader($config, $batchSize);
             }
-            $writer = $config->createWriter();
+            $writer =  $this->configRuntimeService->createWriter($config);
             $mapper = new Column();
-            $processor = new ExportProcessor();
+            $processor = new ExportProcessorService();
             $baseExportContext = new ContextsExport(
                 config: $config,
                 dryRun: false,
@@ -107,7 +114,7 @@ class Export
                 writerContext: new WriterContext(
                     absolutePath:$path,
                     relativePath:'@runtime/'.$filename,
-                    preamble: $config->getExportPreamble()
+                    preamble: $this->configRuntimeService->getExportPreamble($config)
                 ),
                 sectionName:'export',
                 params: $params

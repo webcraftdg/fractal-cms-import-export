@@ -14,10 +14,13 @@ use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\services\Export;
 use fractalCms\importExport\services\Import;
 use yii\console\Controller;
-use Yii;
-use Exception;
-use yii\base\Exception as BaseException;
 use yii\helpers\Json;
+use yii\base\Exception as BaseException;
+use Exception;
+use fractalCms\importExport\services\ExportService;
+use fractalCms\importExport\services\ImportService;
+use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
+use Yii;
 
 class ImportExportController extends Controller
 {
@@ -28,6 +31,9 @@ class ImportExportController extends Controller
     public $isTest = 0;
     public $params;
     public $batchSize;
+
+    protected ConfigRuntimeService $configRuntimeService;
+
 
     /**
      * @inheritdoc
@@ -50,6 +56,19 @@ class ImportExportController extends Controller
             'params' => 'params',
             'batchSize' => 'batchSize',
         ];
+    }
+
+    /**
+     * @inheritDoc
+     *
+     * @return void
+     */
+    public function init()
+    {
+        parent::init();
+        if (Yii::$container->has(ConfigRuntimeService::class) === true) {
+            $this->configRuntimeService = Yii::$container->get(ConfigRuntimeService::class);
+        }
     }
 
     /**
@@ -96,14 +115,16 @@ class ImportExportController extends Controller
             }
 
             if ($importConfig->type === ImportConfig::TYPE_IMPORT) {
-                $importJob = Import::run(
+                $importService = new ImportService();
+                $importJob = $importService->run(
                     config: $importConfig,
                     filePath: $this->pathFile,
                     isTest: $isTest,
                     params: $params
                 );
             } else {
-                $importJob = Export::run(
+                $exportService = new ExportService($this->configRuntimeService);
+                $importJob = $exportService->run(
                     config: $importConfig,
                     batchSize: (int)$batchSize,
                     params: $params
