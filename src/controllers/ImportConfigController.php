@@ -12,18 +12,17 @@
 
 namespace fractalCms\importExport\controllers;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\db\SourceColumnsResolver;
-use fractalCms\importExport\factories\ImportConfigColumn;
-use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\ActiveRecordParameterService;
-use fractalCms\importExport\services\ConfigDataBaseService;
-use fractalCms\importExport\services\RowProcessorService;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\configuration\factories\ImportConfigColumn;
+use fractalCms\importExport\database\interfaces\DbView;
+use fractalCms\importExport\database\services\ConfigDataBaseService;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
+use fractalCms\importExport\pipeline\services\RowProcessorService;
+use Exception;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -33,7 +32,7 @@ class ImportConfigController extends BaseController
 {
 
     public RowProcessorService $rowProcessorService;
-    protected DbViewInterface $dbView;
+    protected DbView $dbView;
     protected ActiveRecordParameterService $activeRecordParameter;
     protected SourceColumnsResolver $sourceColumnResolver;
     protected ImportConfigColumn $importConfigColumnFactory;

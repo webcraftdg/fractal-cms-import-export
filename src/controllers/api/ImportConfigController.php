@@ -16,17 +16,17 @@ use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
+
+
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\db\SourceColumnsResolver;
-use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\interfaces\ColumnTransformer;
+use fractalCms\importExport\database\interfaces\DbView;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
-use fractalCms\importExport\factories\ImportConfigColumn as ImportConfigColumnFactory;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\ColumnTransformerService;
-use fractalCms\importExport\services\ConfigDataBaseService;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\configuration\factories\ImportConfigColumn as ImportConfigColumnFactory;
+use fractalCms\importExport\database\services\ConfigDataBaseService;
 use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
@@ -39,7 +39,7 @@ use Yii;
 class ImportConfigController extends BaseController
 {
 
-    private DbViewInterface $dbView;
+    private DbView $dbView;
     private ColumnTransformerService $columnTransformService;
     protected SourceColumnsResolver $sourceColumnResolver;
     protected ImportConfigColumnFactory $importConfigColumnFactory;

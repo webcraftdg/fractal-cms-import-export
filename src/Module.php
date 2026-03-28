@@ -11,33 +11,33 @@
 
 namespace fractalCms\importExport;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\console\ImportExportController;
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\db\SourceColumnsResolver;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\ActiveRecordParameterService;
-use fractalCms\importExport\services\ColumnTransformerService;
-use fractalCms\importExport\services\RowProcessorService;
-use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
-use fractalCms\importExport\transformers\BooleanColumnTransformer;
-use fractalCms\importExport\transformers\DateColumnTransformer;
-use fractalCms\importExport\transformers\LowerColumnTransformer;
-use fractalCms\importExport\transformers\NumberColumnTransformer;
-use fractalCms\importExport\transformers\ReplaceColumnTransformer;
-use fractalCms\importExport\transformers\StrPadColumnTransformer;
-use fractalCms\importExport\transformers\TrimColumnTransformer;
-use fractalCms\importExport\transformers\UpperColumnTransformer;
-use Yii;
+use ffractalCms\importExport\pipeline\transformers\UpperColumnTransformer;
+use fractalCms\importExport\database\services\DbView;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\pipeline\services\RowProcessorService;
+use fractalCms\importExport\pipeline\transformers\BooleanColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\DateColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\LowerColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\NumberColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\ReplaceColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\StrPadColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\TrimColumnTransformer;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
 use yii\web\Application as WebApplication;
 use yii\helpers\Url;
+use Exception;
+use Yii;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
 {
