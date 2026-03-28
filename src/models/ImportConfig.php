@@ -10,26 +10,23 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\interfaces\DbSourceInspector;
-use fractalCms\importExport\interfaces\RowExportTransformer;
+
+use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\configuration\services\ConfigFileImportService;
+use fractalCms\importExport\pipeline\services\ExportService;
+use fractalCms\importExport\pipeline\services\ImportService;
 use fractalCms\importExport\estimations\ExportLimiter;
-use fractalCms\importExport\exceptions\ImportError;
-use fractalCms\importExport\interfaces\RowExportProcessor;
-use fractalCms\importExport\interfaces\RowImportProcessor;
-use fractalCms\importExport\interfaces\RowImportTransformer;
+use fractalCms\importExport\pipeline\interfaces\RowExportProcessor;
+use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
+use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
+use fractalCms\importExport\pipeline\services\RowProcessorService;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
 use fractalCms\importExport\Module;
-use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
-use fractalCms\importExport\services\ActiveRecordParameterService;
-use fractalCms\importExport\services\RowProcessor;
-use fractalCms\importExport\db\SourceColumnsResolver;
-use fractalCms\importExport\services\ConfigFileImport;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\web\Application;
 use yii\web\UploadedFile;
 use Exception;
-use fractalCms\importExport\services\ExportService;
-use fractalCms\importExport\services\ImportService;
 use Yii;
 
 /**
@@ -572,9 +569,9 @@ class ImportConfig extends \yii\db\ActiveRecord
                 $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
                 $this->importFile->saveAs($finalPathFile);
                 $this->scenario = self::SCENARIO_CREATE;
-                /**@var ConfigFileImport $configFileImport */
-                $configFileImport = new ConfigFileImport($this, $finalPathFile);
-                $config = $configFileImport->run();
+                /**@var ConfigFileImportService $ConfigFileImportService */
+                $ConfigFileImportService = new ConfigFileImportService($this, $finalPathFile);
+                $config = $ConfigFileImportService->run();
                 if ($this->activeRecordParameterService instanceof ActiveRecordParameterService) {
                     $config->table = $this->activeRecordParameterService->parseTable($config->table);
                 }
@@ -825,8 +822,8 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $rowProcessor = null;
-            $rowProcessorService = (Yii::$container->has(RowProcessor::class)
-            ) ? Yii::$container->get(RowProcessor::class) : null;
+            $rowProcessorService = (Yii::$container->has(RowProcessorService::class)
+            ) ? Yii::$container->get(RowProcessorService::class) : null;
             if ($rowProcessorService !== null && $this->rowProcessor !== null) {
                 $rowProcessor = $rowProcessorService->create($this->type, $this->rowProcessor);
             }

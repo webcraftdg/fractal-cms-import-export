@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\interfaces\ColumnTransformer;
+use fractalCms\importExport\pipeline\interfaces\ColumnTransformer;
 use yii\base\Model;
 
 class ColumnModel extends Model

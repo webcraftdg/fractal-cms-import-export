@@ -12,14 +12,10 @@
 
 namespace fractalCms\importExport\controllers\api;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
-
-
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\database\interfaces\DbView;
 use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
@@ -34,6 +30,8 @@ use yii\helpers\Json;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use Exception;
+use fractalCms\importExport\database\services\DbView;
 use Yii;
 
 class ImportConfigController extends BaseController

@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\services\ColumnTransformerService;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\helpers\Json;

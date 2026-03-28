@@ -8,9 +8,9 @@
  * @version XXX
  * @package fractalCms\importExport\pipeline\transformers
  */
-namespace ffractalCms\importExport\pipeline\transformers;
+namespace fractalCms\importExport\pipeline\transformers;
 
-use fractalCms\importExport\interfaces\ColumnTransformer;
+use fractalCms\importExport\pipeline\interfaces\ColumnTransformer;
 use Exception;
 use Yii;
 

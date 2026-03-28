@@ -10,7 +10,7 @@
  */
 namespace fractalCms\importExport\pipeline\transformers;
 
-use fractalCms\importExport\interfaces\ColumnTransformer;
+use fractalCms\importExport\pipeline\interfaces\ColumnTransformer;
 use DateTime;
 use Exception;
 use PhpOffice\PhpSpreadsheet\Shared\Date;

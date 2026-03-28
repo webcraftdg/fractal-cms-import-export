@@ -10,11 +10,11 @@
  */
 namespace fractalCms\importExport\pipeline\mappers;
 
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\pipeline\interfaces\DataMapper;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\ColumnTransformerService;
-use fractalCms\importExport\interfaces\DataMapper;
-use Exception;
 use fractalCms\importExport\models\ImportConfigColumn;
+use Exception;
 use Yii;
 
 class Column implements DataMapper {
