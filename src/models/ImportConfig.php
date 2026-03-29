@@ -10,8 +10,6 @@
  */
 namespace fractalCms\importExport\models;
 
-
-use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\configuration\services\ConfigFileImportService;
 use fractalCms\importExport\pipeline\services\ExportService;
 use fractalCms\importExport\pipeline\services\ImportService;
@@ -21,12 +19,14 @@ use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
 use fractalCms\importExport\runtime\services\ConfigRuntimeService;
+use fractalCms\importExport\exceptions\ImportError;
 use fractalCms\importExport\Module;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\web\Application;
 use yii\web\UploadedFile;
 use Exception;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
 use Yii;
 
 /**
@@ -86,7 +86,6 @@ class ImportConfig extends \yii\db\ActiveRecord
     protected ActiveRecordParameterService $activeRecordParameterService;
     protected ExportLimiter $exportLimiter;
     protected ConfigRuntimeService $configRuntimeService;
-    protected ?SourceColumnsResolver $columnResolver = null;
 
     private array $columnsByNames = [];
 
@@ -100,9 +99,6 @@ class ImportConfig extends \yii\db\ActiveRecord
         parent::init();
         if (Yii::$container->has(ActiveRecordParameterService::class) === true) {
             $this->activeRecordParameterService = Yii::$container->get(ActiveRecordParameterService::class);
-        }
-        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
-            $this->columnResolver = Yii::$container->get(SourceColumnsResolver::class);
         }
         if (Yii::$container->has(ConfigRuntimeService::class) === true) {
             $this->configRuntimeService = Yii::$container->get(ConfigRuntimeService::class);
@@ -554,133 +550,7 @@ class ImportConfig extends \yii\db\ActiveRecord
         ];
     }
 
-     
-    /**
-     * manage import File
-     *
-     * @return ImportConfig
-     */
-    public function manageImportFile() : ImportConfig
-    {
-        try {
-            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
-            $config = $this;
-            if ($this->importFile instanceof UploadedFile) {
-                $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
-                $this->importFile->saveAs($finalPathFile);
-                $this->scenario = self::SCENARIO_CREATE;
-                /**@var ConfigFileImportService $ConfigFileImportService */
-                $ConfigFileImportService = new ConfigFileImportService($this, $finalPathFile);
-                $config = $ConfigFileImportService->run();
-                if ($this->activeRecordParameterService instanceof ActiveRecordParameterService) {
-                    $config->table = $this->activeRecordParameterService->parseTable($config->table);
-                }
-                $transaction = Yii::$app->db->beginTransaction();
-                
-                if ($config->hasErrors() === false && $config->validate() === true) {
-                    $config->save();
-                    $config->refresh();
-                    $errorsColumns = $config->manageColumns($config->tmpColumns);
-                    if (empty($errorsColumns) === true) {
-                        $transaction->commit();
-                    } else {
-                        $transaction->rollBack();
-                        /** @var ImportError $errorsColumn */
-                        foreach ($errorsColumns as $errorsColumn) {
-                            $config->addError('tmpColumns', $errorsColumn->message);
-                            break;
-                        }
-                    }
-                } else {
-                    $transaction->rollBack();
-                }
-            }
-            return $config;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
-
-
-
-    /**
-     * @param array $columns
-     * @return array
-     * @throws \yii\base\InvalidConfigException
-     * @throws \yii\db\Exception
-     * @throws \yii\di\NotInstantiableException
-     */
-    public function manageColumns(array $columns) : array
-    {
-        try {
-            $index = 0;
-            $prevIndex= -1;
-            $errors = [];
-            foreach ($columns as $orderColumn => $column) {
-                $importColumn = null;
-                if (isset($column['id']) === true) {
-                    /** @var ImportConfigColumn $importColumn */
-                    $importColumn = ImportConfigColumn::findOne($column['id']);
-                }
-                if ($importColumn === null) {
-                    $importColumn = Yii::createObject(ImportConfigColumn::class);
-                    $importColumn->scenario = ImportConfigColumn::SCENARIO_CREATE;
-                    $importColumn->importConfigId = $this->id;
-                } else {
-                    $importColumn->scenario = ImportConfigColumn::SCENARIO_UPDATE;
-                    $importColumn->transformer = null;
-                    $importColumn->transformerOptions = null;
-                }
-                $importColumn->tmpTransformer = ($column['transformer']) ?? null;
-                $importColumn->tmpTransformerOptions = ($column['transformerOptions']) ?? null;
-                unset($column['transformer']);
-                if ($importColumn->tmpTransformerOptions !== null) {
-                    unset($column['transformerOptions']);
-                }
-                $importColumn->attributes = $column;
-                if (empty($importColumn->order) === true) {
-                    $order = ($prevIndex > -1) ? ($prevIndex + 0.5) : $index;
-                    $importColumn->order = $order;
-                } else {
-                    $prevIndex = $importColumn->order;
-                }
-                if ($importColumn->validate() === true) {
-                    $importColumn->save();
-                } else {
-                    foreach ($importColumn->errors as $field => $error) {
-                        $errors[] = new ImportError(
-                            rowNumber: $orderColumn,
-                            column: $field,
-                            message: 'Colonne : '.$importColumn->source.':'.$importColumn->getFirstError($field),
-                            level: ImportError::LEVEL_VALIDATION_ERROR
-                        );
-                    }
-                }
-
-                if ($this->columnResolver instanceof DbSourceInspector) {
-                    $columnName = ($this->isImport() === true) ? $importColumn->target : $importColumn->source;
-                    $columnExist = $this->columnResolver->columnExistsForConfig($this, $columnName);
-                    if ($columnExist === false && empty($this->rowProcessor) === true) {
-                        $errors[] = new ImportError(
-                            rowNumber: $orderColumn,
-                            column: $columnName,
-                            message: 'Colonne : '.$columnName.': Pour une Colonne le convertisseur métier est obligatoire',
-                            level: ImportError::LEVEL_ERROR
-                        );
-                    }
-                }
-                $index++;
-            }
-            if (empty($errors) === true) {
-                $this->reorderColumns();
-            }
-            return $errors;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
-        }
-    }
+    
 
     /**
      * @return ImportJob|null

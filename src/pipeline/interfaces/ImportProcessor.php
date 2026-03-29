@@ -10,10 +10,11 @@
  */
 namespace fractalCms\importExport\pipeline\interfaces;
 
+
+use fractalCms\importExport\io\interfaces\ImportReader;
+use fractalCms\importExport\pipeline\interfaces\ImportInserter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\interfaces\ImportReader;
-use fractalCms\importExport\interfaces\ImportInserter;
 
 interface ImportProcessor
 {

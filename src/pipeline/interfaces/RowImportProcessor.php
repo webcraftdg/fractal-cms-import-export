@@ -11,7 +11,7 @@
 namespace fractalCms\importExport\pipeline\interfaces;
 
 use fractalCms\importExport\exceptions\RowProcessorResult;
-use fractalCms\importExport\contexts\Import as ImportContext;
+use fractalCms\importExport\runtime\contexts\Import as ImportContext;
 
 interface RowImportProcessor
 {

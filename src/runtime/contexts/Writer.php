@@ -10,21 +10,17 @@
  */
 namespace fractalCms\importExport\runtime\contexts;
 
-use fractalCms\importExport\exceptions\ImportErrorCollector;
-use fractalCms\importExport\interfaces\WriterInterface;
-use fractalCms\importExport\models\ImportConfig;
-
 final class Writer
 {
 
 
     /**
-     * @param ImportConfig $config
-     * @param ImportErrorCollector $errors
-     * @param bool $stopOnError
-     * @param bool $dryRun
-     * @param int $rowNumber
-     * @param array $params
+     * constructor
+     *
+     * @param  string $absolutePath
+     * @param  string $relativePath
+     * @param  array  $preamble
+     * @param  array  $params
      */
     public function __construct(
         public string $absolutePath,

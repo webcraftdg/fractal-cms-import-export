@@ -12,7 +12,6 @@ namespace fractalCms\importExport\pipeline\interfaces;
 
 use fractalCms\importExport\runtime\contexts\Export as ExportContext;
 use fractalCms\importExport\io\interfaces\CountableDataReader;
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 
 interface ExportProcessor
@@ -22,8 +21,7 @@ interface ExportProcessor
      *
      * @param  CountableDataReader   $reader
      * @param  DataMapper   $mapper
-     * @param  ExportWriter $writer
-     * @param  ImportConfig $config
+     * @param  ExportContext $exportcontext
      * @param  string       $filePath
      * @param  bool         $isTest
      * @param  array        $params

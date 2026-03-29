@@ -10,7 +10,6 @@
  */
 namespace fractalCms\importExport\configuration\readers;
 
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\io\interfaces\FileConfigImportReader;
 use yii\helpers\Json;
 use Exception;
@@ -26,11 +25,9 @@ class JsonFileConfigReader implements FileConfigImportReader
     /**
      * constructor
      *
-     * @param  ImportConfig $config
      * @param  string       $filePath
      */
     public function __construct(
-        private ImportConfig $config,
         private string $filePath
     )
     {
@@ -39,12 +36,13 @@ class JsonFileConfigReader implements FileConfigImportReader
     /**
      * open
      *
-     * @return void
+     * @return bool
      */
-    public function open(): void
+    public function open(): bool
     {
         try {
             try {
+                $success = true;
                 $json = file_get_contents($this->filePath);
                 $valid = json_validate($json);
                 if ($valid === true) {
@@ -56,12 +54,13 @@ class JsonFileConfigReader implements FileConfigImportReader
                         $this->tmpColumns = ($record['fields']) ?? [];
                     }
                 } else {
-                    $this->config->addError('importFile', 'Le fichier n\'est un JSON Valide');
+                    $success = false;
                 }
             } catch(Exception $e) {
                 Yii::error($e->getMessage(), __METHOD__);
-                $this->config->addError('importFile', 'Le fichier n\'est un JSON Valide');
+                $success = false;
             }
+            return $success;
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;
@@ -69,18 +68,17 @@ class JsonFileConfigReader implements FileConfigImportReader
     }
 
     /**
-     * hydrate
+     * read
      *
-     * @return ImportConfig
+     * @return array
      */
-    public function hydrate(): ImportConfig
+    public function read(): array
     {
         try {
-            if ($this->config->hasErrors() === false) {
-                $this->config->setAttributes($this->attributes);
-                $this->config->tmpColumns = $this->tmpColumns;
-            }
-            return $this->config;
+            return [
+                'attributes' => $this->attributes,
+                'columns' => $this->tmpColumns
+            ];
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
             throw $e;

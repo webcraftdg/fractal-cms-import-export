@@ -45,7 +45,7 @@ class NDJsonReader implements ImportReader
                         $this->mapColumns = ($metas['columns']) ?? [];
                     }
                 } catch(Exception $e) {
-                    throw new InvalidArgumentException('NDJsonReader Meta of file not found');
+                    throw new InvalidArgumentException('NDJsonReader Meta of file not found: check your file is NDJSON ! ');
                 }
             }
         } catch (Exception $e)  {

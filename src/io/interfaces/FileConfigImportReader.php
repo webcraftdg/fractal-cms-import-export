@@ -10,8 +10,6 @@
  */
 namespace fractalCms\importExport\io\interfaces;
 
-use fractalCms\importExport\models\ImportConfig;
-
 interface FileConfigImportReader 
 {
 
@@ -20,14 +18,14 @@ interface FileConfigImportReader
      *
      * @return void
      */    
-    public function open(): void;
+    public function open(): bool;
     
     /**
      * Hydrate
      *
-     * @return ImportConfig
+     * @return array
      */
-    public function hydrate(): ImportConfig;
+    public function read(): array;
 
     /**
      * close

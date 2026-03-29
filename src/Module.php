@@ -20,6 +20,8 @@ use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\database\services\DbView;
 use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
+use fractalCms\importExport\configuration\services\ConfigManagementService;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\ColumnTransformerService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
@@ -62,11 +64,17 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
             ]);
+            Yii::$container->setSingleton(ConfigColumnsPersistenceService::class, [
+                'class' => ConfigColumnsPersistenceService::class,
+            ]);
             Yii::$container->setSingleton(SourceColumnsResolver::class, [
                 'class' => SourceColumnsResolver::class,
             ]);
             Yii::$container->setSingleton(ConfigRuntimeService::class, [
                 'class' => ConfigRuntimeService::class,
+            ]);
+            Yii::$container->setSingleton(ConfigManagementService::class, [
+                'class' => ConfigManagementService::class,
             ]);
             Yii::$container->setDefinitions([
                 ColumnTransformerService::class => function() {

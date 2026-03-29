@@ -11,19 +11,20 @@
 
 namespace fractalCms\importExport\pipeline\services;
 
-use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\pipeline\exports\services\ExportProcessorService;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
+use fractalCms\importExport\runtime\contexts\Export as ExportContext;
+use fractalCms\importExport\runtime\contexts\Writer as WriterContext;
+use fractalCms\importExport\io\interfaces\DataReader;
+use fractalCms\importExport\pipeline\mappers\Column;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\contexts\Export as ContextsExport;
-use fractalCms\importExport\contexts\Writer as WriterContext;
-use fractalCms\importExport\interfaces\DataReader;
-use fractalCms\importExport\mappers\Column;
-use fractalCms\importExport\services\exports\ExportProcessorService;
-use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
+use fractalCms\importExport\models\ImportConfig;
 use yii\helpers\FileHelper;
 use Exception;
+use fractalCms\importExport\pipeline\interfaces\Export as ExportInterface;
 use Yii;
 
-class ExportService
+class ExportService implements ExportInterface
 {
 
     public function __construct(
@@ -88,7 +89,7 @@ class ExportService
      *
      * @return ImportJob
      */
-    public function executeProcessor(
+    protected function executeProcessor(
         ImportConfig $config,
         ?DataReader $dataReader = null,
         int $batchSize = 1000,
@@ -105,7 +106,7 @@ class ExportService
             $writer =  $this->configRuntimeService->createWriter($config);
             $mapper = new Column();
             $processor = new ExportProcessorService();
-            $baseExportContext = new ContextsExport(
+            $baseExportContext = new ExportContext(
                 config: $config,
                 dryRun: false,
                 hasPreamble:false,

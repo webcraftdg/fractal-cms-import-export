@@ -23,6 +23,8 @@ use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
 use fractalCms\importExport\database\services\DbView;
 use Exception;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
+use fractalCms\importExport\configuration\services\ConfigManagementService;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
@@ -37,6 +39,9 @@ class ImportConfigController extends BaseController
     protected SourceColumnsResolver $sourceColumnResolver;
     protected ImportConfigColumn $importConfigColumnFactory;
     protected ConfigDataBaseService $configDatabase;
+    protected ConfigManagementService $configManagementService;
+    protected ConfigColumnsPersistenceService $configColumnsPersistentService;
+
     /**
      * @inheritDoc
      */
@@ -47,6 +52,8 @@ class ImportConfigController extends BaseController
         RowProcessorService $rowProcessorService,
         SourceColumnsResolver $sourceColumnResolver,
         ActiveRecordParameterService $activeRecordParameter,
+        ConfigManagementService $configManagementService,
+        ConfigColumnsPersistenceService $configColumnsPersistentService,
         $config = []
     )
    {
@@ -55,6 +62,8 @@ class ImportConfigController extends BaseController
         $this->activeRecordParameter = $activeRecordParameter;
         $this->rowProcessorService = $rowProcessorService;
         $this->sourceColumnResolver = $sourceColumnResolver;
+        $this->configManagementService = $configManagementService;
+        $this->configColumnsPersistentService = $configColumnsPersistentService;
         $this->importConfigColumnFactory = new ImportConfigColumn();
         $this->configDatabase = new ConfigDataBaseService($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
    }
@@ -121,7 +130,7 @@ class ImportConfigController extends BaseController
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if ($model->validate() === true && $model->importFile instanceof UploadedFile) {
-                    $model = $model->manageImportFile();
+                    $model = $this->configManagementService->process($model);
                     if ($model->hasErrors() === false) {
                         $response = $this->redirect(['import-config/update', 'id' => $model->id]);
                     }
@@ -177,7 +186,7 @@ class ImportConfigController extends BaseController
                         $model->save();
                         $model->refresh();
                         $rawColumns = $this->configDatabase->generateColumns($model);
-                        $errorsColumns = $model->manageColumns($rawColumns);
+                        $errorsColumns = $this->configColumnsPersistentService->process($model, $rawColumns);
                         if (empty($errorsColumns) === true) {
                             $transaction->commit();
                             $response = $this->redirect(['import-config/update', 'id' => $model->id]);
@@ -249,7 +258,7 @@ class ImportConfigController extends BaseController
                         $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
                     }
                     if ($buildViewOk === true) {
-                        $errorColumns = $model->manageColumns($columns);
+                        $errorColumns = $this->configColumnsPersistentService->process($model, $columns);
                         $model->save();
                         $model->refresh();
                         if (empty($errorColumns) === true) {

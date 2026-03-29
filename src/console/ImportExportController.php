@@ -11,15 +11,13 @@
 namespace fractalCms\importExport\console;
 
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\Export;
-use fractalCms\importExport\services\Import;
+use fractalCms\importExport\pipeline\services\ExportService;
+use fractalCms\importExport\pipeline\services\ImportService;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
 use yii\console\Controller;
-use yii\helpers\Json;
 use yii\base\Exception as BaseException;
+use yii\helpers\Json;
 use Exception;
-use fractalCms\importExport\services\ExportService;
-use fractalCms\importExport\services\ImportService;
-use fractalCms\importExport\services\runtimes\ConfigRuntimeService;
 use Yii;
 
 class ImportExportController extends Controller

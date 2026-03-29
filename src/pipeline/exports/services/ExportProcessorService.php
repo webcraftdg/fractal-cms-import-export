@@ -10,13 +10,13 @@
  */
 namespace fractalCms\importExport\pipeline\exports\services;
 
-use fractalCms\importExport\models\ImportJob;
 use fractalCms\importExport\pipeline\interfaces\ExportProcessor;
 use fractalCms\importExport\io\interfaces\CountableDataReader;
 use fractalCms\importExport\pipeline\interfaces\DataMapper;
 use fractalCms\importExport\runtime\contexts\Export as ExportContext;
-use Exception;
 use fractalCms\importExport\pipeline\interfaces\RowExportProcessor;
+use fractalCms\importExport\models\ImportJob;
+use Exception;
 use Yii;
 
 class ExportProcessorService implements ExportProcessor

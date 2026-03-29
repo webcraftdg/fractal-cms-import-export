@@ -11,14 +11,13 @@
 
 namespace fractalCms\importExport\pipeline\services;
 
-use fractalCms\importExport\interfaces\Import as ImportInterface;
-use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\pipeline\interfaces\Import as ImportInterface;
+use fractalCms\importExport\pipeline\imports\factories\ImportInserter;
+use fractalCms\importExport\pipeline\imports\factories\ImportReader;
+use fractalCms\importExport\pipeline\imports\services\ImportProcessorService;
+use fractalCms\importExport\pipeline\mappers\Column;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\imports\factories\ImportInserter;
-use fractalCms\importExport\services\imports\factories\ImportReader;
-use fractalCms\importExport\services\imports\ImportProcessorService;
-use fractalCms\importExport\mappers\Column;
-use yii\base\NotSupportedException;
+use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use Yii;
 

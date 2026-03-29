@@ -10,26 +10,27 @@
  */
 namespace fractalCms\importExport\pipeline\imports\factories;
 
-use Exception;
-use fractalCms\importExport\interfaces\importReader as InterfacesImportReader;
+use fractalCms\importExport\io\interfaces\ImportReader as ImportReaderInterface;
+use fractalCms\importExport\io\imports\readers\XmlReader;
+use fractalCms\importExport\io\imports\readers\ExcelReader;
+use fractalCms\importExport\io\imports\readers\JsonReader;
+use fractalCms\importExport\io\imports\readers\NDJsonReader;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\imports\readers\ExcelReader;
-use fractalCms\importExport\services\imports\readers\JsonReader;
-use fractalCms\importExport\services\imports\readers\NDJsonReader;
-use fractalCms\importExport\services\imports\readers\XmlReader;
+use Exception;
 use InvalidArgumentException;
 use Yii;
 
-class ImportReader {
+class ImportReader 
+{
 
     /**
      * create
      *
      * @param  string                 $format
      *
-     * @return InterfacesImportReader
+     * @return ImportReaderInterface
      */
-    public function create(string $format) : InterfacesImportReader
+    public function create(string $format) : ImportReaderInterface
     {
         try {
             switch($format) {

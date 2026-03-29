@@ -11,11 +11,10 @@
 namespace fractalCms\importExport\pipeline\imports\factories;
 
 
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\pipeline\imports\inserters\ActiveRecord;
 use fractalCms\importExport\pipeline\imports\inserters\Sql;
 use fractalCms\importExport\pipeline\interfaces\ImportInserter as InterfacesImportInserter;
-use InvalidArgumentException;
+use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use Yii;
 

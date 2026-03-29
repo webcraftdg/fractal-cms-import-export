@@ -10,16 +10,16 @@
  */
 namespace fractalCms\importExport\pipeline\imports\services;
 
-use fractalCms\importExport\exceptions\ImportErrorCollector;
-use fractalCms\importExport\interfaces\ImportProcessor as ImportProcessorInterface;
-use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\contexts\Import as ImportContext;
-use fractalCms\importExport\interfaces\ImportInserter;
-use fractalCms\importExport\interfaces\ImportReader;
+use fractalCms\importExport\pipeline\interfaces\ImportProcessor as ImportProcessorInterface;
+use fractalCms\importExport\runtime\contexts\Import as ImportContext;
+use fractalCms\importExport\pipeline\interfaces\ImportInserter;
+use fractalCms\importExport\io\interfaces\ImportReader;
+use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
+use fractalCms\importExport\pipeline\interfaces\DataMapper;
 use fractalCms\importExport\exceptions\ImportError;
-use fractalCms\importExport\interfaces\RowImportProcessor;
-use fractalCms\importExport\interfaces\DataMapper;
+use fractalCms\importExport\exceptions\ImportErrorCollector;
+use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\models\ImportConfig;
 use yii\db\Transaction;
 use yii\helpers\Json;
 use yii\web\Application as WebApplication;
@@ -35,7 +35,7 @@ final class ImportProcessorService implements ImportProcessorInterface
      * run
      *
      * @param  ImportReader   $reader
-     * @param  ImportMapper   $mapper
+     * @param  DataMapper   $mapper
      * @param  ImportInserter $inserter
      * @param  ImportConfig   $importConfig
      * @param  string         $filePath
@@ -80,10 +80,11 @@ final class ImportProcessorService implements ImportProcessorInterface
             $importJob->save();
             $importJob->refresh();
             $transaction = null;
-            if ((boolean)$importConfig->stopOnError === true || $baseImportContext->dryRun === true) {
+            if ((bool)$importConfig->stopOnError === true || $baseImportContext->dryRun === true) {
                 $transaction = Yii::$app->db->beginTransaction();
             }
-            foreach($reader->read() as $indexRow => $rows) {
+            $indexRow = 1;
+            foreach($reader->read() as $rows) {
                 foreach($rows as $row) {
                     $row = $mapper->map($row, $importConfig, $indexRow);
                     if ($rowProcessor instanceof RowImportProcessor) {
@@ -121,8 +122,8 @@ final class ImportProcessorService implements ImportProcessorInterface
                     } else {
                         $importJob->successRows += 1;
                     }
-
-
+                    $importJob->totalRows += 1;
+                    $indexRow++;
                 }
             }
             if ($errorCollector->hasErrors() === true) {

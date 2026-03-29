@@ -1,6 +1,6 @@
 <?php
 /**
- * ConfigFileImport.php
+ * ConfigFileImportService.php
  *
  * PHP Version 8.2+
  *
@@ -11,8 +11,8 @@
 
 namespace fractalCms\importExport\configuration\services;
 
+use fractalCms\importExport\configuration\readers\JsonFileConfigReader;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\configReaders\JsonFileConfigReader;
 use InvalidArgumentException;
 use Exception;
 use Yii;
@@ -37,17 +37,24 @@ class ConfigFileImportService
             switch($extention) {
                 case 'json':
                     /**@var JsonFileConfigReader $fileConfigReader */
-                    $fileConfigReader = new JsonFileConfigReader($this->config, $this->filePath);
+                    $fileConfigReader = new JsonFileConfigReader($this->filePath);
                     break;
                 default: 
                     throw new InvalidArgumentException('ConfigFileImportService : Error Import Format : '.$extention);
                     break;   
             }
 
-            $fileConfigReader->open();
-            $importConfig = $fileConfigReader->hydrate();
+            $success = $fileConfigReader->open();
+            if ($success === true) {
+                $data = $fileConfigReader->read();
+                $this->config->attributes = ($data['attributes']) ?? [];
+                $this->config->tmpColumns = ($data['columns']) ?? [];
+            } else {
+                $this->config->addError('importFile', 'Le fichier n\'est un JSON Valide');
+
+            }
             $fileConfigReader->delete();
-            return $importConfig;
+            return $this->config;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

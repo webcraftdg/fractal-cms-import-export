@@ -18,7 +18,7 @@ use Yii;
 class ArrayDataReader implements CountableDataReader
 {
 
-    private $rows;
+    private array $rows;
 
     /**
      * open

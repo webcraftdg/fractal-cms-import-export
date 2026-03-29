@@ -6,11 +6,10 @@
  *
  * @author David Ghyse <davidg@webcraftdg.fr>
  * @version XXX
- * @package fractalCms\importExport\interfaces
+ * @package fractalCms\importExport\pipeline\interfaces
  */
-namespace fractalCms\importExport\interfaces;
+namespace fractalCms\importExport\pipeline\interfaces;
 
-use fractalCms\importExport\exceptions\InsertResult;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
 

@@ -19,7 +19,7 @@ class QueryDataReader implements CountableDataReader
 {
 
     private $query;
-    private $batchSize = 1000;
+    private $batchSize = 200;
 
     public function open(array $options): void
     {
