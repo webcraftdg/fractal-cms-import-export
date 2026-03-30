@@ -19,21 +19,17 @@ use Yii;
 class ConfigDataBaseService
 {
     
-    private ConfigColumnsGeneratorService $configColumnGenerator;
     
     /**
      * constructor
      *
-     * @param  DbView                    $dbView
-     * @param  SourceColumnsResolver     $resolver
-     * @param  ImportConfigColumn $factory
+     * @param  DbView                                                                        $dbView
+     * @param  \fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService $configColumnGenerator
      */
     public function __construct(
         private DbView $dbView,
-        private SourceColumnsResolver $resolver,
-        private ImportConfigColumn $factory
+        private ConfigColumnsGeneratorService $configColumnGenerator
     ) {
-        $this->configColumnGenerator = new ConfigColumnsGeneratorService($resolver, $factory);
     }
 
     /**

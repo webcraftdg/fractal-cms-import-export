@@ -13,7 +13,7 @@ namespace fractalCms\importExport\pipeline\imports\factories;
 
 use fractalCms\importExport\pipeline\imports\inserters\ActiveRecord;
 use fractalCms\importExport\pipeline\imports\inserters\Sql;
-use fractalCms\importExport\pipeline\interfaces\ImportInserter as InterfacesImportInserter;
+use fractalCms\importExport\pipeline\interfaces\ImportInserter as ImportInserterInterface;
 use fractalCms\importExport\models\ImportConfig;
 use Exception;
 use Yii;
@@ -24,11 +24,11 @@ class ImportInserter
     /**
      * create
      *
-     * @param  string $source
+     * @param  string                   $source
      *
      * @return ImportInserterInterface
      */
-    public function create(string $source) : InterfacesImportInserter
+    public function create(string $source) : ImportInserterInterface
     {
         try {
             switch($source) {

@@ -175,7 +175,7 @@ use fractalCms\core\helpers\Html;
 <div class="fc-row mt-3">
     <div class="border rounded-md">
         <div class="px-3 py-2 border-b">
-            <h3>Gestion des columns</h3>
+            <h3>Gestion des colonnes</h3>
         </div>
         <div class="p-3 space-y-2">
             <?php

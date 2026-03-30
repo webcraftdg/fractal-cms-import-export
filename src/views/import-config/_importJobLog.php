@@ -16,7 +16,7 @@ use fractalCms\core\helpers\Html;
 ?>
 <div class="border rounded-md mt-3">
     <div class="px-3 py-2 border-b">
-        <h2>Résultat de l'import</h2>
+        <h2>Résultat de la simulation de l'import</h2>
     </div>
     <div class="p-3 space-y-2">
         <div class="fc-danger">

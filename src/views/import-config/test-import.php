@@ -18,7 +18,7 @@ use fractalCms\importExport\models\ImportJob;
 ?>
 <div class="mt-3 flex  justify-center">
     <div class="sm:w-3/5">
-        <h2>Tester les imports/exports</h2>
+        <h2>Tester une configuration en import ou export</h2>
     </div>
 </div>
 <div class="flex justify-center mt-4 ">

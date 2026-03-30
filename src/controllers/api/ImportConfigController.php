@@ -31,6 +31,7 @@ use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 use Exception;
+use fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService;
 use fractalCms\importExport\database\services\DbView;
 use Yii;
 
@@ -55,7 +56,8 @@ class ImportConfigController extends BaseController
            $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
         }
         $this->importConfigColumnFactory = new ImportConfigColumnFactory();
-        $this->configDatabaseService = new ConfigDataBaseService($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $configColumnGenerator = new ConfigColumnsGeneratorService($this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabaseService = new ConfigDataBaseService($dbView, $configColumnGenerator);
     }
 
     /**

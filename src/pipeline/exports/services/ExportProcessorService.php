@@ -70,6 +70,8 @@ class ExportProcessorService implements ExportProcessor
             } catch (Exception $e) {
                 Yii::error($e->getMessage(), __METHOD__);
                 $status = ImportJob::STATUS_FAILED;
+            } finally {
+                $reader->close();
             }
             $importJob->totalRows = $totalCount;
             $importJob->status = $status;

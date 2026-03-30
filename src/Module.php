@@ -18,6 +18,7 @@ use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\console\ImportExportController;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
 use fractalCms\importExport\database\services\DbView;
 use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
@@ -25,7 +26,8 @@ use fractalCms\importExport\configuration\services\ConfigManagementService;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\ColumnTransformerService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
-use fractalCms\importExport\runtime\services\ConfigRuntimeService;
+use fractalCms\importExport\pipeline\exports\services\ExportProcessorService;
+use fractalCms\importExport\pipeline\imports\services\ImportProcessorService;
 use fractalCms\importExport\pipeline\transformers\BooleanColumnTransformer;
 use fractalCms\importExport\pipeline\transformers\DateColumnTransformer;
 use fractalCms\importExport\pipeline\transformers\LowerColumnTransformer;
@@ -46,7 +48,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 
 
     public $version = 'v1.0.2';
-    public string $name = 'importExport';
+    public string $name = 'DataConfiguration';
     public string $filePathImport = '@webroot/imports';
     public int $maxRows = 20000;
     public int $maxColumns = 80;
@@ -75,6 +77,12 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             ]);
             Yii::$container->setSingleton(ConfigManagementService::class, [
                 'class' => ConfigManagementService::class,
+            ]);
+            Yii::$container->setSingleton(ImportProcessorService::class, [
+                'class' => ImportProcessorService::class,
+            ]);
+             Yii::$container->setSingleton(ExportProcessorService::class, [
+                'class' => ExportProcessorService::class,
             ]);
             Yii::$container->setDefinitions([
                 ColumnTransformerService::class => function() {

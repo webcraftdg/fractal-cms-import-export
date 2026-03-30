@@ -21,13 +21,15 @@ use fractalCms\importExport\database\services\ConfigDataBaseService;
 use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
+use fractalCms\importExport\pipeline\services\ImportExportExecutionService;
 use fractalCms\importExport\database\services\DbView;
-use Exception;
 use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
 use fractalCms\importExport\configuration\services\ConfigManagementService;
+use fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use Exception;
 use Yii;
 
 class ImportConfigController extends BaseController
@@ -65,7 +67,8 @@ class ImportConfigController extends BaseController
         $this->configManagementService = $configManagementService;
         $this->configColumnsPersistentService = $configColumnsPersistentService;
         $this->importConfigColumnFactory = new ImportConfigColumn();
-        $this->configDatabase = new ConfigDataBaseService($dbView, $this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $configColumnGenerator = new ConfigColumnsGeneratorService($this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabase = new ConfigDataBaseService($dbView, $configColumnGenerator);
    }
 
     /**
@@ -300,25 +303,41 @@ class ImportConfigController extends BaseController
             /** @var ImportConfig $model */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
-            $importJob = Yii::createObject(ImportJob::class);
-            $importJob->scenario = ImportJob::SCENARIO_CREATE;
+            $importJob = null;
             $readyToDownload = false;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if($model->validate() === true) {
-                    $importJob = $model->manageImportExport();
-                    if($importJob !== null) {
-                        if($importJob->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
-                            $readyToDownload = true;
-                        } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
-                            $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
-                            $readyToDownload = false;
+                    /** @var ImportConfig $targetModel */
+                    $targetModel = ImportConfig::findOne(['id' => $model->importConfigId]);
+                    if ($targetModel !== null) {
+                        $executionService = new ImportExportExecutionService();
+                        if ($targetModel->isImport() === true) {
+                            $finalfilePath = $model->generateImportfileTarget();
+                            if ($finalfilePath !== null) {
+                                $importJob = $executionService->executeImport($targetModel, $finalfilePath);
+                                unlink($finalfilePath);
+                            }
+                        } else {
+                            $importJob = $executionService->executeExport($targetModel);
+                        }
+                        if($importJob !== null) {
+                            if($importJob->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
+                                $readyToDownload = true;
+                            } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
+                                $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
+                                $readyToDownload = false;
+                            }
+                        } else {
+                            $model->addError('importFile', 'Merci de télécharger un fichier');
                         }
                     } else {
-                        $model->addError('importFile', 'Merci de télécharger un fichier');
+                            $model->addError('importFile', 'Merci de sélectionner une configuration');
+
                     }
+                 
 
                 }
             }

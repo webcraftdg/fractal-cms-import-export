@@ -12,7 +12,7 @@ namespace fractalCms\importExport\pipeline\imports\services;
 
 use fractalCms\importExport\pipeline\interfaces\ImportProcessor as ImportProcessorInterface;
 use fractalCms\importExport\runtime\contexts\Import as ImportContext;
-use fractalCms\importExport\pipeline\interfaces\ImportInserter;
+use fractalCms\importExport\pipeline\interfaces\ImportInserter as ImportInserterInterface;
 use fractalCms\importExport\io\interfaces\ImportReader;
 use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
 use fractalCms\importExport\pipeline\interfaces\DataMapper;
@@ -36,7 +36,7 @@ final class ImportProcessorService implements ImportProcessorInterface
      *
      * @param  ImportReader   $reader
      * @param  DataMapper   $mapper
-     * @param  ImportInserter $inserter
+     * @param  ImportInserterInterface $inserter
      * @param  ImportConfig   $importConfig
      * @param  string         $filePath
      * @param  bool           $isTest
@@ -47,7 +47,7 @@ final class ImportProcessorService implements ImportProcessorInterface
     public function run(
         ImportReader $reader,
         DataMapper $mapper,
-        ImportInserter $inserter,
+        ImportInserterInterface $inserter,
         ImportConfig $importConfig,
         string $filePath,
         bool $isTest = false,
@@ -84,59 +84,65 @@ final class ImportProcessorService implements ImportProcessorInterface
                 $transaction = Yii::$app->db->beginTransaction();
             }
             $indexRow = 1;
-            foreach($reader->read() as $rows) {
-                foreach($rows as $row) {
-                    $row = $mapper->map($row, $importConfig, $indexRow);
-                    if ($rowProcessor instanceof RowImportProcessor) {
-                        try {
-                            $result = $rowProcessor->process(
-                                row:$row,
-                                context:$baseImportContext->withRowNumber($indexRow),
-                                params:$params
-                            );
-                            if ($result->handled === true) {
-                                $importJob->successRows++;
+            try {
+                foreach($reader->read() as $rows) {
+                    foreach($rows as $row) {
+                        $row = $mapper->map($row, $importConfig, $indexRow);
+                        if ($rowProcessor instanceof RowImportProcessor) {
+                            try {
+                                $result = $rowProcessor->process(
+                                    row:$row,
+                                    context:$baseImportContext->withRowNumber($indexRow),
+                                    params:$params
+                                );
+                                if ($result->handled === true) {
+                                    $importJob->successRows++;
+                                    continue;
+                                }
+                                $row = $result->attributes ?? $row;
+                            } catch (Exception $e) {
+                                $error = new ImportError($indexRow, '*', $e->getMessage());
+                                $errorCollector->add($error);
+                                $importJob->errorRows++;
+                                if ($importConfig->stopOnError) {
+                                    break;
+                                }
                                 continue;
                             }
-                            $row = $result->attributes ?? $row;
-                        } catch (Exception $e) {
-                            $error = new ImportError($indexRow, '*', $e->getMessage());
-                            $errorCollector->add($error);
-                            $importJob->errorRows++;
-                            if ($importConfig->stopOnError) {
-                                break;
+                        }
+                        $importResult = $inserter->insert($importConfig, $row, $indexRow);
+                        
+                        if ($importResult->success === false) {
+                            $importJob->errorRows += 1;
+                            /** @var ImportError $error */
+                            foreach ($importResult->errors as $error) {
+                                $errorCollector->add(
+                                    $error
+                                );
                             }
-                            continue;
+                        } else {
+                            $importJob->successRows += 1;
                         }
+                        $importJob->totalRows += 1;
+                        $indexRow++;
                     }
-                    $importResult = $inserter->insert($importConfig, $row, $indexRow);
-                    
-                    if ($importResult->success === false) {
-                        $importJob->errorRows += 1;
-                        /** @var ImportError $error */
-                        foreach ($importResult->errors as $error) {
-                            $errorCollector->add(
-                                $error
-                            );
-                        }
-                    } else {
-                        $importJob->successRows += 1;
-                    }
-                    $importJob->totalRows += 1;
-                    $indexRow++;
                 }
-            }
-            if ($errorCollector->hasErrors() === true) {
-                $importJob->status = ImportJob::STATUS_FAILED;
-            } else {
-                $importJob->status = ImportJob::STATUS_SUCCESS;
-            }
-            if ($transaction instanceof Transaction) {
-                if ($baseImportContext->dryRun === true || $errorCollector->hasErrors() === true) {
-                    $transaction->rollBack();
+                if ($errorCollector->hasErrors() === true) {
+                    $importJob->status = ImportJob::STATUS_FAILED;
                 } else {
-                    $transaction->commit();
+                    $importJob->status = ImportJob::STATUS_SUCCESS;
                 }
+                if ($transaction instanceof Transaction) {
+                    if ($baseImportContext->dryRun === true || $errorCollector->hasErrors() === true) {
+                        $transaction->rollBack();
+                    } else {
+                        $transaction->commit();
+                    }
+                }
+            } catch(Exception $e) {
+                Yii::error($e->getMessage(), __METHOD__);
+            } finally {
+                $reader->close();
             }
             $importJob->errorCollector = $errorCollector;
             if ($importJob->errorRows < 50) {
@@ -145,7 +151,6 @@ final class ImportProcessorService implements ImportProcessorInterface
             $importJob->saveFileErrorCsv();
             $importJob->save(false);
             $importJob->refresh();
-            $reader->close();
             return $importJob;
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);

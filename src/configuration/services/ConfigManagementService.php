@@ -14,7 +14,6 @@ namespace fractalCms\importExport\configuration\services;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\exceptions\ImportError;
-use fractalCms\importExport\Module;
 use yii\web\UploadedFile;
 use Exception;
 use Yii;
@@ -33,9 +32,8 @@ class ConfigManagementService
     public function process(ImportConfig $config) : ImportConfig
     {
         try {
-            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
             if ($config->importFile instanceof UploadedFile) {
-                $finalPathFile = $modulePath.'/'. $config->importFile->baseName . '.' . $config->importFile->extension;
+                $finalPathFile = $config->generateImportfileTarget();
                 $config->importFile->saveAs($finalPathFile);
                 $config->scenario = ImportConfig::SCENARIO_CREATE;
                 /**@var ConfigFileImportService $ConfigFileImportService */

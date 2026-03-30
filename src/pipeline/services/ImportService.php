@@ -24,6 +24,15 @@ use Yii;
 class ImportService implements ImportInterface
 {
 
+
+    public function __construct(
+        private ImportProcessorService $importProcessorService,
+        private ImportReader $readerFactory,
+        private ImportInserter $inserterFactory,
+        private Column $mapperColumn
+    )
+    {
+    }
     /**
      * run
      *
@@ -37,15 +46,9 @@ class ImportService implements ImportInterface
     public function run(ImportConfig $config, string $filePath, bool $isTest = false, $params = []): ImportJob
     {
         try {
-            $readerFactory = new ImportReader();
-            $reader = $readerFactory->create($config->fileFormat);
-
-            $inserterFactory = new ImportInserter();
-            $inserter = $inserterFactory->create($config->sourceType);
-            $mapper = new Column();
-            $processor = new ImportProcessorService();
-            return $processor->run($reader, $mapper, $inserter, $config, $filePath, $isTest, $params);
-
+            $reader = $this->readerFactory->create($config->fileFormat);
+            $inserter = $this->inserterFactory->create($config->sourceType);
+            return $this->importProcessorService->run($reader, $this->mapperColumn, $inserter, $config, $filePath, $isTest, $params);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;

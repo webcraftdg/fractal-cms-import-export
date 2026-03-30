@@ -10,7 +10,6 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\configuration\services\ConfigFileImportService;
 use fractalCms\importExport\pipeline\services\ExportService;
 use fractalCms\importExport\pipeline\services\ImportService;
 use fractalCms\importExport\estimations\ExportLimiter;
@@ -19,14 +18,12 @@ use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
 use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
 use fractalCms\importExport\pipeline\services\RowProcessorService;
 use fractalCms\importExport\runtime\services\ConfigRuntimeService;
-use fractalCms\importExport\exceptions\ImportError;
 use fractalCms\importExport\Module;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\web\Application;
 use yii\web\UploadedFile;
 use Exception;
-use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
 use Yii;
 
 /**
@@ -550,37 +547,20 @@ class ImportConfig extends \yii\db\ActiveRecord
         ];
     }
 
-    
-
     /**
-     * @return ImportJob|null
-     * @throws \yii\db\Exception
+     * generateImportfileTarget
+     *
+     * @return string | null
      */
-    public function manageImportExport() : ImportJob | null
+    public function generateImportfileTarget() : string | null
     {
-        try {
-            $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
-            $importJob = null;
-            $targetModel = ImportConfig::findOne(['id' => $this->importConfigId]);
-            if($targetModel !== null) {
-                if ($this->importFile instanceof UploadedFile && $targetModel->type === static::TYPE_IMPORT) {
-                    $importService = new ImportService();
-                    $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
-                    $this->importFile->saveAs($finalPathFile);
-                    $importJob = $importService->run($targetModel, $finalPathFile, true);
-                    unlink($finalPathFile);
-                } elseif ($targetModel->type === static::TYPE_EXPORT) {
-                    $exportService = new ExportService($this->configRuntimeService);
-                    $importJob = $exportService->run($targetModel);
-                }
-            } else {
-                $this->addError('importFile', 'Merci de télécharger un fichier');
-            }
-            return $importJob;
-        } catch (Exception $e)  {
-            Yii::error($e->getMessage(), __METHOD__);
-            throw  $e;
+        $finalPathFile = null;
+        $modulePath = Yii::getAlias(Module::getInstance()->filePathImport);
+        if ($this->importFile instanceof UploadedFile) {
+            $finalPathFile = $modulePath.'/'. $this->importFile->baseName . '.' . $this->importFile->extension;
+            $this->importFile->saveAs($finalPathFile);
         }
+        return $finalPathFile;
     }
 
     /**

@@ -13,16 +13,18 @@ au pipeline global.
 
 - Transformer la valeur de la colonne avant import ou export
 
-![Formulaire de création transformation](images/form-creer-list-transformer-colonne.png)
+![Formulaire de création transformation](images/form_creer_list_transformer_colonne.png)
 
-Les transformers de colonne sont appliqués avant le RowProcessor.
+Les transformers de colonne sont appliqués avant le convertisseur métier (rowProcessor) si il existe.
+
+Des paramètres sont parfois demandés pour certains transformers
 
 ## RowImportProcessors
 
 Les RowTransformer doivent respecter une Interface RowImportTransformer 
 
 ```php
-use fractalCms\importExport\interfaces\RowImportProcessor;
+use ractalCms\importExport\pipeline\interfaces\RowImportProcessor;
 
 final class ImportRowProcessor implements RowImportProcessor
 {
@@ -78,13 +80,14 @@ Afin de pouvoir l'utiliser, le RowImportTransformer doit être ajouté dans la c
     ],
 ```
 
-![form ligne transformateur](images/form_tranform_import_ligne.png)
+![form ligne processor](images/form_processor_import_row.png)
 
-il suffit de le sélectionner dans le formulaire pour que toutes les lignes soient traitées par le transformer.
+il suffit de le sélectionner dans le formulaire pour que toutes les lignes soient traitées avec.
+
 ### Rôle
 
-- Transformer une ligne issue d’un Provider
-- Appliquer la logique métier minimale nécessaire à l’import
+- modifier, adapter une ligne issue d’un **reader**
+- Appliquer la logique métier minimale nécessaire à l’import (insertion dans plusieurs tables)
 
 ### Exemples d’usage
 
@@ -92,24 +95,26 @@ il suffit de le sélectionner dans le formulaire pour que toutes les lignes soie
 - Convertir des types
 - Valider des valeurs
 - Ignorer certaines lignes
+- Modifier ou créer des enregistrements dans d'autres tables
 
 ### Bonne pratique
 
-Un `RowImportTransformer` doit :
+Un `RowImportProcessor` doit :
+
 - rester simple
 - ne pas accéder à des dépendances lourdes
 - ne pas gérer de persistance directe
 
 ---
 
-## RowExportTransformer
+## RowExportProcessor
 
-Les RowExportTransformer doivent respecter une Interface RowExportTransformer
+Les RowExportProcessor doivent respecter une Interface RowExportTransformer
 
 ```php
-use fractalCms\importExport\interfaces\RowExportTransformer as RowExportTransformerInterface;
+use ractalCms\importExport\pipeline\interfaces\RowExportProcessor;
 
-final class ExportRowTransformer implements RowExportTransformerInterface
+final class ExportRowProcessor implements RowExportProcessor
 {
 
 
@@ -126,7 +131,7 @@ final class ExportRowTransformer implements RowExportTransformerInterface
      * @param ExportContext $context
      * @return RowTransformerResult
      */
-    public function transformRow(array $row, ExportContext $context): RowTransformerResult
+    public function process(array $row, ExportContext $context): RowTransformerResult
     {
         try {
 
@@ -152,19 +157,19 @@ Paramétrage dans le configuration de l'application hôte
         'pathsNamespacesModels' => [
             '@app/models' => 'app\\models\\', /*path des models active record de votre application*/
         ],
-        /*Ajout de transformer de ligne (RowTransformer)*/
-        'rowTransformers' => [
+        /*Ajout de transformer de ligne (RowProcessor)*/
+        'rowProcessors' => [
         /* Pour les configurations import*/
             'import' => [
                 'nom-1' => [
-                    'class' => ImportRowTransformer::class,
+                    'class' => ImportRowProcessor::class,
                     'label' => 'Nom 1 (Import)',
                 ],
             ],
         /* Pour les configurations export*/
             'export' => [
                 'nom-1' => [
-                    'class' => ExportRowTransformer::class,
+                    'class' => ExportRowProcessor::class,
                     'label' => 'Nom 1 (export)',
                 ],
             ],
@@ -174,11 +179,11 @@ Paramétrage dans le configuration de l'application hôte
 ```
 il suffit ensuite de le sélectionner dans le formulaire pour que toutes les lignes soient traitées par le transformer.
 
-![export transform](images/form_import_transform.png)
+![export transform](images/form_export_processor.png)
 
 ### Rôle
 
-- Adapter une ligne issue de l’application
+- Adapter une ligne issue d'un fichier
 - Préparer les données pour la sortie
 
 ### Exemples d’usage
@@ -190,8 +195,9 @@ il suffit ensuite de le sélectionner dans le formulaire pour que toutes les lig
 
 ### Bonne pratique
 
-Un `RowExportTransformer` ne doit pas :
-- modifier l’état de l’application
-- effectuer de logique métier complexe
+Un `RowExportProcessor` permet de :
+
+- créer un fichier Excel complexe
+- Effectuer une logique métier complexe
 
 [<- Précédent](configuration.md) | [Suivant ->](import.md)

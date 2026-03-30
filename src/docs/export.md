@@ -5,17 +5,18 @@ et à les écrire vers une destination.
 
 ## Étapes
 
-1. Définir une destination (Provider)
-2. Associer un `RowExportTransformer`
+1. Définir une destination (DataReader)
+2. Associer un `RowExportProcessor` si besoin
 3. Écrire les lignes transformées
 
 ## Cas d’usage typiques
 
 - Export CSV
-- Export SQL
-- Export array
-- Génération de fichiers
+- Export Xlsx
+- Export JSON
+- Export NDJson
+- Export XML
 
-Le transformer permet d’adapter les données **sans modifier la source**.
+Le processor permet d’adapter les données **sans modifier la source**.
 
 [<- Précédent](import.md) | [Suivant ->](command.md)
