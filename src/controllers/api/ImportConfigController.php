@@ -12,19 +12,17 @@
 
 namespace fractalCms\importExport\controllers\api;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\controllers\api\BaseController;
 use fractalCms\core\models\Parameter;
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\interfaces\ColumnTransformer;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportConfigColumn;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use Yii;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\configuration\factories\ImportConfigColumn as ImportConfigColumnFactory;
+use fractalCms\importExport\database\services\ConfigDataBaseService;
 use yii\data\ActiveDataProvider;
 use yii\data\Pagination;
 use yii\filters\AccessControl;
@@ -32,21 +30,34 @@ use yii\helpers\Json;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
+use Exception;
+use fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService;
+use fractalCms\importExport\database\services\DbView;
+use Yii;
 
 class ImportConfigController extends BaseController
 {
 
-    private DbViewInterface $dbView;
-    private TransformService $transformService;
+    private DbView $dbView;
+    private ColumnTransformerService $columnTransformService;
+    protected SourceColumnsResolver $sourceColumnResolver;
+    protected ImportConfigColumnFactory $importConfigColumnFactory;
+    protected ConfigDataBaseService $configDatabaseService;
 
     /**
      * @inheritDoc
      */
-    public function __construct($id, $module, DbView $dbView, TransformService $transformService, $config = [])
+    public function __construct($id, $module, DbView $dbView, ColumnTransformerService $columnTransformService, $config = [])
     {
         parent::__construct($id, $module, $config);
         $this->dbView = $dbView;
-        $this->transformService = $transformService;
+        $this->columnTransformService = $columnTransformService;
+        if (Yii::$container->has(SourceColumnsResolver::class) === true) {
+           $this->sourceColumnResolver = Yii::$container->get(SourceColumnsResolver::class);
+        }
+        $this->importConfigColumnFactory = new ImportConfigColumnFactory();
+        $configColumnGenerator = new ConfigColumnsGeneratorService($this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabaseService = new ConfigDataBaseService($dbView, $configColumnGenerator);
     }
 
     /**
@@ -263,7 +274,7 @@ class ImportConfigController extends BaseController
         try {
             $transformers = [];
             /** @var ColumnTransformer $transformer */
-            foreach ($this->transformService->getTransformers() as $transformer) {
+            foreach ($this->columnTransformService->getTransformers() as $transformer) {
                 $transformers[] = [
                     'name' => $transformer->getName(),
                     'description' => $transformer->getDescription(),
@@ -322,7 +333,7 @@ class ImportConfigController extends BaseController
                 throw new NotFoundHttpException('Import config not Found : '.$id);
             }
             $name = $request->getQueryParam('name', null);
-            $columns =  $importConfig->getContextColumns($this->dbView);
+            $columns = $this->configDatabaseService->generateColumns($importConfig);
             if (empty($name) === false) {
                 $columns = array_filter($columns, function($value) use ($name){
                     return isset($value['source']) === true && str_contains($value['source'], $name) === true;

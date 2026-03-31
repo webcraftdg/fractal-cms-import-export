@@ -14,6 +14,7 @@ use fractalCms\importExport\exceptions\ImportErrorCollector;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use Exception;
+use fractalCms\importExport\io\exports\writers\CsvWriter;
 use Yii;
 use yii\helpers\FileHelper;
 
@@ -183,9 +184,9 @@ class ImportJob extends \yii\db\ActiveRecord
                     if (empty($csvRows) === false) {
                         $headers = array_keys($csvRows[0]);
                         $f = fopen($pathFile, 'w');
-                        fputcsv($f, $headers, ';');
+                        fputcsv($f, $headers, ';', '"', "\\", \PHP_EOL);
                         foreach ($csvRows as $row) {
-                            fputcsv($f, $row, ';');
+                            fputcsv($f, $row, ';', '"', "\\", \PHP_EOL);
                         }
                         fclose($f);
                         $this->errorFilePath = '@runtime/import_file_errors/'.$filename;

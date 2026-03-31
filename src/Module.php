@@ -11,44 +11,50 @@
 
 namespace fractalCms\importExport;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\core\interfaces\FractalCmsCoreInterface;
 use fractalCms\core\Module as CoreModule;
 use fractalCms\importExport\components\Constant;
 use fractalCms\importExport\console\ImportExportController;
-use fractalCms\importExport\db\DbView;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\models\ImportConfig;
-use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\ColumnTransformer as TransformService;
-use fractalCms\importExport\services\RowTransformer as RowTransformerService;
-use fractalCms\importExport\transformers\BooleanColumnTransformer;
-use fractalCms\importExport\transformers\DateColumnTransformer;
-use fractalCms\importExport\transformers\LowerColumnTransformer;
-use fractalCms\importExport\transformers\NumberColumnTransformer;
-use fractalCms\importExport\transformers\ReplaceColumnTransformer;
-use fractalCms\importExport\transformers\StrPadColumnTransformer;
-use fractalCms\importExport\transformers\TrimColumnTransformer;
-use fractalCms\importExport\transformers\UpperColumnTransformer;
-use Yii;
+use fractalCms\importExport\runtime\services\ConfigRuntimeService;
+use fractalCms\importExport\database\services\DbView;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
+use fractalCms\importExport\configuration\services\ConfigManagementService;
+use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\pipeline\services\RowProcessorService;
+use fractalCms\importExport\pipeline\exports\services\ExportProcessorService;
+use fractalCms\importExport\pipeline\imports\services\ImportProcessorService;
+use fractalCms\importExport\pipeline\transformers\BooleanColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\DateColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\LowerColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\NumberColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\ReplaceColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\StrPadColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\TrimColumnTransformer;
+use fractalCms\importExport\pipeline\transformers\UpperColumnTransformer;
 use yii\base\BootstrapInterface;
 use yii\console\Application as ConsoleApplication;
 use yii\web\Application as WebApplication;
 use yii\helpers\Url;
+use Exception;
+use Yii;
 
 class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsCoreInterface
 {
 
 
     public $version = 'v1.0.2';
-    public string $name = 'importExport';
+    public string $name = 'DataConfiguration';
     public string $filePathImport = '@webroot/imports';
     public int $maxRows = 20000;
     public int $maxColumns = 80;
     public int $maxEstimatedMb = 500;
     public array $pathsNamespacesModels = [];
-    public array $rowTransformers = [];
+    public array $rowProcessors = [];
     public string $commandNameSpace = 'fractalCmsImportExport:';
 
     private string $contextId = 'importExport';
@@ -60,9 +66,27 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
             Yii::$container->setSingleton(DbView::class, [
                 'class' => DbView::class,
             ]);
+            Yii::$container->setSingleton(ConfigColumnsPersistenceService::class, [
+                'class' => ConfigColumnsPersistenceService::class,
+            ]);
+            Yii::$container->setSingleton(SourceColumnsResolver::class, [
+                'class' => SourceColumnsResolver::class,
+            ]);
+            Yii::$container->setSingleton(ConfigRuntimeService::class, [
+                'class' => ConfigRuntimeService::class,
+            ]);
+            Yii::$container->setSingleton(ConfigManagementService::class, [
+                'class' => ConfigManagementService::class,
+            ]);
+            Yii::$container->setSingleton(ImportProcessorService::class, [
+                'class' => ImportProcessorService::class,
+            ]);
+             Yii::$container->setSingleton(ExportProcessorService::class, [
+                'class' => ExportProcessorService::class,
+            ]);
             Yii::$container->setDefinitions([
-                TransformService::class => function() {
-                    return new TransformService([
+                ColumnTransformerService::class => function() {
+                    return new ColumnTransformerService([
                         new BooleanColumnTransformer(),
                         new DateColumnTransformer(),
                         new LowerColumnTransformer(),
@@ -74,12 +98,12 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     ]);
                 }
             ]);
-            $this->registerRowTransformers();
-            $app->setComponents([
-                'importDbParameters' => [
-                    'class' => Parameter::class
+            Yii::$container->setDefinitions([
+                ActiveRecordParameterService::class => [
+                    'class' => ActiveRecordParameterService::class
                 ]
             ]);
+            $this->registerRowProcessors();
             $app->setComponents([
                 'exportLimiter' => [
                     'class' => ExportLimiter::class,
@@ -107,9 +131,9 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
      * @return void
      * @throws Exception
      */
-    protected function registerRowTransformers() : void
+    protected function registerRowProcessors() : void
     {
-        Yii::$container->set(RowTransformerService::class, new RowTransformerService($this->rowTransformers));
+        Yii::$container->set(RowProcessorService::class, new RowProcessorService($this->rowProcessors));
     }
 
     /**
@@ -186,7 +210,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
         try {
             Yii::debug(Constant::TRACE_DEBUG, __METHOD__, __METHOD__);
             $importExport = [
-                'title' => 'ImportExport',
+                'title' => 'Data Configuration',
                 'url' => null,
                 'optionsClass' => [],
                 'children' => []
@@ -200,14 +224,14 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
                     $importExport['optionsClass'] = $optionsClass;
                 }
                 $importExport['children'][] = [
-                    'title' => 'Configuration import',
+                    'title' => 'Configurations',
                     'url' => Url::to(['/'.$this->contextId.'/import-config/index']),
                     'optionsClass' => $optionsClass,
                     'children' => [],
                 ];
 
                 $importExport['children'][] = [
-                    'title' => 'Test import/export',
+                    'title' => 'Tests',
                     'url' => Url::to(['/'.$this->contextId.'/import-config/test-import']),
                     'optionsClass' => $optionsClass,
                     'children' => [],

@@ -1,5 +1,9 @@
 # FractalCMS – Import / Export Module
 
+⚠️ Important
+La v2 introduit une refonte importante de la logique du composant import/export.
+Les versions antérieures ne sont plus recommandées et ne doivent pas être utilisées pour de nouvelles intégrations.
+
 Le module Import / Export de FractalCMS fournit une architecture générique et extensible
 pour importer et exporter des données, quel que soit leur format ou leur origine
 (fichier, base de données, SQL).

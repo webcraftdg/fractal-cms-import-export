@@ -82,9 +82,9 @@ echo Html::endForm();
     /** @var ImportConfig $model */
     foreach ($modelQuery->each() as $model) {
         $classes = ['fc-list-item'];
-        if ((boolean)$model->active === true) {
+        if ((bool)$model->active === true) {
             $classes[] = 'fc-list-item-success';
-        } elseif((boolean)$model->active === false) {
+        } elseif((bool)$model->active === false) {
             $classes[] = 'fc-list-item-danger';
         } else {
             $classes[] = 'fc-list-item-primary';

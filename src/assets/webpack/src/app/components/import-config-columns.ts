@@ -13,7 +13,7 @@ import {Transformer} from "../models/transformer";
 export class ImportConfigColumns
 {
     @bindable public id:string;
-    private model:IImportConfig;
+    public model:IImportConfig;
     public tmpConfigColumns:IImportConfigColumn[];
     public columns:Column[];
     public tableColumns:IImportConfigColumn[];

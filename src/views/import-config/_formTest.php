@@ -31,7 +31,7 @@ $baseUrl = StaticAsset::register($this)->baseUrl;
         echo Html::activeFileInput($model, 'importFile',
             [
                 'placeholder' => 'Import',
-                'accept' => '.xls, .xlsx, .csv',
+                'accept' => '.xls, .xlsx, .csv, .xml, .json',
                 'class' => 'fc-form-input']);
         if ($model->hasErrors('importFile') === true) {
             echo Html::tag('p', $model->getFirstError('importFile'), ['class' => 'text-red-600 text-sm m-0']);
