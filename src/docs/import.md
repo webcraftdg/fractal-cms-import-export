@@ -9,6 +9,18 @@ dans l’application.
 2. Associer un `RowImportProcessor` si besoin
 3. Lancer le traitement ligne par ligne
 
+## Format des fichiers accepté
+
+- Export CSV
+- Export Xlsx
+- Export JSON
+- Export NDJson
+- Export XML
+
+### La structure des fichier JSON, NDJSON, XML 
+
+L'import reprend la structure générée en export sur ces mêmes formats
+
 ## Quand utiliser un RowImportProcessor ?
 
 - Mapping de colonnes

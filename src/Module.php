@@ -47,7 +47,7 @@ class Module extends \yii\base\Module implements BootstrapInterface, FractalCmsC
 {
 
 
-    public $version = 'v1.0.2';
+    public $version = 'v2.0.0';
     public string $name = 'DataConfiguration';
     public string $filePathImport = '@webroot/imports';
     public int $maxRows = 20000;
