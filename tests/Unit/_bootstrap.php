@@ -18,9 +18,9 @@
 use fractalCms\core\Module;
 use yii\web\GroupUrlRule;
 
-require dirname(__DIR__).'../../vendor/autoload.php';
+require dirname(__DIR__).'../../../devin-v3/vendor/autoload.php';
 
-require dirname(__DIR__).'../../vendor/yiisoft/yii2/Yii.php';
+require dirname(__DIR__).'../../../devin-v3/vendor/yiisoft/yii2/Yii.php';
 
 $config = require dirname(__DIR__).'/config/common.php';
 

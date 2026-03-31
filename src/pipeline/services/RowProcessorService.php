@@ -129,7 +129,7 @@ class RowProcessorService
                 : $this->rowProcessors['export'][$key] ?? null;
 
             if ($item === null) {
-                throw new NotFoundHttpException('Transformer '.$key.' not found');
+                throw new NotFoundHttpException('Processor '.$key.' not found');
             }
 
             return new $item['class']();

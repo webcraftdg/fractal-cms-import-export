@@ -10,8 +10,6 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\pipeline\services\ExportService;
-use fractalCms\importExport\pipeline\services\ImportService;
 use fractalCms\importExport\estimations\ExportLimiter;
 use fractalCms\importExport\pipeline\interfaces\RowExportProcessor;
 use fractalCms\importExport\pipeline\interfaces\RowImportProcessor;
@@ -40,7 +38,7 @@ use Yii;
  * @property int|null $truncateTable
  * @property string $table
  * @property string|null $sql
- * @property resource|null $rowProcessor
+ * @property string|null $rowProcessor
  * @property string|null $exportTarget
  * @property string|null $dateCreate
  * @property string|null $dateUpdate
@@ -664,7 +662,7 @@ class ImportConfig extends \yii\db\ActiveRecord
     /**
      * getRowProcessor
      * 
-     * @return RowImportTransformer|RowExportTransformer|null
+     * @return RowImportProcessor|RowExportProcessor|null
      * @throws \yii\base\InvalidConfigException
      * @throws \yii\di\NotInstantiableException
      */
@@ -672,8 +670,8 @@ class ImportConfig extends \yii\db\ActiveRecord
     {
         try {
             $rowProcessor = null;
-            $rowProcessorService = (Yii::$container->has(RowProcessorService::class)
-            ) ? Yii::$container->get(RowProcessorService::class) : null;
+            /**@var RowProcessorService $rowProcessorService */
+            $rowProcessorService = Yii::$container->has(RowProcessorService::class) ? Yii::$container->get(RowProcessorService::class) : null;
             if ($rowProcessorService !== null && $this->rowProcessor !== null) {
                 $rowProcessor = $rowProcessorService->create($this->type, $this->rowProcessor);
             }
