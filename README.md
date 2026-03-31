@@ -20,7 +20,7 @@ brancher des flux de données sans modifier le cœur du système.
 
 - Traitement ligne par ligne (streaming)
 - Séparation stricte des responsabilités
-- Transformations personnalisables via Transformers
+- Transformations personnalisables via Convertisseurs métier ou des transfomers de données
 - Compatible avec de gros volumes de données
 
 ## Documentation

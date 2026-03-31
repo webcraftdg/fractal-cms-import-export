@@ -1,6 +1,15 @@
 CHANGELOG
 =========
 
+Release v2.0.0 31/03/2026 <davidg@webcraftdg.fr>
+----------------------------------------------
+
+**ATTENTION : Cette version n'est pas compatible avec les versions précédentes**
+
+* Refonte des mécanismes et de la logique
+* Refactoring des classes, interface, factories ..
+* Ajout export XML, JSON, NDSJON
+* Ajout import XML, JSON, NDJSON
 
 Release v1.0.2 10/03/2026 <davidg@webcraftdg.fr>
 ----------------------------------------------
