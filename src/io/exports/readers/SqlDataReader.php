@@ -20,6 +20,7 @@ class SqlDataReader implements CountableDataReader
 {
 
     private Command $command;
+    private int $batchSize = 200;
 
 
     /**
@@ -36,6 +37,7 @@ class SqlDataReader implements CountableDataReader
             if ($this->command === null) {
                 throw new InvalidArgumentException('SqlDataReader excepted params "command"');
             }
+            $this->batchSize = ($options['batchSize']) ?? $this->batchSize;
             
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
@@ -51,8 +53,16 @@ class SqlDataReader implements CountableDataReader
     {
         try {
             $reader = $this->command->query();
-            foreach ($reader as $row) {
-                yield $row;
+            $batch = [];
+             foreach ($reader as $row) {
+                $batch[] = $row;
+                if (count($batch) >= $this->batchSize) {
+                    yield $batch;
+                    $batch = [];
+                }
+            }
+            if (empty($batch) === false) {
+                yield $batch;
             }
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);

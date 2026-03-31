@@ -19,6 +19,7 @@ class ArrayDataReader implements CountableDataReader
 {
 
     private array $rows;
+    private int $batchSize = 200;
 
     /**
      * open
@@ -34,6 +35,7 @@ class ArrayDataReader implements CountableDataReader
             if ($this->rows === null) {
                 throw new InvalidArgumentException('ArrayExportData excepted params "rows"');
             }
+            $this->batchSize = ($options['batchSize']) ?? $this->batchSize;
             
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
@@ -48,8 +50,20 @@ class ArrayDataReader implements CountableDataReader
     public function read(): iterable
     {
         try {
+            $indexBatch = 0;
+            $batch = [];
             foreach ($this->rows as $row) {
-                yield $row;
+                $batch[] = $row;
+                $indexBatch ++;
+                if ($indexBatch >= $this->batchSize) {
+                    yield $batch;
+                    $batch = [];
+                    $indexBatch = 0;
+                }
+            }
+
+            if (empty($batch) === false) {
+                yield $batch;
             }
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);

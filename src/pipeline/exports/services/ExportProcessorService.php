@@ -37,34 +37,37 @@ class ExportProcessorService implements ExportProcessor
             $context->writer->open($context->writerContext);
             $context->writePreambleOne($context->writerContext->preamble, $context->rowOffset, $context->colOffset);
             try {
+                $indexRow = 0;
                 $totalCount = $reader->count();
-                foreach ($reader->read() as $rowIndex => $row) {
-                    //ColumnTransformer
-                    $row = $mapper->map($row, $context->config, $rowIndex);
-                    $context = $context->withRowNumber($rowIndex);
-                    try {
-                        if ($rowProcessor instanceof RowExportProcessor) {
-
-                            $result = $rowProcessor->process(
-                                row: $row,
-                                context: $context,
-                                params:$params
-                            );
-                            if ($result->handled === true) {
-                                $importJob->successRows++;
-                                continue;
+                foreach ($reader->read() as $rows) {
+                    foreach($rows as $row) {
+                        //ColumnTransformer
+                        $row = $mapper->map($row, $context->config, $indexRow);
+                        $context = $context->withRowNumber($indexRow);
+                        try {
+                            if ($rowProcessor instanceof RowExportProcessor) {
+                                $result = $rowProcessor->process(
+                                    row: $row,
+                                    context: $context,
+                                    params:$params
+                                );
+                                if ($result->handled === true) {
+                                    $importJob->successRows++;
+                                    continue;
+                                }
                             }
+                            $row = $result->attributes ?? $row;
+                        } catch (Exception $e) {
+                            $importJob->errorRows++;
+                            if ($context->config->stopOnError) {
+                                break;
+                            }
+                            continue;
                         }
-                        $row = $result->attributes ?? $row;
-                    } catch (Exception $e) {
-                        $importJob->errorRows++;
-                        if ($context->config->stopOnError) {
-                            break;
-                        }
-                        continue;
+                        $context->writeRow($row, $indexRow);
+                        $importJob->successRows++;
+                        $indexRow++;
                     }
-                    $context->writeRow($row, $rowIndex);
-                    $importJob->successRows++;
                 }
                 $status = ImportJob::STATUS_SUCCESS;
             } catch (Exception $e) {

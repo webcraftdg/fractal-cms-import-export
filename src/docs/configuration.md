@@ -4,7 +4,7 @@
 
 ### Interface
 
-![Gestion de la configuration](images/liste-configs.png)
+![Gestion de la configuration](images/list_configs.png)
 
 ### Créer
 

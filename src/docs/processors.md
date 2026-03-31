@@ -1,14 +1,14 @@
-# Processors
+# Processors & Transformers
 
 Les proccesseurs sont le cœur de la personnalisation du module.
 
-Ils permettent d’adapter le comportement sans toucher
-au pipeline global.
+Ils permettent d’adapter le comportement sans toucher aux pipelines globales.
 
+Ce sont des convertisseurs Métier l
 ---
 
-## ColumnTransformer
-
+## ColumnTransformer (Transformer)
+ 
 ### Rôle
 
 - Transformer la valeur de la colonne avant import ou export
@@ -19,12 +19,14 @@ Les transformers de colonne sont appliqués avant le convertisseur métier (rowP
 
 Des paramètres sont parfois demandés pour certains transformers
 
-## RowImportProcessors
+## RowImportProcessors (processor)
 
-Les RowTransformer doivent respecter une Interface RowImportTransformer 
+Les RowImportProcessors doivent respecter une Interface RowImportProcessor 
 
 ```php
+use fractalCms\importExport\exceptions\RowProcessorResult;
 use ractalCms\importExport\pipeline\interfaces\RowImportProcessor;
+use fractalCms\importExport\runtime\contexts\Import as ImportContext;
 
 final class ImportRowProcessor implements RowImportProcessor
 {
@@ -41,16 +43,17 @@ final class ImportRowProcessor implements RowImportProcessor
     /**
      * @param array $row
      * @param ImportContext $context
-     * @return RowTransformerResult
+     * @param array $params
+     * @return RowProcessorResult
      */
-    public function process(array $row, ImportContext $context): RowTransformerResult
+    public function process(array $row, ImportContext $context, $params = []): RowProcessorResult
     {
         try {
             /**
             * Ici le code de traitement de la ligne avant l'import
             * 
             **/
-            return new RowTransformerResult($row, true);
+            return new RowProcessorResult($row, true);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -99,19 +102,20 @@ il suffit de le sélectionner dans le formulaire pour que toutes les lignes soie
 
 ### Bonne pratique
 
-Un `RowImportProcessor` doit :
+Un `RowImportProcessor` permet de :
 
-- rester simple
-- ne pas accéder à des dépendances lourdes
-- ne pas gérer de persistance directe
+- Intéragir sur plusieurs tables
+- Manipuler et adapter les données reçues
 
 ---
 
-## RowExportProcessor
+## RowExportProcessor (processor)
 
 Les RowExportProcessor doivent respecter une Interface RowExportTransformer
 
 ```php
+use fractalCms\importExport\exceptions\RowProcessorResult;
+use fractalCms\importExport\runtime\contexts\Export as ExportContext;
 use ractalCms\importExport\pipeline\interfaces\RowExportProcessor;
 
 final class ExportRowProcessor implements RowExportProcessor
@@ -129,9 +133,11 @@ final class ExportRowProcessor implements RowExportProcessor
     /**
      * @param array $row
      * @param ExportContext $context
-     * @return RowTransformerResult
+     * @param array $params
+     * 
+     * @return RowProcessorResult
      */
-    public function process(array $row, ExportContext $context): RowTransformerResult
+    public function process(array $row, ExportContext $context, $params = []): RowProcessorResult
     {
         try {
 
@@ -139,8 +145,25 @@ final class ExportRowProcessor implements RowExportProcessor
             * Icic le code de traitement de la ligne avant de l'écrire dans le fichier
             *
             **/
-            $context->writeRow(sheet: 'structure',row: $row,startRow: $context->rowNumber);
-            return new RowTransformerResult($row, true);
+            $context->rowOffset = 1;
+            //Défini l'intitulé de l'onglet (export en Xlsx )
+            $context->sectionName = 'structure';
+            //Ecrit les colonnes d'entête
+            $context->writePreambleOne(ArrayHelper::merge(
+                [
+                    'Production',
+                    'normalisée de la période (A)',
+                    'Production normalisée N-1 (B)',
+                    'Objectif Attendu (C)',
+                    '% var N/N-1 (A/B-1)',
+                    '% Atteint (A/C)'
+                ],
+                1,
+                1
+            );
+            //Ecrit les données
+            $context->writeRow(row: row);
+            return new RowProcessorResult($row, true);
         } catch (Exception $e)  {
             Yii::error($e->getMessage(), __METHOD__);
             throw  $e;
@@ -192,12 +215,14 @@ il suffit ensuite de le sélectionner dans le formulaire pour que toutes les lig
 - Ajout de colonnes calculées
 - Normalisation de données
 - Conversion de structures
+- Ajout d'onglet (Export en Xlsx)
 
 ### Bonne pratique
 
 Un `RowExportProcessor` permet de :
 
-- créer un fichier Excel complexe
+- Créer un fichier Excel complexe
+- Modifier et adapter les données pour la sortie
 - Effectuer une logique métier complexe
 
 [<- Précédent](configuration.md) | [Suivant ->](import.md)

@@ -20,29 +20,30 @@ php yii.php fractalCms:rbac/index
     'modules' => [
         'fractal-cms' => [
             'class' =>  \fractalCms\core\Module::class,
+            'identityClass' => \app\models\Agent::class // Ce paramètre permet de valoriser un model  utilisateur déjà présent dans l'application
         ],
         'fractal-cms-export' => [
             'class' =>  \fractalCms\importExport\Module::class,
             'pathsNamespacesModels' => [
-                '@app/models' => 'app\\models\\', /*path des models active record de votre application*/
+                '@app/models' => 'app\\models\\', // path des models active record de votre application
             ],
-            /*Ajout de transformer de ligne (RowTransformer)*/
-            'rowTransformers' => [
-            /* Pour les configurations import*/
+            // Ajout de convertisseur métier (RowProcessor)
+            'rowProcessors' => [
+            // Pour les configurations import
                 'import' => [
                     'nom' => [
-                        'class' => Votre classe de transformation métier qui implémente l'interface RowTransformer,
-                        'label' => 'Nom ',
+                        'class' => 'Votre classe de conversion métier qui implémente l\'interface RowImportProcessor',
+                        'label' => 'Nom',
                     ],
                 ],
-            /* Pour les configurations export*/
+            // Pour les configurations export
                 'export' => [
                     'nom-1' => [
-                        'class' => Votre classe de transformation métier  qui implémente l'interface RowTransformer,
+                        'class' => 'Votre classe de transformation métier  qui implémente l\'interface RowExportProcessor',
                         'label' => 'Nom 1 (export)',
                     ],
                     'nom-2' => [
-                        'class' => Votre classe de transformation métier  qui implémente l'interface RowTransformer,
+                        'class' => 'Votre classe de transformation métier  qui implémente l\'interface RowExportProcessor',
                         'label' => 'Nom 2 (export)'
                     ]
                 ],

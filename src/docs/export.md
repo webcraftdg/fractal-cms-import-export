@@ -12,7 +12,7 @@ et à les écrire vers une destination.
 ## Cas d’usage typiques
 
 - Export CSV
-- Export Xlsx
+- Export Xlsx (multi onglet possible avec une implémentation d'un `RowExportProcessor`)
 - Export JSON
 - Export NDJson
 - Export XML

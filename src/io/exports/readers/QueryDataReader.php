@@ -19,7 +19,7 @@ class QueryDataReader implements CountableDataReader
 {
 
     private $query;
-    private $batchSize = 200;
+    private int $batchSize = 200;
 
     public function open(array $options): void
     {
@@ -29,10 +29,7 @@ class QueryDataReader implements CountableDataReader
                 throw new InvalidArgumentException('QueryExportData excepted params "query"');
             }
 
-            $this->batchSize = ($options['batchSize']) ?? null;
-            if ($this->batchSize === null) {
-                throw new InvalidArgumentException('QueryExportData excepted params "batchSize"');
-            }
+            $this->batchSize = ($options['batchSize']) ?? $this->batchSize;
             
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
@@ -46,8 +43,8 @@ class QueryDataReader implements CountableDataReader
     public function read(): iterable
     {
         try {
-            foreach ($this->query->each($this->batchSize) as $row) {
-                    yield $row;
+            foreach ($this->query->batch($this->batchSize) as $row) {
+                yield $row;
             }
         } catch (Exception $e) {
             Yii::error($e->getMessage(), __METHOD__);
