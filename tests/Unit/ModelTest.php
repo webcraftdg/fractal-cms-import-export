@@ -3,9 +3,15 @@
 
 namespace Tests\Unit;
 
-use fractalCms\importExport\db\DbView;
+use fractalCms\importExport\configuration\factories\ImportConfigColumn;
+use fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
+use fractalCms\importExport\database\services\ConfigDataBaseService;
+use fractalCms\importExport\database\services\DbView;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
 use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
+use fractalCms\importExport\pipeline\services\ImportExportExecutionService;
 use fractalCms\importExport\services\Export;
 use Tests\Support\UnitTester;
 use Yii;
@@ -23,6 +29,15 @@ class ModelTest extends \Codeception\Test\Unit
     // tests
     public function testImportConfig()
     {
+        $importConfigColumnFactory = Yii::$container->get(ImportConfigColumn::class);
+        $sourceColumnsResolver = Yii::$container->get(SourceColumnsResolver::class);
+        /**@var ConfigColumnsPersistenceService $configColumnsPersistentService */
+        $configColumnsPersistentService = Yii::$container->get(ConfigColumnsPersistenceService::class);
+
+        $dbView = Yii::$container->get(DbView::class);
+
+        $configColumnGenerator = new ConfigColumnsGeneratorService($sourceColumnsResolver, $importConfigColumnFactory);
+        $configDatabase = new ConfigDataBaseService($dbView, $configColumnGenerator);
         /**
          * Tests basés sur Fractal-cms
          */
@@ -63,7 +78,8 @@ class ModelTest extends \Codeception\Test\Unit
 
 
         $transaction = Yii::$app->db->beginTransaction();
-        $errorsColumns = $model->manageColumns($columns);
+
+        $errorsColumns = $configColumnsPersistentService->process($model, $columns);
         if (empty($errorsColumns) === true) {
             $transaction->commit();
         } else {
@@ -104,7 +120,7 @@ class ModelTest extends \Codeception\Test\Unit
         ];
 
         $transaction = Yii::$app->db->beginTransaction();
-        $errorsColumns = $model->manageColumns($columns);
+        $errorsColumns = $configColumnsPersistentService->process($model, $columns);
         $this->assertNotEmpty($errorsColumns);
         if (empty($errorsColumns) === true) {
             $transaction->commit();
@@ -178,7 +194,7 @@ class ModelTest extends \Codeception\Test\Unit
             ]
         ];
         $transaction = Yii::$app->db->beginTransaction();
-        $errorsColumns = $model->manageColumns($columns);
+        $errorsColumns = $configColumnsPersistentService->process($model, $columns);
         $this->assertEmpty($errorsColumns);
         if (empty($errorsColumns) === true) {
             $transaction->commit();
@@ -190,7 +206,10 @@ class ModelTest extends \Codeception\Test\Unit
         $count = $importConfig->getImportColumns()->count();
         $this->assertEquals($count, 7);
         $modelId = $model->id;
-        $importJob = Export::run($importConfig);
+        $executionService = new ImportExportExecutionService();
+        if ($importConfig->isExport() === true) {
+            $importJob = $executionService->executeExport($importConfig);
+        } 
         $this->assertEquals(ImportJob::STATUS_SUCCESS, $importJob->status);
         $this->assertEquals(1, $importJob->successRows);
         $this->assertEquals(0, $importJob->errorRows);
@@ -254,7 +273,7 @@ class ModelTest extends \Codeception\Test\Unit
             ],
         ];
         $transaction = Yii::$app->db->beginTransaction();
-        $errorsColumns = $model->manageColumns($columns);
+        $errorsColumns = $configColumnsPersistentService->process($model, $columns);
         $this->assertEmpty($errorsColumns);
         if (empty($errorsColumns) === true) {
             $transaction->commit();
@@ -265,7 +284,10 @@ class ModelTest extends \Codeception\Test\Unit
         $this->assertNotNull($importConfig);
         $count = $importConfig->getImportColumns()->count();
         $this->assertEquals($count, 3);
-        $importJob = Export::run($importConfig);
+        $executionService = new ImportExportExecutionService();
+        if ($importConfig->isExport() === true) {
+            $importJob = $executionService->executeExport($importConfig);
+        } 
         $this->assertEquals(ImportJob::STATUS_SUCCESS, $importJob->status);
         $this->assertEquals(1, $importJob->successRows);
         $this->assertEquals(0, $importJob->errorRows);
@@ -302,8 +324,9 @@ class ModelTest extends \Codeception\Test\Unit
         $hasDbView = Yii::$container->has(DbView::class);
         $this->assertTrue($hasDbView);
         $dbView = Yii::$container->get(DbView::class);
-        $model->buildDbView($dbView);
-        $errorsColumns = $model->buildInitColumns($dbView);
+        $configDatabase->generateDbView($model);
+        $rawColumns = $configDatabase->generateColumns($model);
+        $errorsColumns = $configColumnsPersistentService->process($model, $rawColumns);
         $this->assertEmpty($errorsColumns);
         if (empty($errorsColumns) === true) {
             $transaction->commit();
@@ -314,7 +337,10 @@ class ModelTest extends \Codeception\Test\Unit
         $this->assertNotNull($importConfig);
         $count = $importConfig->getImportColumns()->count();
         $this->assertEquals($count, 11);
-        $importJob = Export::run($importConfig);
+          $executionService = new ImportExportExecutionService();
+        if ($importConfig->isExport() === true) {
+            $importJob = $executionService->executeExport($importConfig);
+        } 
         $this->assertEquals(ImportJob::STATUS_SUCCESS, $importJob->status);
         $this->assertEquals(7, $importJob->successRows);
         $this->assertEquals(0, $importJob->errorRows);

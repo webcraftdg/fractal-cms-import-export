@@ -636,7 +636,7 @@ CREATE TABLE `importConfigs` (
   `truncateTable` tinyint(1) DEFAULT 0,
   `table` varchar(255) DEFAULT NULL,
   `sql` blob DEFAULT NULL,
-  `rowTransformer` varchar(15) DEFAULT NULL,
+  `rowProcessor` varchar(15) DEFAULT NULL,
   `exportTarget` enum('sql','view') DEFAULT NULL,
   `dateCreate` datetime DEFAULT NULL,
   `dateUpdate` datetime DEFAULT NULL,
