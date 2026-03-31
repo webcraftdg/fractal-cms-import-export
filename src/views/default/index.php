@@ -10,4 +10,4 @@
  * @var $this yii\web\View
  */
 ?>
-<h1>Import Export</h1>
+<h1>Data configuration</h1>

@@ -10,7 +10,8 @@
  */
 namespace fractalCms\importExport\models;
 
-use fractalCms\importExport\services\ColumnTransformer;
+use fractalCms\importExport\pipeline\services\ColumnTransformerService;
+use fractalCms\importExport\pipeline\interfaces\ColumnTransformer;
 use yii\behaviors\TimestampBehavior;
 use yii\db\Expression;
 use yii\helpers\Json;
@@ -172,10 +173,10 @@ class ImportConfigColumn extends \yii\db\ActiveRecord
     {
         try {
             if (isset($transformer['name']) === true) {
-                $transformService = Yii::$container->get(ColumnTransformer::class);
-                if ($transformService instanceof ColumnTransformer) {
-                    $transformers = $transformService->getTransformers();
-                    if (isset($transformers[$transformer['name']]) === true && $transformers[$transformer['name']] instanceof \fractalCms\importExport\interfaces\ColumnTransformer) {
+                $columnTransformerService = Yii::$container->get(ColumnTransformerService::class);
+                if ($columnTransformerService instanceof ColumnTransformerService) {
+                    $transformers = $columnTransformerService->getTransformers();
+                    if (isset($transformers[$transformer['name']]) === true && $transformers[$transformer['name']] instanceof ColumnTransformer) {
                         $transformerService = $transformers[$transformer['name']];
                         $transformer['optionsSchema'] = $transformerService->getOptionsSchema() ;
                         $transformer['description'] = ($transformer['description']) ?? $transformerService->getDescription();

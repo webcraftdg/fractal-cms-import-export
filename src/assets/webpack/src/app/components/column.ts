@@ -12,6 +12,7 @@ export class Column
     @bindable() public importConfigId:string;
     @bindable() public parent:any;
     @bindable() public index:number;
+    @bindable() public type:string;
     @bindable() public tableColumns:IImportConfigColumn[];
     @bindable() public transformers:ITransformer[];
 
@@ -50,19 +51,38 @@ export class Column
     }
 
     /**
-     *
-     * @param event
+     * 
+     * @param event 
+     * @param active 
+     * @returns 
      */
-    public updateSelectColumns(event:Event)
+    public onInputChange(event:Event, active:boolean = false)
     {
-        this.logger.trace('updateSelectColumns');
+        this.logger.trace('onInputChange');
         event.preventDefault();
+        if (active === true) {
+            const value = (this.type === 'import') ? this.model.target : this.model.source;
+            return this.prepareTableColumnNames(value);
+        } else {
+            this.tableColumns = [];
+        }
+    }
+
+
+    /**
+     * 
+     * @param value 
+     * @returns 
+     */
+    public prepareTableColumnNames(value?:string)
+    {
+        this.logger.trace('prepareTableColumnNames');
         let urlTableColumns = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS.replace('{id}', this.importConfigId);
-        if (this.model.source) {
-            urlTableColumns = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS_BY_NAME.replace('{id}', this.importConfigId).replace('{name}', this.model.source);
+        if (value) {
+            urlTableColumns = this.configService.getApiBaseUrl()+EApi.DB_GET_TABLE_COLUMNS_BY_NAME.replace('{id}', this.importConfigId).replace('{name}', value);
         }
         const getTableColumns = this.apiServices.getTableColumns(urlTableColumns);
-        Promise.all([
+        return Promise.all([
             getTableColumns
         ]).then((result) => {
             this.tableColumns = result[0];
@@ -84,7 +104,11 @@ export class Column
             this.inputSelect.querySelectorAll('option').forEach((option, key) => {
                 if (option.value) {
                     if (option.selected) {
-                        this.model.source = option.value;
+                        if (this.type === 'import') {
+                            this.model.target = option.value;
+                        } else {
+                            this.model.source = option.value;
+                        }
                     }
                 }
             });

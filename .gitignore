@@ -1,5 +1,7 @@
 ## Editors - OS
 .scannerwork/
+.vscode/
+.vscode/*
 sonar-project.properties
 node_modules
 src/node_modules

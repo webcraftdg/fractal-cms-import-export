@@ -12,40 +12,63 @@
 
 namespace fractalCms\importExport\controllers;
 
-use Exception;
 use fractalCms\core\components\Constant as CoreConstant;
 use fractalCms\importExport\components\Constant;
-use fractalCms\importExport\db\DbView;
-use fractalCms\importExport\interfaces\DbView as DbViewInterface;
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\ImportJob;
-use fractalCms\importExport\services\Parameter;
-use fractalCms\importExport\services\RowTransformer as RowTransformerService;
-use Yii;
+use fractalCms\importExport\models\ImportConfig;
+use fractalCms\importExport\configuration\factories\ImportConfigColumn;
+use fractalCms\importExport\database\services\ConfigDataBaseService;
+use fractalCms\importExport\database\services\SourceColumnsResolver;
+use fractalCms\importExport\pipeline\services\ActiveRecordParameterService;
+use fractalCms\importExport\pipeline\services\RowProcessorService;
+use fractalCms\importExport\pipeline\services\ImportExportExecutionService;
+use fractalCms\importExport\database\services\DbView;
+use fractalCms\importExport\configuration\services\ConfigColumnsPersistenceService;
+use fractalCms\importExport\configuration\services\ConfigManagementService;
+use fractalCms\importExport\configuration\services\ConfigColumnsGeneratorService;
 use yii\filters\AccessControl;
 use yii\web\NotFoundHttpException;
 use yii\web\UploadedFile;
+use Exception;
+use Yii;
 
 class ImportConfigController extends BaseController
 {
 
-    protected DbViewInterface $dbView;
-    protected Parameter $parameter;
-    public RowTransformerService $rowTransformersService;
+    public RowProcessorService $rowProcessorService;
+    protected DbView $dbView;
+    protected ActiveRecordParameterService $activeRecordParameter;
+    protected SourceColumnsResolver $sourceColumnResolver;
+    protected ImportConfigColumn $importConfigColumnFactory;
+    protected ConfigDataBaseService $configDatabase;
+    protected ConfigManagementService $configManagementService;
+    protected ConfigColumnsPersistenceService $configColumnsPersistentService;
 
     /**
      * @inheritDoc
      */
-   public function __construct($id, $module, DbView $dbView, $config = [])
+   public function __construct(
+        $id,
+        $module,
+        DbView $dbView,
+        RowProcessorService $rowProcessorService,
+        SourceColumnsResolver $sourceColumnResolver,
+        ActiveRecordParameterService $activeRecordParameter,
+        ConfigManagementService $configManagementService,
+        ConfigColumnsPersistenceService $configColumnsPersistentService,
+        $config = []
+    )
    {
-       parent::__construct($id, $module, $config);
-       $this->dbView = $dbView;
-       if (Yii::$app->has('importDbParameters') === true) {
-           $this->parameter = Yii::$app->importDbParameters;
-       }
-       if (Yii::$container->has(RowTransformerService::class) === true) {
-           $this->rowTransformersService = Yii::$container->get(RowTransformerService::class);
-       }
+        parent::__construct($id, $module, $config);
+        $this->dbView = $dbView;
+        $this->activeRecordParameter = $activeRecordParameter;
+        $this->rowProcessorService = $rowProcessorService;
+        $this->sourceColumnResolver = $sourceColumnResolver;
+        $this->configManagementService = $configManagementService;
+        $this->configColumnsPersistentService = $configColumnsPersistentService;
+        $this->importConfigColumnFactory = new ImportConfigColumn();
+        $configColumnGenerator = new ConfigColumnsGeneratorService($this->sourceColumnResolver, $this->importConfigColumnFactory);
+        $this->configDatabase = new ConfigDataBaseService($dbView, $configColumnGenerator);
    }
 
     /**
@@ -100,6 +123,9 @@ class ImportConfigController extends BaseController
             $response = null;
             $request = Yii::$app->request;
             $modelQuery = ImportConfig::find();
+            /**
+             * @var ImportConfig $model
+             */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_JSON_FILE;
             if ($request->isPost === true) {
@@ -107,8 +133,8 @@ class ImportConfigController extends BaseController
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if ($model->validate() === true && $model->importFile instanceof UploadedFile) {
-                    $valid = $model->manageImportFile();
-                    if ($valid === true) {
+                    $model = $this->configManagementService->process($model);
+                    if ($model->hasErrors() === false) {
                         $response = $this->redirect(['import-config/update', 'id' => $model->id]);
                     }
                 }
@@ -138,17 +164,21 @@ class ImportConfigController extends BaseController
         try {
             $request = Yii::$app->request;
             $response = null;
+            /**
+             * @var ImportConfig $model
+             */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_CREATE;
-            $tables = $this->parameter->getActiveModelTableNames();
+            $tables = $this->activeRecordParameter->getActiveModelTableNames();
+            $rowProcessors = ($this->rowProcessorService instanceof RowProcessorService) ?
+                $this->rowProcessorService->getAll() : [];
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
-                $model->version = $model->checkVersion($model->name, $model->version);
                 if ($model->validate() === true) {
                     $buildViewOk = false;
                     try {
-                        $model->buildDbView($this->dbView);
+                        $this->configDatabase->generateDbView($model);
                         $buildViewOk = true;
                     } catch (Exception $e) {
                         Yii::error($e->getMessage(), __METHOD__);
@@ -158,7 +188,8 @@ class ImportConfigController extends BaseController
                         $transaction = Yii::$app->db->beginTransaction();
                         $model->save();
                         $model->refresh();
-                        $errorsColumns = $model->buildInitColumns($this->dbView);
+                        $rawColumns = $this->configDatabase->generateColumns($model);
+                        $errorsColumns = $this->configColumnsPersistentService->process($model, $rawColumns);
                         if (empty($errorsColumns) === true) {
                             $transaction->commit();
                             $response = $this->redirect(['import-config/update', 'id' => $model->id]);
@@ -174,7 +205,7 @@ class ImportConfigController extends BaseController
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => [],
+                    'rowProcessors' => $rowProcessors,
                 ]);
             }
             return $response;
@@ -198,11 +229,14 @@ class ImportConfigController extends BaseController
         try {
             $request = Yii::$app->request;
             $response = null;
+            /**
+             * @var ImportConfig $model
+             */
             $model = ImportConfig::findOne($id);
             if ($model === null) {
                 throw new NotFoundHttpException('Model ImportConfig Not found id : '.$id);
             }
-            $tables = $this->parameter->getActiveModelTableNames();
+            $tables = $this->activeRecordParameter->getActiveModelTableNames();
             $model->scenario = ImportConfig::SCENARIO_CREATE;
 
             if ($request->isPost === true) {
@@ -212,27 +246,41 @@ class ImportConfigController extends BaseController
                 }
                 $model->load($body);
                 if ($model->validate() === true) {
-                    $tmpColumns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
+                    $columns =  (empty($model->tmpColumns) === false) ? $model->tmpColumns : [];
                     $transaction = Yii::$app->db->beginTransaction();
-                    $errorColumns = $model->manageColumns($tmpColumns);
-                    $model->save();
-                    $model->refresh();
-                    if (empty($errorColumns) === true) {
-                        $transaction->commit();
-                        $response = $this->redirect(['import-config/index']);
-                    } else {
+                    $buildViewOk = false;
+                    try {
+                        $this->configDatabase->generateDbView($model);
+                        if (empty($columns) === true) {
+                            $columns = $this->configDatabase->generateColumns($model);
+                        }
+                        $buildViewOk = true;
+                    } catch (Exception $e) {
+                        Yii::error($e->getMessage(), __METHOD__);
                         $transaction->rollBack();
-                        $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                        $model->addError('sql', 'Erreur dans la requête SQL. Vérifier les colonnes (doublons, alias, SELECT *, JOIN, etc.)');
+                    }
+                    if ($buildViewOk === true) {
+                        $errorColumns = $this->configColumnsPersistentService->process($model, $columns);
+                        $model->save();
+                        $model->refresh();
+                        if (empty($errorColumns) === true) {
+                            $transaction->commit();
+                            $response = $this->redirect(['import-config/index']);
+                        } else {
+                            $transaction->rollBack();
+                            $model->addError('name', 'Des erreurs ont été détectées dans la configuration des colonnes, merci, de vérifier');
+                        }
                     }
                 }
             }
-            $rowTransformers = ($this->rowTransformersService instanceof RowTransformerService) ?
-                $this->rowTransformersService->getToList($model->type) : [];
+            $rowProcessors = ($this->rowProcessorService instanceof RowProcessorService) ?
+                $this->rowProcessorService->getToList($model->type) : [];
             if ($response === null) {
                 $response = $this->render('manage', [
                     'model' => $model,
                     'tables' => $tables,
-                    'rowTransformers' => $rowTransformers,
+                    'rowProcessors' => $rowProcessors,
                 ]);
             }
             return $response;
@@ -251,28 +299,45 @@ class ImportConfigController extends BaseController
     {
         try {
             $request = Yii::$app->request;
-            $modelQuery = ImportConfig::find()->andWhere(['not', ['sourceType' => ImportConfig::SOURCE_TYPE_EXTERN]]);
+            $modelQuery = ImportConfig::find()->andWhere(['active' => 1]);
+            /** @var ImportConfig $model */
             $model = Yii::createObject(ImportConfig::class);
             $model->scenario = ImportConfig::SCENARIO_IMPORT_EXPORT;
-            $importJob = Yii::createObject(ImportJob::class);
-            $importJob->scenario = ImportJob::SCENARIO_CREATE;
+            $importJob = null;
             $readyToDownload = false;
             if ($request->isPost === true) {
                 $body = $request->getBodyParams();
                 $model->load($body);
                 $model->importFile = UploadedFile::getInstance($model, 'importFile');
                 if($model->validate() === true) {
-                    $importJob = $model->manageImportExport();
-                    if($importJob !== null) {
-                        if($importJob->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
-                            $readyToDownload = true;
-                        } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
-                            $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
-                            $readyToDownload = false;
+                    /** @var ImportConfig $targetModel */
+                    $targetModel = ImportConfig::findOne(['id' => $model->importConfigId]);
+                    if ($targetModel !== null) {
+                        $executionService = new ImportExportExecutionService();
+                        if ($targetModel->isImport() === true) {
+                            $finalfilePath = $model->generateImportfileTarget();
+                            if ($finalfilePath !== null) {
+                                $importJob = $executionService->executeImport($targetModel, $finalfilePath);
+                                unlink($finalfilePath);
+                            }
+                        } else {
+                            $importJob = $executionService->executeExport($targetModel);
+                        }
+                        if($importJob !== null) {
+                            if($importJob->type === ImportConfig::TYPE_EXPORT && empty($importJob->filePath) === false && $importJob->status === ImportJob::STATUS_SUCCESS) {
+                                $readyToDownload = true;
+                            } elseif ( $importJob->status === ImportJob::STATUS_FAILED) {
+                                $importJob->addError('type', ['L\'action a échouée, veuillez utiliser les commande en ligne "php yii.php fractalCmsImportExport:import-export/index".']);
+                                $readyToDownload = false;
+                            }
+                        } else {
+                            $model->addError('importFile', 'Merci de télécharger un fichier');
                         }
                     } else {
-                        $model->addError('importFile', 'Merci de télécharger un fichier');
+                            $model->addError('importFile', 'Merci de sélectionner une configuration');
+
                     }
+                 
 
                 }
             }

@@ -10,7 +10,7 @@
  * @var $this yii\web\View
  * @var ImportConfig $model
  * @var array $tables
- * @var array $rowTransformers
+ * @var array $rowProcessors
  */
 
 use fractalCms\importExport\models\ImportConfig;
@@ -26,7 +26,7 @@ use fractalCms\importExport\models\ImportConfig;
         echo $this->render('_form', [
             'model' => $model,
             'tables' => $tables,
-            'rowTransformers' => $rowTransformers
+            'rowProcessors' => $rowProcessors
         ]);
         ?>
     </div>

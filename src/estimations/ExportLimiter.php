@@ -10,7 +10,6 @@
  */
 namespace fractalCms\importExport\estimations;
 
-use fractalCms\importExport\models\ImportConfig;
 use fractalCms\importExport\models\LimiterModel;
 use yii\base\Component;
 use Yii;
